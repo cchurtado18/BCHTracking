@@ -9,7 +9,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('preregistrations', function (Blueprint $table) {
-            $table->unsignedTinyInteger('bulto_index')->nullable()->after('dimension')->comment('1-based index when part of a dropoff with multiple bultos');
+            if (Schema::hasColumn('preregistrations', 'bulto_index')) {
+                return;
+            }
+            if (Schema::hasColumn('preregistrations', 'dimension')) {
+                $table->unsignedTinyInteger('bulto_index')->nullable()->after('dimension')->comment('1-based index when part of a dropoff with multiple bultos');
+            } else {
+                $table->unsignedTinyInteger('bulto_index')->nullable()->comment('1-based index when part of a dropoff with multiple bultos');
+            }
             $table->unsignedTinyInteger('bultos_total')->nullable()->after('bulto_index')->comment('Total bultos in this dropoff group');
         });
     }

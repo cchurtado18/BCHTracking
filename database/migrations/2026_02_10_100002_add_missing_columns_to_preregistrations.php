@@ -31,7 +31,11 @@ return new class extends Migration
                 $table->decimal('intake_weight_lbs', 12, 2)->default(0)->after('service_type');
             }
             if (!Schema::hasColumn('preregistrations', 'status')) {
-                $table->string('status', 50)->default('RECEIVED_MIAMI')->after('dimension');
+                if (Schema::hasColumn('preregistrations', 'dimension')) {
+                    $table->string('status', 50)->default('RECEIVED_MIAMI')->after('dimension');
+                } else {
+                    $table->string('status', 50)->default('RECEIVED_MIAMI');
+                }
             }
         });
 
