@@ -37,12 +37,18 @@ class Agency extends Model
      */
     public function getLogoUrlAttribute(): ?string
     {
-        if (empty($this->logo_path)) {
+        $path = $this->attributes['logo_path'] ?? $this->logo_path ?? null;
+        if (empty($path) || ! is_string($path)) {
             return null;
         }
-        return Storage::disk('public')->exists($this->logo_path)
-            ? asset('storage/' . $this->logo_path)
-            : null;
+        try {
+            if (Storage::disk('public')->exists($path)) {
+                return asset('storage/' . $path);
+            }
+        } catch (\Throwable $e) {
+            return null;
+        }
+        return null;
     }
 
     public function clients(): HasMany
