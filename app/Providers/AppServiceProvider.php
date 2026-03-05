@@ -4,7 +4,6 @@ namespace App\Providers;
 
 use App\Models\Preregistration;
 use App\Observers\PreregistrationObserver;
-use Carbon\Carbon;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -26,7 +25,6 @@ class AppServiceProvider extends ServiceProvider
     {
         $tz = config('app.timezone', 'America/New_York');
         date_default_timezone_set($tz);
-        Carbon::setDefaultTimezone($tz);
 
         Preregistration::observe(PreregistrationObserver::class);
     }
