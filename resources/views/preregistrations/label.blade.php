@@ -238,14 +238,16 @@
         @media print {
             body { background: white; padding: 0; }
             .no-print { display: none !important; }
-            .label-sheet {
+        .label-sheet {
                 width: 4in;
                 min-height: 6in;
                 max-width: none;
                 margin: 0;
                 border: 1px solid #000;
                 box-shadow: none;
-                page-break-after: always;
+                page-break-after: auto;
+                page-break-inside: avoid;
+                break-after: avoid;
             }
         }
     </style>
@@ -259,7 +261,7 @@
         @if(session('warning'))
         <p style="margin-bottom: 12px; padding: 10px; background: #fef3c7; color: #92400e; border-radius: 6px; font-size: 14px;">{{ session('warning') }}</p>
         @endif
-        <button type="button" onclick="window.print();" class="no-print-btn">🖨️ Imprimir etiqueta</button>
+        <button type="button" onclick="printLabel();" class="no-print-btn">🖨️ Imprimir etiqueta</button>
         <p class="no-print-hint">Seleccione la impresora de etiquetas en el cuadro de impresión.</p>
         @if(!empty($dropoffNextStep) && !empty($dropoffTotal))
         <p style="margin-top: 14px;">
@@ -287,6 +289,19 @@
                 margin: 8
             });
         });
+
+        // El render del barcode puede tardar según carga del CDN.
+        // Marcamos listo para que al presionar imprimir no se mande antes de que el canvas tenga su tamaño final.
+        window.__barcodesReady = true;
+
+        function printLabel() {
+            if (window.__barcodesReady) {
+                window.print();
+                return;
+            }
+            // Reintenta en pequeños intervalos hasta que los barcodes terminen.
+            setTimeout(printLabel, 200);
+        }
     </script>
 </body>
 </html>
