@@ -177,6 +177,31 @@
             color: #1e3a8a;
         }
 
+        .label-sheet .reception-note .datetime .time-small {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1e3a8a;
+            margin-left: 6px;
+            line-height: 1.1;
+            white-space: nowrap;
+        }
+
+        /* Fecha de recepción mini (solo fecha) en la parte superior */
+        .label-sheet .reception-date-mini-top {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 800;
+            color: #1e3a8a;
+            float: right;
+            margin-left: 0;
+            white-space: nowrap;
+            letter-spacing: 0.01em;
+        }
+        .label-sheet .reception-date-mini-top-single {
+            float: right;
+            margin-left: 0;
+        }
+
         /* Layout tipo etiqueta logística (informativo y limpio) */
         .label-sheet .kv {
             padding: 10px 0;
@@ -248,7 +273,55 @@
                 page-break-after: auto;
                 page-break-inside: avoid;
                 break-after: avoid;
+                padding: 10px 12px;
+                border-radius: 0;
             }
+
+            /* Compactar la altura para que no se “escape” a otra hoja */
+            .label-sheet .label-header {
+                margin-bottom: 8px;
+                padding-bottom: 6px;
+                border-bottom: 1px solid #1e40af;
+                gap: 8px;
+            }
+            .label-sheet .label-header .company { font-size: 12px; }
+            .label-sheet .label-header .company-address,
+            .label-sheet .label-header .company-city { font-size: 9px; }
+            .label-sheet .label-header .agency-logo-wrap {
+                min-height: 48px;
+                padding: 2px 0;
+                max-width: 160px;
+            }
+            .label-sheet .label-header .agency-logo { max-height: 48px; }
+
+            .label-sheet .barcode-section { margin-top: 14px; }
+            .label-sheet .warehouse-code {
+                font-size: 36px;
+                margin: 12px 0;
+                letter-spacing: 0.12em;
+            }
+            .label-sheet .barcode-wrap { margin: 6px 0 12px; }
+
+            .label-sheet .field { font-size: 9px; }
+            .label-sheet .value { font-size: 13px; }
+
+            .label-sheet .kv { padding: 7px 0; }
+            .label-sheet .kv.kv-destination {
+                padding: 8px 10px;
+                border-left-width: 4px;
+            }
+            .label-sheet .kv.kv-3col { gap: 8px; padding: 8px 0; }
+
+            .label-sheet .reception-note {
+                margin-top: 14px;
+                padding: 10px 12px;
+            }
+            .label-sheet .reception-note .title { font-size: 9px; }
+            .label-sheet .reception-note .datetime { font-size: 13px; }
+            .label-sheet .reception-note .datetime .time-small { font-size: 10px; margin-left: 6px; }
+
+            .label-sheet .reception-date-mini-top { font-size: 9px; }
+            .label-sheet .reception-date-mini-top-single { font-size: 9px; }
         }
     </style>
 </head>
@@ -282,11 +355,11 @@
         document.querySelectorAll('.barcode-canvas').forEach(function(el) {
             if (el.dataset.barcode) JsBarcode(el, el.dataset.barcode, {
                 format: 'CODE128',
-                width: 2.5,
-                height: 50,
+                width: 2.2,
+                height: 42,
                 displayValue: true,
-                fontSize: 16,
-                margin: 8
+                fontSize: 13,
+                margin: 4
             });
         });
 

@@ -26,10 +26,20 @@
     </div>
 
     {{-- Información arriba para dar espacio y que el código de barras quede más al centro --}}
+    @php
+        $displayTz = config('app.display_timezone') ?: 'America/New_York';
+        $receptionDate = $preregistration->created_at
+            ? $preregistration->created_at->timezone($displayTz)->format('d/m/Y')
+            : '—';
+    @endphp
+
     @if($preregistration->bultos_total && $preregistration->bultos_total > 1)
     <div class="kv">
         <div class="field">Bulto</div>
-        <div class="value value-sm">{{ $preregistration->bulto_index }} de {{ $preregistration->bultos_total }}</div>
+        <div class="value value-sm">
+            {{ $preregistration->bulto_index }} de {{ $preregistration->bultos_total }}
+            <span class="reception-date-mini-top">{{ $receptionDate }}</span>
+        </div>
     </div>
     @endif
     @if($preregistration->intake_type === 'COURIER' || !empty($preregistration->tracking_external))
@@ -46,7 +56,12 @@
     @endif
     <div class="kv">
         <div class="field">Nombre en etiqueta</div>
-        <div class="value">{{ $preregistration->label_name }}</div>
+        <div class="value">
+            {{ $preregistration->label_name }}
+            @if(!($preregistration->bultos_total && $preregistration->bultos_total > 1))
+                <span class="reception-date-mini-top reception-date-mini-top-single">{{ $receptionDate }}</span>
+            @endif
+        </div>
     </div>
     <div class="kv kv-3col">
         <div class="kv-col">
@@ -62,7 +77,6 @@
             <div class="value value-code">{{ $preregistration->warehouse_code }}</div>
         </div>
     </div>
-
     @if(!empty($preregistration->description))
     <div class="kv">
         <div class="field">Descripción</div>
@@ -87,9 +101,4 @@
     @endif
     </div>
 
-    <div class="reception-note">
-        <div class="title">Nota de recepción en almacén</div>
-        {{-- Mostrar fecha en zona horaria de visualización; usar fallback para evitar null en producción. --}}
-        <div class="datetime">{{ $preregistration->created_at->timezone(config('app.display_timezone', 'America/New_York'))->format('d/m/Y H:i') }}</div>
-    </div>
 </div>
