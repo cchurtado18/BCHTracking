@@ -89,6 +89,6 @@
 
     <div class="reception-note">
         <div class="title">Nota de recepción en almacén</div>
-        <div class="datetime">{{ $preregistration->created_at->timezone(config('app.timezone', 'America/New_York'))->format('d/m/Y H:i') }}</div>
+        <div class="datetime">{{ $preregistration->created_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</div>
     </div>
 </div>
