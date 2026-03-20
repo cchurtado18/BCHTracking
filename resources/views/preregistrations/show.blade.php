@@ -3,6 +3,9 @@
 @section('title', 'Detalle Preregistro')
 
 @section('content')
+@php
+    $displayTz = config('app.display_timezone') ?: 'America/New_York';
+@endphp
 <div class="preregs-page preregs-show-page">
     <header class="preregs-hero">
         <div class="preregs-hero-inner">
@@ -113,18 +116,18 @@
                     @if($preregistration->received_nic_at)
                     <div class="preregs-dl-row">
                         <dt class="preregs-dt">Recibido en Nicaragua</dt>
-                        <dd class="preregs-dd">{{ $preregistration->received_nic_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</dd>
+                        <dd class="preregs-dd">{{ $preregistration->received_nic_at->timezone($displayTz)->format('d/m/Y H:i') }}</dd>
                     </div>
                     @endif
                     @if($preregistration->ready_at)
                     <div class="preregs-dl-row">
                         <dt class="preregs-dt">Listo para retiro</dt>
-                        <dd class="preregs-dd">{{ $preregistration->ready_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</dd>
+                        <dd class="preregs-dd">{{ $preregistration->ready_at->timezone($displayTz)->format('d/m/Y H:i') }}</dd>
                     </div>
                     @endif
                     <div class="preregs-dl-row">
                         <dt class="preregs-dt">Fecha de creación</dt>
-                        <dd class="preregs-dd">{{ $preregistration->created_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</dd>
+                        <dd class="preregs-dd">{{ $preregistration->created_at->timezone($displayTz)->format('d/m/Y H:i') }}</dd>
                     </div>
                 </dl>
             </div>
