@@ -118,9 +118,25 @@
             max-width: 100%;
             overflow: hidden;
         }
+        .label-sheet .barcode-row {
+            display: inline-flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 14px;
+        }
         .label-sheet .barcode-wrap canvas {
             max-width: 100%;
             height: auto !important;
+        }
+        .label-sheet .service-mark-large {
+            display: inline-block;
+            font-size: 62px;
+            font-weight: 900;
+            line-height: 0.9;
+            color: #111;
+            letter-spacing: 0.02em;
+            margin-bottom: 18px;
+            margin-left: 6px;
         }
         /* Títulos (labels) en negro: mayor contraste */
         .label-sheet .field {
@@ -146,22 +162,30 @@
             font-size: 14px;
         }
         .label-sheet .value.label-service {
-            font-size: 20px;
-            font-weight: 800;
-            letter-spacing: 0.03em;
+            display: inline-block;
+            font-size: 16px;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            padding: 2px 12px;
+            border: 2px solid #111;
+            border-radius: 10px;
+            line-height: 1.1;
+            color: #111;
+            text-transform: uppercase;
         }
         .label-sheet .value.label-service-air {
-            color: #0f766e;
+            border-style: dashed;
         }
         .label-sheet .value.label-service-sea {
-            color: #1e40af;
+            border-style: solid;
         }
         .label-sheet .reception-note {
             margin-top: 20px;
             padding: 12px 14px;
-            background: #eff6ff;
-            border: 1px solid #93c5fd;
-            border-radius: 6px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            text-align: center;
         }
         .label-sheet .reception-note .title {
             font-size: 10px;
@@ -169,12 +193,19 @@
             letter-spacing: 0.06em;
             color: #111827;
             font-weight: 700;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
+        }
+        .label-sheet .reception-note .divider {
+            width: 100%;
+            height: 1px;
+            background: #d1d5db;
+            margin-bottom: 6px;
         }
         .label-sheet .reception-note .datetime {
             font-size: 18px;
             font-weight: 700;
             color: #1e3a8a;
+            white-space: nowrap;
         }
 
         .label-sheet .reception-note .datetime .time-small {
@@ -184,6 +215,14 @@
             margin-left: 6px;
             line-height: 1.1;
             white-space: nowrap;
+        }
+
+        .label-sheet .label-review-text {
+            text-align: center;
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 10px;
+            font-weight: 600;
         }
 
         /* Fecha de recepción mini (solo fecha) en la parte superior */
@@ -297,10 +336,11 @@
             .label-sheet .barcode-section { margin-top: 14px; }
             .label-sheet .warehouse-code {
                 font-size: 36px;
-                margin: 12px 0;
+                margin: 10px 0;
                 letter-spacing: 0.12em;
             }
-            .label-sheet .barcode-wrap { margin: 6px 0 12px; }
+            .label-sheet .barcode-wrap { margin: 4px 0 10px; }
+            .label-sheet .service-mark-large { font-size: 52px; margin-bottom: 14px; margin-left: 6px; }
 
             .label-sheet .field { font-size: 9px; }
             .label-sheet .value { font-size: 13px; }
@@ -313,12 +353,14 @@
             .label-sheet .kv.kv-3col { gap: 8px; padding: 8px 0; }
 
             .label-sheet .reception-note {
-                margin-top: 14px;
-                padding: 10px 12px;
+                margin-top: 10px;
+                padding: 7px 9px;
             }
             .label-sheet .reception-note .title { font-size: 9px; }
-            .label-sheet .reception-note .datetime { font-size: 13px; }
+            .label-sheet .reception-note .datetime { font-size: 12px; line-height: 1.1; white-space: nowrap; }
             .label-sheet .reception-note .datetime .time-small { font-size: 10px; margin-left: 6px; }
+            .label-sheet .reception-note .divider { margin-bottom: 4px; }
+            .label-sheet .label-review-text { font-size: 11px; margin-top: 6px; }
 
             .label-sheet .reception-date-mini-top { font-size: 9px; }
             .label-sheet .reception-date-mini-top-single { font-size: 9px; }
@@ -326,7 +368,6 @@
     </style>
 </head>
 <body>
-    @if(!request('embed'))
     <div class="no-print">
         @if(session('success'))
         <p style="margin-bottom: 12px; padding: 10px; background: #d1fae5; color: #065f46; border-radius: 6px; font-size: 14px;">{{ session('success') }}</p>
@@ -344,9 +385,6 @@
         @endif
         <p style="margin-top: 12px;"><a href="{{ route('preregistrations.show', $preregistration->id) }}">← Volver al preregistro</a></p>
     </div>
-    @else
-    <style>.no-print { display: none !important; } body { padding: 8px; background: #f9fafb; }</style>
-    @endif
 
     @include('preregistrations.partials.label-sheet', compact('preregistration'))
 

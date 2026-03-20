@@ -113,18 +113,18 @@
                     @if($preregistration->received_nic_at)
                     <div class="preregs-dl-row">
                         <dt class="preregs-dt">Recibido en Nicaragua</dt>
-                        <dd class="preregs-dd">{{ $preregistration->received_nic_at->format('d/m/Y H:i') }}</dd>
+                        <dd class="preregs-dd">{{ $preregistration->received_nic_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</dd>
                     </div>
                     @endif
                     @if($preregistration->ready_at)
                     <div class="preregs-dl-row">
                         <dt class="preregs-dt">Listo para retiro</dt>
-                        <dd class="preregs-dd">{{ $preregistration->ready_at->format('d/m/Y H:i') }}</dd>
+                        <dd class="preregs-dd">{{ $preregistration->ready_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</dd>
                     </div>
                     @endif
                     <div class="preregs-dl-row">
                         <dt class="preregs-dt">Fecha de creación</dt>
-                        <dd class="preregs-dd">{{ $preregistration->created_at->format('d/m/Y H:i') }}</dd>
+                        <dd class="preregs-dd">{{ $preregistration->created_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</dd>
                     </div>
                 </dl>
             </div>
@@ -132,31 +132,40 @@
 
         <div class="preregs-card">
             <div class="preregs-card-header preregs-table-header preregs-card-header-photo">
-                <h2 class="preregs-card-title">Foto del paquete</h2>
-                <button type="button" onclick="document.getElementById('photoUpload').click()" class="preregs-btn preregs-btn-sm preregs-btn-replace">
-                    {{ $preregistration->photos->count() > 0 ? 'Reemplazar foto' : 'Subir foto' }}
-                </button>
+                <h2 class="preregs-card-title">Fotos del paquete ({{ $preregistration->photos->count() }}/3)</h2>
             </div>
             <div class="preregs-card-body">
                 <form id="photoUploadForm" action="{{ route('preregistrations.upload-photo', $preregistration->id) }}" method="POST" enctype="multipart/form-data" class="preregs-hidden">
                     @csrf
-                    <input type="file" name="photo" id="photoUpload" accept="image/jpeg,image/jpg,image/png,image/webp" capture="environment" required>
+                    <input type="file" name="photo" id="photoUpload" accept="image/jpeg,image/jpg,image/png,image/webp" capture="environment">
                 </form>
+                <div id="photoUploadUi" data-existing-count="{{ $preregistration->photos->count() }}">
+                    <p class="preregs-muted" id="photoCounterText">Puedes subir hasta 3 fotos. Toma 1, 2 o 3 y luego pulsa "Subir fotos".</p>
+                    <div class="preregs-photo-actions">
+                        <button type="button" id="btnTakePhoto" class="preregs-btn preregs-btn-primary">Tomar foto</button>
+                        <button type="button" id="btnUploadPhotos" class="preregs-btn preregs-btn-replace" disabled>Subir fotos</button>
+                    </div>
+                    <div id="pendingPhotosWrap" class="preregs-pending-wrap preregs-hidden">
+                        <p class="preregs-muted" style="margin-bottom: 8px;">Fotos pendientes:</p>
+                        <div id="pendingPhotosGrid" class="preregs-photo-grid"></div>
+                    </div>
+                </div>
 
                 @if($preregistration->photos->count() > 0)
-                @php $photo = $preregistration->photos->first(); @endphp
-                <div class="preregs-photo-wrap">
-                    <img src="{{ $photo->url }}" alt="Foto del paquete" class="preregs-photo-img">
-                    <p class="preregs-photo-link-wrap">
-                        <a href="{{ $photo->url }}" target="_blank" class="preregs-link">Ver foto en tamaño completo</a>
-                    </p>
+                <p class="preregs-muted" style="margin: 12px 0 8px;">Fotos subidas:</p>
+                <div class="preregs-photo-grid">
+                    @foreach($preregistration->photos as $photo)
+                    <div class="preregs-photo-item">
+                        <img src="{{ $photo->url }}" alt="Foto del paquete" class="preregs-photo-img">
+                        <p class="preregs-photo-link-wrap">
+                            <a href="{{ $photo->url }}" target="_blank" class="preregs-link">Ver completa</a>
+                        </p>
+                    </div>
+                    @endforeach
                 </div>
                 @else
-                <div class="preregs-photo-empty">
-                    <p class="preregs-muted">No hay foto subida</p>
-                    <button type="button" onclick="document.getElementById('photoUpload').click()" class="preregs-btn preregs-btn-primary">
-                        Subir foto
-                    </button>
+                <div class="preregs-photo-empty" style="margin-top: 12px;">
+                    <p class="preregs-muted">No hay fotos subidas aún</p>
                 </div>
                 @endif
             </div>
@@ -167,46 +176,153 @@
 @push('scripts')
 <script>
     const photoUpload = document.getElementById('photoUpload');
-    if (photoUpload) {
+    const photoUploadUi = document.getElementById('photoUploadUi');
+    const btnTakePhoto = document.getElementById('btnTakePhoto');
+    const btnUploadPhotos = document.getElementById('btnUploadPhotos');
+    const pendingPhotosWrap = document.getElementById('pendingPhotosWrap');
+    const pendingPhotosGrid = document.getElementById('pendingPhotosGrid');
+    const photoCounterText = document.getElementById('photoCounterText');
+    const photoUploadForm = document.getElementById('photoUploadForm');
+    const MAX_PHOTOS = 3;
+    let pendingFiles = [];
+    let keepCameraOpen = true;
+
+    function getExistingCount() {
+        if (!photoUploadUi) return 0;
+        return parseInt(photoUploadUi.dataset.existingCount || '0', 10) || 0;
+    }
+
+    function remainingSlots() {
+        return Math.max(0, MAX_PHOTOS - getExistingCount() - pendingFiles.length);
+    }
+
+    function updatePhotoUiState() {
+        if (!photoUploadUi) return;
+        const existing = getExistingCount();
+        const totalInQueue = existing + pendingFiles.length;
+        const slots = remainingSlots();
+
+        if (photoCounterText) {
+            photoCounterText.textContent = `Fotos: ${totalInQueue}/3${pendingFiles.length ? ` (${pendingFiles.length} pendientes)` : ''}`;
+        }
+
+        if (btnTakePhoto) {
+            btnTakePhoto.disabled = slots <= 0;
+            btnTakePhoto.textContent = slots <= 0 ? 'Límite alcanzado (3/3)' : 'Tomar foto';
+        }
+
+        if (btnUploadPhotos) {
+            btnUploadPhotos.disabled = pendingFiles.length === 0;
+        }
+
+        if (pendingPhotosWrap) {
+            pendingPhotosWrap.classList.toggle('preregs-hidden', pendingFiles.length === 0);
+        }
+    }
+
+    function renderPendingPhotos() {
+        if (!pendingPhotosGrid) return;
+        pendingPhotosGrid.innerHTML = '';
+        pendingFiles.forEach((item, idx) => {
+            const box = document.createElement('div');
+            box.className = 'preregs-photo-item';
+
+            const img = document.createElement('img');
+            img.src = item.previewUrl;
+            img.className = 'preregs-photo-img';
+            img.alt = `Foto pendiente ${idx + 1}`;
+            box.appendChild(img);
+
+            const actions = document.createElement('div');
+            actions.className = 'preregs-photo-item-actions';
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'preregs-btn preregs-btn-sm preregs-btn-outline-primary';
+            removeBtn.textContent = 'Quitar';
+            removeBtn.addEventListener('click', function() {
+                URL.revokeObjectURL(item.previewUrl);
+                pendingFiles.splice(idx, 1);
+                renderPendingPhotos();
+                updatePhotoUiState();
+            });
+            actions.appendChild(removeBtn);
+            box.appendChild(actions);
+            pendingPhotosGrid.appendChild(box);
+        });
+    }
+
+    async function uploadPendingFiles() {
+        if (!photoUploadForm || pendingFiles.length === 0) return;
+        btnUploadPhotos.disabled = true;
+        btnTakePhoto.disabled = true;
+        btnUploadPhotos.textContent = 'Subiendo...';
+
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        let uploaded = 0;
+        for (let i = 0; i < pendingFiles.length; i++) {
+            const fd = new FormData();
+            fd.append('photo', pendingFiles[i].file);
+            const resp = await fetch(photoUploadForm.action, {
+                method: 'POST',
+                body: fd,
+                headers: {
+                    'X-CSRF-TOKEN': csrf,
+                    'Accept': 'application/json',
+                },
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+                throw new Error(data.message || 'Error al subir foto');
+            }
+            uploaded++;
+        }
+        return uploaded;
+    }
+
+    if (photoUpload && btnTakePhoto && btnUploadPhotos && photoUploadUi) {
+        updatePhotoUiState();
+
+        btnTakePhoto.addEventListener('click', function() {
+            keepCameraOpen = true;
+            if (remainingSlots() <= 0) {
+                alert('Este preregistro ya alcanzó el máximo de 3 fotos.');
+                return;
+            }
+            photoUpload.click();
+        });
+
         photoUpload.addEventListener('change', function(e) {
-            if (e.target.files.length > 0) {
-                const form = document.getElementById('photoUploadForm');
-                const formData = new FormData(form);
-                const buttons = document.querySelectorAll('button[onclick*="photoUpload"]');
-                const originalTexts = [];
-                buttons.forEach(btn => {
-                    originalTexts.push(btn.textContent);
-                    btn.textContent = 'Subiendo...';
-                    btn.disabled = true;
-                });
-                fetch(form.action, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.id || data.url) {
-                        window.location.reload();
-                    } else {
-                        alert('Error al subir foto: ' + (data.message || 'Error desconocido'));
-                        buttons.forEach((btn, idx) => {
-                            btn.textContent = originalTexts[idx];
-                            btn.disabled = false;
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error al subir foto');
-                    buttons.forEach((btn, idx) => {
-                        btn.textContent = originalTexts[idx];
-                        btn.disabled = false;
-                    });
-                });
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (remainingSlots() <= 0) {
+                alert('Este preregistro ya alcanzó el máximo de 3 fotos.');
+                e.target.value = '';
+                return;
+            }
+            pendingFiles.push({
+                file: file,
+                previewUrl: URL.createObjectURL(file),
+            });
+            renderPendingPhotos();
+            updatePhotoUiState();
+            e.target.value = '';
+
+            if (keepCameraOpen && remainingSlots() > 0) {
+                setTimeout(function() { photoUpload.click(); }, 200);
+            }
+        });
+
+        btnUploadPhotos.addEventListener('click', async function() {
+            keepCameraOpen = false;
+            try {
+                const uploaded = await uploadPendingFiles();
+                if (uploaded > 0) {
+                    window.location.reload();
+                }
+            } catch (err) {
+                alert(err.message || 'Error al subir fotos');
+                btnUploadPhotos.textContent = 'Subir fotos';
+                updatePhotoUiState();
             }
         });
     }
@@ -290,5 +406,10 @@
 @media (min-width: 640px) { .preregs-photo-empty { padding: 2rem; } }
 .preregs-photo-empty .preregs-muted { margin-bottom: 1rem; }
 .preregs-hidden { display: none !important; }
+.preregs-photo-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+.preregs-photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.preregs-photo-item { border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; background: #fff; }
+.preregs-photo-item-actions { margin-top: 8px; display: flex; justify-content: center; }
+.preregs-pending-wrap { margin-top: 8px; margin-bottom: 10px; }
 </style>
 @endsection

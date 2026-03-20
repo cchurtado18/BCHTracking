@@ -25,21 +25,12 @@
         @endif
     </div>
 
-    {{-- Información arriba para dar espacio y que el código de barras quede más al centro --}}
-    @php
-        $displayTz = config('app.display_timezone') ?: 'America/New_York';
-        $receptionDate = $preregistration->created_at
-            ? $preregistration->created_at->timezone($displayTz)->format('d/m/Y')
-            : '—';
-    @endphp
+    {{-- Información arriba (solo para llenar la etiqueta sin alargarla de más). --}}
 
     @if($preregistration->bultos_total && $preregistration->bultos_total > 1)
     <div class="kv">
         <div class="field">Bulto</div>
-        <div class="value value-sm">
-            {{ $preregistration->bulto_index }} de {{ $preregistration->bultos_total }}
-            <span class="reception-date-mini-top">{{ $receptionDate }}</span>
-        </div>
+        <div class="value value-sm">{{ $preregistration->bulto_index }} de {{ $preregistration->bultos_total }}</div>
     </div>
     @endif
     @if($preregistration->intake_type === 'COURIER' || !empty($preregistration->tracking_external))
@@ -54,23 +45,40 @@
         <div class="value value-destination">{{ $preregistration->agency->code }} - {{ $preregistration->agency->name }}</div>
     </div>
     @endif
+
+    @php
+        // Para que la etiqueta no crezca, mostramos dimensión/pie³ como sublínea dentro de la celda de "PESO".
+        $dimension = !empty($preregistration->dimension) ? mb_strtoupper(trim($preregistration->dimension)) : null;
+        $cubicFeet = $preregistration->cubic_feet !== null ? number_format((float) $preregistration->cubic_feet, 2) : null;
+        $serviceMark = strtoupper((string) ($preregistration->service_type ?? 'AIR')) === 'SEA' ? 'M' : 'A';
+        $boxSizeLine = null;
+        if ($dimension) {
+            $boxSizeLine = $dimension;
+            if ($cubicFeet !== null) {
+                $boxSizeLine .= ' · ' . $cubicFeet . ' pie³';
+            }
+        } elseif ($cubicFeet !== null) {
+            $boxSizeLine = $cubicFeet . ' pie³';
+        }
+    @endphp
+
     <div class="kv">
         <div class="field">Nombre en etiqueta</div>
-        <div class="value">
-            {{ $preregistration->label_name }}
-            @if(!($preregistration->bultos_total && $preregistration->bultos_total > 1))
-                <span class="reception-date-mini-top reception-date-mini-top-single">{{ $receptionDate }}</span>
-            @endif
-        </div>
+        <div class="value">{{ $preregistration->label_name }}</div>
     </div>
     <div class="kv kv-3col">
         <div class="kv-col">
             <div class="field">Servicio</div>
-            <div class="value label-service label-service-{{ strtolower($preregistration->service_type ?? 'air') }}">{{ $preregistration->service_type === 'AIR' ? 'Aéreo' : 'Marítimo' }}</div>
+            <div class="value label-service label-service-{{ strtolower($preregistration->service_type ?? 'air') }}">
+                {{ $preregistration->service_type === 'AIR' ? 'AIR' : 'SEA' }}
+            </div>
         </div>
         <div class="kv-col">
             <div class="field">Peso (lbs)</div>
             <div class="value">{{ number_format($preregistration->verified_weight_lbs ?? $preregistration->intake_weight_lbs, 2) }}</div>
+            @if(!empty($boxSizeLine))
+                <div class="value value-sm" style="margin-top: 2px;">{{ $boxSizeLine }}</div>
+            @endif
         </div>
         <div class="kv-col">
             <div class="field">Código</div>
@@ -83,12 +91,6 @@
         <div class="value value-sm">{{ Str::limit($preregistration->description, 60) }}</div>
     </div>
     @endif
-    @if(!empty($preregistration->dimension))
-    <div class="kv">
-        <div class="field">Dimensión</div>
-        <div class="value">{{ $preregistration->dimension }}@if($preregistration->cubic_feet !== null)&nbsp;·&nbsp;{{ number_format($preregistration->cubic_feet, 2) }} pie³@endif</div>
-    </div>
-    @endif
 
     {{-- Código de almacén y código de barras más abajo / al centro --}}
     <div class="barcode-section">
@@ -96,9 +98,27 @@
     <div class="warehouse-code">{{ $preregistration->warehouse_code }}</div>
     @if($preregistration->warehouse_code)
     <div class="barcode-wrap">
-        <canvas id="barcode-{{ $preregistration->id }}" class="barcode-canvas" data-barcode="{{ $preregistration->warehouse_code }}"></canvas>
+        <div class="barcode-row">
+            <canvas id="barcode-{{ $preregistration->id }}" class="barcode-canvas" data-barcode="{{ $preregistration->warehouse_code }}"></canvas>
+            <span class="service-mark-large" aria-label="Tipo de servicio">{{ $serviceMark }}</span>
+        </div>
     </div>
     @endif
     </div>
+
+    {{-- Bloque inferior: RECIBIDO EN ALMACÉN (fecha + hora) --}}
+    @php
+        $displayTz = config('app.display_timezone') ?: 'America/New_York';
+        $dt = $preregistration->created_at ? $preregistration->created_at->timezone($displayTz) : null;
+    @endphp
+    <div class="reception-note">
+        <div class="title">RECIBIDO EN ALMACÉN</div>
+        <div class="divider"></div>
+        <div class="datetime">
+            {{ $dt ? $dt->format('d/m/Y') : '—' }} - {{ $dt ? $dt->format('H.i') : '' }}
+        </div>
+    </div>
+
+    <div class="label-review-text">Revise su paquete antes de retirarlo</div>
 
 </div>

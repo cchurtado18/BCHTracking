@@ -111,15 +111,20 @@
                 </div>
             </form>
             @if($preregistration->photos->count() > 0)
-            @php $photo = $preregistration->photos->first(); @endphp
             <aside class="preregs-edit-photo">
-                <h3 class="preregs-edit-photo-title">Foto del paquete</h3>
-                <div class="preregs-photo-wrap">
-                    <img src="{{ $photo->url }}" alt="Foto del paquete" class="preregs-photo-img">
+                <h3 class="preregs-edit-photo-title">Fotos del paquete ({{ $preregistration->photos->count() }})</h3>
+                <div class="preregs-edit-photos-list">
+                    @foreach($preregistration->photos as $idx => $photo)
+                    <div class="preregs-photo-wrap">
+                        <a href="{{ $photo->url }}" target="_blank" class="preregs-photo-link-block" title="Abrir foto {{ $idx + 1 }} en tamaño completo">
+                            <img src="{{ $photo->url }}" alt="Foto del paquete {{ $idx + 1 }}" class="preregs-photo-img">
+                        </a>
+                        <p class="preregs-photo-link-wrap">
+                            <a href="{{ $photo->url }}" target="_blank" class="preregs-link">Usar foto {{ $idx + 1 }} (ver completa)</a>
+                        </p>
+                    </div>
+                    @endforeach
                 </div>
-                <p class="preregs-photo-link-wrap">
-                    <a href="{{ $photo->url }}" target="_blank" class="preregs-link">Ver foto en tamaño completo</a>
-                </p>
                 @if($preregistration->status === 'PHOTO_PENDING')
                 <p class="preregs-edit-photo-hint">Este preregistro fue creado como captura rápida. Complete los datos usando la foto como referencia.</p>
                 @endif
@@ -165,7 +170,9 @@
 .preregs-btn-primary:hover { background: #0f766e; border-color: #0f766e; color: #fff; }
 .preregs-btn-secondary { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
 .preregs-btn-secondary:hover { background: #e5e7eb; color: #111827; }
-.preregs-photo-wrap { text-align: center; }
+.preregs-edit-photos-list { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.preregs-photo-wrap { text-align: center; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; background: #fff; }
+.preregs-photo-link-block { display: block; text-decoration: none; }
 .preregs-photo-img { max-width: 100%; height: auto; border-radius: 0.5rem; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
 .preregs-photo-link-wrap { margin-top: 0.75rem; font-size: 0.8125rem; }
 .preregs-edit-photo-title { font-size: 0.95rem; font-weight: 600; color: #374151; margin: 0 0 0.75rem; }

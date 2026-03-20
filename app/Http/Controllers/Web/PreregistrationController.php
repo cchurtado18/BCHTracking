@@ -103,7 +103,7 @@ class PreregistrationController extends Controller
     public function create(Request $request)
     {
         if ($request->has('cancel_dropoff')) {
-            session()->forget(['dropoff_warehouse_code', 'dropoff_bultos_total', 'dropoff_agency_id', 'dropoff_service_type', 'dropoff_created_ids']);
+            session()->forget(['dropoff_warehouse_code', 'dropoff_bultos_total', 'dropoff_agency_id', 'dropoff_service_type', 'dropoff_tracking_external', 'dropoff_created_ids']);
             return redirect()->route('preregistrations.create');
         }
 
@@ -205,6 +205,10 @@ class PreregistrationController extends Controller
             // Primer bulto: generar warehouse_code y guardar en sesión
             try {
                 $warehouseCode = $this->warehouseService->generateWarehouseCode();
+                $dropoffTracking = trim((string) ($data['tracking_external'] ?? ''));
+                if ($dropoffTracking === '') {
+                    $dropoffTracking = null;
+                }
                 $row = [
                     'label_name' => $data['label_name'] ?? '',
                     'intake_weight_lbs' => $data['intake_weight_lbs'] ?? 0,
@@ -217,7 +221,7 @@ class PreregistrationController extends Controller
                     'agency_id' => $data['agency_id'],
                     'service_type' => $data['service_type'],
                     'status' => 'RECEIVED_MIAMI',
-                    'tracking_external' => null,
+                    'tracking_external' => $dropoffTracking,
                     'label_name' => $row['label_name'],
                     'intake_weight_lbs' => $row['intake_weight_lbs'],
                     'dimension' => $row['dimension'],
@@ -233,6 +237,7 @@ class PreregistrationController extends Controller
                     'dropoff_bultos_total' => $total,
                     'dropoff_agency_id' => $data['agency_id'],
                     'dropoff_service_type' => $data['service_type'],
+                    'dropoff_tracking_external' => $dropoffTracking,
                     'dropoff_created_ids' => [$preregistration->id],
                 ]);
                 return redirect()->route('preregistrations.label', $preregistration->id)
@@ -247,11 +252,12 @@ class PreregistrationController extends Controller
         $warehouseCode = session('dropoff_warehouse_code');
         $agencyId = session('dropoff_agency_id');
         $serviceType = session('dropoff_service_type');
+        $trackingExternal = session('dropoff_tracking_external');
         $createdIds = session('dropoff_created_ids', []);
         $sessionTotal = (int) session('dropoff_bultos_total', 0);
 
         if (! $warehouseCode || $sessionTotal < 2 || $step > $sessionTotal || $step !== count($createdIds) + 1) {
-            session()->forget(['dropoff_warehouse_code', 'dropoff_bultos_total', 'dropoff_agency_id', 'dropoff_service_type', 'dropoff_created_ids']);
+            session()->forget(['dropoff_warehouse_code', 'dropoff_bultos_total', 'dropoff_agency_id', 'dropoff_service_type', 'dropoff_tracking_external', 'dropoff_created_ids']);
             return redirect()->route('preregistrations.create')
                 ->with('error', 'Sesión de drop off expirada o inválida. Comienza de nuevo con el bulto 1.');
         }
@@ -269,7 +275,7 @@ class PreregistrationController extends Controller
                 'agency_id' => $agencyId,
                 'service_type' => $serviceType,
                 'status' => 'RECEIVED_MIAMI',
-                'tracking_external' => null,
+                'tracking_external' => $trackingExternal,
                 'label_name' => $row['label_name'],
                 'intake_weight_lbs' => $row['intake_weight_lbs'],
                 'dimension' => $row['dimension'],
@@ -284,7 +290,7 @@ class PreregistrationController extends Controller
             session(['dropoff_created_ids' => $newIds]);
 
             if ($step >= $sessionTotal) {
-                session()->forget(['dropoff_warehouse_code', 'dropoff_bultos_total', 'dropoff_agency_id', 'dropoff_service_type', 'dropoff_created_ids']);
+                session()->forget(['dropoff_warehouse_code', 'dropoff_bultos_total', 'dropoff_agency_id', 'dropoff_service_type', 'dropoff_tracking_external', 'dropoff_created_ids']);
                 return redirect()->route('preregistrations.label', $preregistration->id)
                     ->with('success', "Bulto {$step} de {$sessionTotal} guardado. Ya completaste todos los bultos. Imprime esta etiqueta.");
             }
@@ -314,7 +320,7 @@ class PreregistrationController extends Controller
                 'agency_id' => $data['agency_id'],
                 'service_type' => $data['service_type'],
                 'status' => 'RECEIVED_MIAMI',
-                'tracking_external' => null,
+                'tracking_external' => !empty($data['tracking_external']) ? trim((string) $data['tracking_external']) : null,
             ];
             $ids = [];
             for ($i = 0; $i < $n; $i++) {
@@ -441,8 +447,22 @@ class PreregistrationController extends Controller
                 'max:255',
                 Rule::unique('preregistrations', 'tracking_external')->whereNull('deleted_at'),
             ],
-            'photo' => 'required|file|image|mimes:jpg,jpeg,png,webp|max:10240',
+            'photo' => 'nullable|file|image|mimes:jpg,jpeg,png,webp|max:10240',
+            'photos' => 'nullable|array|max:3',
+            'photos.*' => 'file|image|mimes:jpg,jpeg,png,webp|max:10240',
         ]);
+
+        $photoFiles = $request->file('photos', []);
+        if (empty($photoFiles) && $request->hasFile('photo')) {
+            $photoFiles = [$request->file('photo')];
+        }
+        if (empty($photoFiles)) {
+            $message = 'Debes tomar al menos una foto del paquete.';
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 422);
+            }
+            return redirect()->back()->withInput()->withErrors(['photo' => $message]);
+        }
 
         // Algunos campos de la tabla (como label_name) no permiten NULL,
         // así que usamos valores de marcador que luego se podrán editar.
@@ -453,7 +473,16 @@ class PreregistrationController extends Controller
             'status' => 'PHOTO_PENDING',
         ]);
 
-        $this->photoService->uploadPhoto($preregistration, $request->file('photo'));
+        foreach ($photoFiles as $photoFile) {
+            $this->photoService->uploadPhoto($preregistration, $photoFile);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Preregistro rápido creado.',
+                'redirect_url' => route('preregistrations.show', $preregistration->id),
+            ]);
+        }
 
         return redirect()->route('preregistrations.show', $preregistration->id)
             ->with('success', 'Preregistro rápido creado. Falta completar los datos de etiqueta y agencia.');
@@ -464,16 +493,37 @@ class PreregistrationController extends Controller
         $preregistration = Preregistration::findOrFail($id);
         $request->validate(['photo' => 'required|image|mimes:jpg,jpeg,png,webp|max:10240']);
         try {
-            $this->photoService->uploadPhoto($preregistration, $request->file('photo'), true);
+            if ($preregistration->photos()->count() >= 3) {
+                $message = 'Este preregistro ya tiene 3 fotos. Máximo permitido: 3.';
+                if ($request->expectsJson()) {
+                    return response()->json(['message' => $message], 422);
+                }
+                return redirect()->route('preregistrations.show', $preregistration->id)->with('error', $message);
+            }
+
+            $photo = $this->photoService->uploadPhoto($preregistration, $request->file('photo'));
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'id' => $photo->id,
+                    'url' => asset('storage/' . $photo->path),
+                    'message' => 'Foto subida.',
+                    'photos_count' => $preregistration->photos()->count(),
+                ]);
+            }
+
             return redirect()->route('preregistrations.show', $preregistration->id)->with('success', 'Foto subida.');
         } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
             return redirect()->route('preregistrations.show', $preregistration->id)->with('error', $e->getMessage());
         }
     }
 
     public function label(string $id)
     {
-        $preregistration = Preregistration::with('agency')->findOrFail($id);
+        $preregistration = Preregistration::with(['agency', 'agency.parent'])->findOrFail($id);
         if (empty($preregistration->warehouse_code)) {
             return redirect()->route('preregistrations.show', $preregistration->id)
                 ->with('error', 'Este preregistro no tiene código de almacén.');
@@ -488,7 +538,9 @@ class PreregistrationController extends Controller
                 $dropoffTotal = $total;
             }
         }
-        return view('preregistrations.label', compact('preregistration', 'dropoffNextStep', 'dropoffTotal'));
+
+        // Usar el mismo diseño nuevo de etiqueta para cualquier agencia/servicio.
+        return view('preregistrations.label-skylink-one', compact('preregistration', 'dropoffNextStep', 'dropoffTotal'));
     }
 
     /** Imprimir todas las etiquetas de un dropoff (varios bultos mismo warehouse). Query: ids=1,2,3 */
@@ -498,7 +550,10 @@ class PreregistrationController extends Controller
         if (empty($ids)) {
             return redirect()->route('preregistrations.index')->with('error', 'No se indicaron preregistros.');
         }
-        $preregistrations = Preregistration::with('agency')->whereIn('id', $ids)->orderBy('bulto_index')->get();
+        $preregistrations = Preregistration::with(['agency', 'agency.parent'])
+            ->whereIn('id', $ids)
+            ->orderBy('bulto_index')
+            ->get();
         if ($preregistrations->isEmpty()) {
             return redirect()->route('preregistrations.index')->with('error', 'No se encontraron preregistros.');
         }

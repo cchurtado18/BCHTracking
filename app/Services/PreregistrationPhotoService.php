@@ -10,33 +10,23 @@ use Illuminate\Support\Str;
 
 class PreregistrationPhotoService
 {
+    private const MAX_PHOTOS_PER_PREREGISTRATION = 3;
+
     /**
      * Upload a photo for a preregistration.
-     * Only one photo is allowed per preregistration. If replace is true, deletes existing photo.
+     * Allows up to MAX_PHOTOS_PER_PREREGISTRATION photos per preregistration.
      *
      * @param Preregistration $preregistration
      * @param UploadedFile $file
-     * @param bool $replace If true, replaces existing photo. If false, throws error if photo exists.
+     * @param bool $replace Deprecated. Kept for compatibility, ignored in multi-photo mode.
      * @return PreregistrationPhoto
      * @throws \Exception
      */
     public function uploadPhoto(Preregistration $preregistration, UploadedFile $file, bool $replace = false): PreregistrationPhoto
     {
-        // Verificar si ya existe una foto
-        $existingPhoto = $preregistration->photos()->first();
-        
-        if ($existingPhoto && !$replace) {
-            throw new \Exception('El preregistro ya tiene una foto. Solo se permite una foto por paquete.');
-        }
-
-        // Si hay foto existente y se debe reemplazar, eliminarla
-        if ($existingPhoto && $replace) {
-            // Eliminar archivo físico
-            if (Storage::disk('public')->exists($existingPhoto->path)) {
-                Storage::disk('public')->delete($existingPhoto->path);
-            }
-            // Eliminar registro de base de datos
-            $existingPhoto->delete();
+        $existingCount = $preregistration->photos()->count();
+        if ($existingCount >= self::MAX_PHOTOS_PER_PREREGISTRATION) {
+            throw new \Exception('Este preregistro ya tiene 3 fotos. Máximo permitido: 3.');
         }
 
         // Generar ruta: storage/app/public/preregistrations/YYYY/MM/

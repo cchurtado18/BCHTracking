@@ -30,6 +30,9 @@
                 @if($package->status == 'IN_WAREHOUSE_NIC')
                 <a href="{{ route('packages.process', $package->id) }}" class="packages-btn packages-btn-outline-primary">Procesar paquete</a>
                 @endif
+                @if(!auth()->user() || !auth()->user()->isAgencyUser())
+                <a href="{{ route('preregistrations.edit', $package->id) }}" class="packages-btn packages-btn-outline-primary">Editar</a>
+                @endif
                 <a href="{{ route('packages.index', session('packages_index_filters', [])) }}" class="packages-btn packages-btn-outline-light">← Volver</a>
             </div>
         </div>
@@ -103,19 +106,19 @@
                     @if($package->received_nic_at)
                     <div class="packages-dl-row">
                         <dt class="packages-dt">Recibido en Nicaragua</dt>
-                        <dd class="packages-dd">{{ $package->received_nic_at->format('d/m/Y H:i') }}</dd>
+                        <dd class="packages-dd">{{ $package->received_nic_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</dd>
                     </div>
                     @endif
                     @if($package->ready_at)
                     <div class="packages-dl-row">
                         <dt class="packages-dt">Listo para retiro</dt>
-                        <dd class="packages-dd">{{ $package->ready_at->format('d/m/Y H:i') }}</dd>
+                        <dd class="packages-dd">{{ $package->ready_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</dd>
                     </div>
                     @endif
                     @if($package->label_print_count > 0)
                     <div class="packages-dl-row">
                         <dt class="packages-dt">Impresiones</dt>
-                        <dd class="packages-dd">{{ $package->label_print_count }} vez(es) @if($package->label_last_printed_at)<span class="packages-muted">({{ $package->label_last_printed_at->format('d/m/Y H:i') }})</span>@endif</dd>
+                        <dd class="packages-dd">{{ $package->label_print_count }} vez(es) @if($package->label_last_printed_at)<span class="packages-muted">({{ $package->label_last_printed_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }})</span>@endif</dd>
                     </div>
                     @endif
                 </dl>
@@ -183,7 +186,7 @@
                         @if($package->consolidationItem->scanned_at)
                         <div class="packages-dl-row">
                             <dt class="packages-dt">Escaneado</dt>
-                            <dd class="packages-dd packages-dd-success">{{ $package->consolidationItem->scanned_at->format('d/m/Y H:i') }}</dd>
+                            <dd class="packages-dd packages-dd-success">{{ $package->consolidationItem->scanned_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</dd>
                         </div>
                         @endif
                     </dl>
