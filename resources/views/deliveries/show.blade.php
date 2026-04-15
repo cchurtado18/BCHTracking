@@ -23,7 +23,7 @@
                 <dl class="delivery-dl">
                     <div class="delivery-dl-row">
                         <dt class="delivery-dt">Fecha de entrega</dt>
-                        <dd class="delivery-dd">{{ $delivery->delivered_at->format('d/m/Y H:i') }}</dd>
+                        <dd class="delivery-dd">{{ $delivery->delivered_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</dd>
                     </div>
                     <div class="delivery-dl-row">
                         <dt class="delivery-dt">Nombre de quien retira</dt>

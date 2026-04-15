@@ -31,11 +31,20 @@ class PreregistrationController extends Controller
         }
 
         $filterKeys = ['search', 'service_type', 'intake_type', 'status', 'date_from', 'date_to'];
-        if (! $request->hasAny($filterKeys) && session()->has('preregistrations_index_filters')) {
+        $stateKeys = array_merge($filterKeys, ['page']);
+        if (! $request->hasAny($stateKeys) && session()->has('preregistrations_index_filters')) {
             return redirect()->route('preregistrations.index', session('preregistrations_index_filters'));
         }
-        if ($request->hasAny($filterKeys)) {
-            session(['preregistrations_index_filters' => $request->only($filterKeys)]);
+
+        if ($request->hasAny($stateKeys)) {
+            $state = $request->only($filterKeys);
+
+            // Persist current pagination page so "Volver" can return to the same list page.
+            if ($request->filled('page')) {
+                $state['page'] = (int) $request->query('page');
+            }
+
+            session(['preregistrations_index_filters' => $state]);
         }
 
         $query = Preregistration::with(['photos', 'agency']);
@@ -521,7 +530,7 @@ class PreregistrationController extends Controller
         }
     }
 
-    public function label(string $id)
+    public function label(Request $request, string $id)
     {
         $preregistration = Preregistration::with(['agency', 'agency.parent'])->findOrFail($id);
         if (empty($preregistration->warehouse_code)) {
@@ -539,8 +548,10 @@ class PreregistrationController extends Controller
             }
         }
 
+        $labelFormat = $this->resolveLabelPaperFormat($request);
+
         // Usar el mismo diseño nuevo de etiqueta para cualquier agencia/servicio.
-        return view('preregistrations.label-skylink-one', compact('preregistration', 'dropoffNextStep', 'dropoffTotal'));
+        return view('preregistrations.label-skylink-one', compact('preregistration', 'dropoffNextStep', 'dropoffTotal', 'labelFormat'));
     }
 
     /** Imprimir todas las etiquetas de un dropoff (varios bultos mismo warehouse). Query: ids=1,2,3 */
@@ -557,7 +568,25 @@ class PreregistrationController extends Controller
         if ($preregistrations->isEmpty()) {
             return redirect()->route('preregistrations.index')->with('error', 'No se encontraron preregistros.');
         }
-        return view('preregistrations.dropoff-labels', compact('preregistrations'));
+        $labelFormat = $this->resolveLabelPaperFormat($request);
+
+        return view('preregistrations.dropoff-labels', compact('preregistrations', 'labelFormat'));
+    }
+
+    /**
+     * Papel de etiqueta: 4×6 (por defecto) o 2.25×4 para drivers que solo exponen ese tamaño (ej. térmicas estrechas).
+     * Query: ?format=narrow | ?format=225x4 | ?paper=225x4
+     */
+    private function resolveLabelPaperFormat(Request $request): string
+    {
+        $f = strtolower((string) $request->query('format', ''));
+        $p = strtolower((string) $request->query('paper', ''));
+
+        if (in_array($f, ['narrow', '225x4', '2.25x4'], true) || in_array($p, ['225x4', '2.25x4', 'narrow'], true)) {
+            return 'narrow';
+        }
+
+        return '4x6';
     }
 
     public function destroy(string $id)

@@ -65,7 +65,7 @@
                             <td class="delivery-code delivery-tracking-cell" title="{{ $p->tracking_external }}">{{ Str::limit($p->tracking_external, 20) }}</td>
                             <td><span class="delivery-badge delivery-badge-{{ strtolower($p->service_type ?? '') }}">{{ $p->service_type == 'AIR' ? 'Aéreo' : 'Marítimo' }}</span></td>
                             <td class="delivery-num">{{ $p->verified_weight_lbs ?? $p->intake_weight_lbs ?? '—' }}</td>
-                            <td class="delivery-muted">{{ $p->ready_at ? $p->ready_at->format('d/m/Y H:i') : '—' }}</td>
+                            <td class="delivery-muted">{{ $p->ready_at ? $p->ready_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') : '—' }}</td>
                         </tr>
                         @endforeach
                     </tbody>

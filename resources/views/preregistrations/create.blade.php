@@ -28,39 +28,45 @@
     @if(isset($dropoffContinuation) && $dropoffContinuation)
     {{-- Formulario para el siguiente bulto (2 de N, 3 de N, …) — mismo WRH, imprimir etiqueta y continuar --}}
     <div class="preregs-card preregs-form-card">
-        <div class="preregs-card-header preregs-form-header">
-            <h2 class="preregs-card-title">Bulto {{ $dropoffStep }} de {{ $dropoffTotal }} (Drop Off)</h2>
+        <div class="preregs-card-header preregs-form-header preregs-form-header--sheet">
+            <div class="preregs-form-header-text">
+                <h2 class="preregs-card-title">Bulto {{ $dropoffStep }} de {{ $dropoffTotal }} (Drop Off)</h2>
+                <p class="preregs-form-header-desc">Mismo código de almacén para todos. Al guardar podrás imprimir la etiqueta {{ $dropoffStep }}/{{ $dropoffTotal }}.</p>
+            </div>
         </div>
         <div class="preregs-card-body preregs-form-body">
-            <p style="margin-bottom: 1rem; font-size: 14px; color: #374151;">Mismo código de almacén para todos. Completa los datos de este bulto y al guardar podrás imprimir la etiqueta {{ $dropoffStep }}/{{ $dropoffTotal }}. Luego continúa con el siguiente.</p>
             @if($dropoffAgencyName)
-            <p style="margin-bottom: 1rem; font-size: 13px; color: #6b7280;"><strong>Agencia:</strong> {{ $dropoffAgencyName }} · <strong>Servicio:</strong> {{ $dropoffServiceType === 'SEA' ? 'Marítimo' : 'Aéreo' }}</p>
+            <p class="preregs-dropoff-meta"><strong>Agencia:</strong> {{ $dropoffAgencyName }} · <strong>Servicio:</strong> {{ $dropoffServiceType === 'SEA' ? 'Marítimo' : 'Aéreo' }}</p>
             @endif
-            <form action="{{ route('preregistrations.store') }}" method="POST" enctype="multipart/form-data" id="preregFormDropoffStep">
+            <form action="{{ route('preregistrations.store') }}" method="POST" enctype="multipart/form-data" id="preregFormDropoffStep" class="preregs-create-formwrap">
                 @csrf
                 <input type="hidden" name="intake_type" value="DROP_OFF">
                 <input type="hidden" name="dropoff_step" value="{{ $dropoffStep }}">
                 <input type="hidden" name="bultos_count" value="{{ $dropoffTotal }}">
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-bottom: 24px;">
-                    <div>
-                        <label for="dropoff_label_name" style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 4px;">Nombre en etiqueta *</label>
-                        <input type="text" name="label_name" id="dropoff_label_name" required style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                <div class="preregs-form-panel">
+                    <h3 class="preregs-form-panel-title"><span class="preregs-panel-icon" aria-hidden="true">📦</span> Datos de este bulto</h3>
+                    <div class="preregs-create-grid preregs-create-grid--root">
+                    <div class="preregs-field">
+                        <label for="dropoff_label_name" class="preregs-field-label">Nombre en etiqueta <span class="preregs-req">*</span></label>
+                        <input type="text" name="label_name" id="dropoff_label_name" class="preregs-input" required>
                     </div>
-                    <div>
-                        <label for="dropoff_intake_weight_lbs" style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 4px;">Peso (lbs) *</label>
-                        <input type="number" step="0.01" name="intake_weight_lbs" id="dropoff_intake_weight_lbs" required style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                    <div class="preregs-field">
+                        <label for="dropoff_intake_weight_lbs" class="preregs-field-label">Peso (lbs) <span class="preregs-req">*</span></label>
+                        <input type="number" step="0.01" name="intake_weight_lbs" id="dropoff_intake_weight_lbs" class="preregs-input" required>
                     </div>
-                    <div style="grid-column: span 2;">
-                        <label for="dropoff_dimension" style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 4px;">Dimensión *</label>
-                        <input type="text" name="dimension" id="dropoff_dimension" required placeholder="Ej: 10 x 8 x 5 in" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                    <div class="preregs-field preregs-field--full">
+                        <label for="dropoff_dimension" class="preregs-field-label">Dimensión <span class="preregs-req">*</span></label>
+                        <input type="text" name="dimension" id="dropoff_dimension" class="preregs-input" required placeholder="Ej: 10 x 8 x 5 in">
                     </div>
-                    <div style="grid-column: span 2;">
-                        <label for="dropoff_description" style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 4px;">Descripción del contenido (opcional)</label>
-                        <input type="text" name="description" id="dropoff_description" maxlength="500" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                    <div class="preregs-field preregs-field--full">
+                        <label for="dropoff_description" class="preregs-field-label">Descripción <span class="preregs-opt">(opcional)</span></label>
+                        <input type="text" name="description" id="dropoff_description" class="preregs-input" maxlength="500">
                     </div>
-                    <div style="grid-column: span 2;">
-                        <label for="dropoff_photo" style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 4px;">Foto del bulto *</label>
-                        <input type="file" name="photo" id="dropoff_photo" accept="image/jpeg,image/jpg,image/png,image/webp" required style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                    <div class="preregs-field preregs-field--full">
+                        <label for="dropoff_photo" class="preregs-field-label">Foto del bulto <span class="preregs-req">*</span></label>
+                        <input type="file" name="photo" id="dropoff_photo" class="preregs-input preregs-input--file" accept="image/jpeg,image/jpg,image/png,image/webp" required>
+                        <p class="preregs-hint">JPG, PNG o WEBP. Máx. 10MB.</p>
+                    </div>
                     </div>
                 </div>
                 <div class="preregs-form-actions">
@@ -72,129 +78,105 @@
     </div>
     @else
     <div class="preregs-card preregs-form-card">
-        <div class="preregs-card-header preregs-form-header">
-            <h2 class="preregs-card-title">Datos del preregistro</h2>
+        <div class="preregs-card-header preregs-form-header preregs-form-header--sheet">
+            <div class="preregs-form-header-text">
+                <h2 class="preregs-card-title">Datos del preregistro</h2>
+                <p class="preregs-form-header-desc">Complete los campos; la foto es obligatoria antes de crear el registro.</p>
+            </div>
         </div>
         <div class="preregs-card-body preregs-form-body">
-        <form action="{{ route('preregistrations.store') }}" method="POST" enctype="multipart/form-data" style="margin: 0;" id="preregForm">
+        <form action="{{ route('preregistrations.store') }}" method="POST" enctype="multipart/form-data" class="preregs-create-formwrap" id="preregForm">
             @csrf
             <input type="hidden" name="service_type" id="service_type_post" value="AIR">
 
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-bottom: 24px;">
-                <div>
-                    <label for="agency_combobox" style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 4px;">Agencia (subagencia con la que envía el cliente) *</label>
+            <div class="preregs-form-panel">
+                <h3 class="preregs-form-panel-title"><span class="preregs-panel-icon" aria-hidden="true">🏢</span> Origen e ingreso</h3>
+                <div class="preregs-create-grid preregs-create-grid--root">
+                <div class="preregs-field">
+                    <label for="agency_combobox" class="preregs-field-label">Agencia (subagencia con la que envía el cliente) <span class="preregs-req">*</span></label>
                     @if($agencies->isEmpty())
-                    <p style="padding: 10px; background: #fef3c7; color: #92400e; border-radius: 6px; font-size: 13px;">No hay agencias activas. <a href="{{ route('agencies.create') }}" class="font-medium underline">Crear agencia</a> antes de registrar un preregistro.</p>
+                    <p class="preregs-inline-warn">No hay agencias activas. <a href="{{ route('agencies.create') }}">Crear agencia</a> antes de registrar un preregistro.</p>
                     @else
-                    <div id="agency_combobox_wrap" style="position: relative;">
-                        <input type="text" id="agency_combobox" placeholder="Buscar y elegir agencia (nombre o código)..." autocomplete="off" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white; box-sizing: border-box;">
+                    <div id="agency_combobox_wrap" class="preregs-combo-wrap">
+                        <input type="text" id="agency_combobox" class="preregs-input" placeholder="Buscar y elegir agencia (nombre o código)..." autocomplete="off">
                         <input type="hidden" name="agency_id" id="agency_id" value="" required>
-                        <div id="agency_dropdown" style="display: none; position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px; background: #fff; border: 1px solid #d1d5db; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 220px; overflow-y: auto; z-index: 100;"></div>
+                        <div id="agency_dropdown" class="preregs-combo-dropdown" style="display: none;"></div>
                     </div>
-                    <p style="margin-top: 4px; font-size: 12px; color: #6b7280;">Escriba para buscar y haga clic en la agencia. La etiqueta mostrará esta agencia.</p>
+                    <p class="preregs-hint">Escriba para buscar y haga clic en la agencia. La etiqueta mostrará esta agencia.</p>
                     <script type="application/json" id="agencies-data">@json($agencies->isEmpty() ? [] : $agencies->map(function($a) { return ['id' => $a->id, 'code' => $a->code, 'name' => $a->name]; })->values())</script>
                     @endif
                 </div>
 
-                <div>
-                    <label for="intake_type" style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 4px;">Tipo de Ingreso</label>
-                    <select name="intake_type" id="intake_type" required style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white; cursor: pointer;">
+                <div class="preregs-field">
+                    <label for="intake_type" class="preregs-field-label">Tipo de ingreso <span class="preregs-req">*</span></label>
+                    <select name="intake_type" id="intake_type" class="preregs-input preregs-select" required>
                         <option value="COURIER">Courier</option>
                         <option value="DROP_OFF">Drop Off</option>
                     </select>
                 </div>
 
-                <div id="wrap_tracking" style="grid-column: span 2;">
-                    <label for="tracking_external" style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 4px;">Tracking Externo</label>
-                    <input 
-                        type="text" 
-                        name="tracking_external" 
-                        id="tracking_external" 
-                        style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white; cursor: text;"
-                        placeholder="1Z999AA10123456784"
-                    >
-                    <p style="margin-top: 4px; font-size: 12px; color: #6b7280;">Requerido si es Courier</p>
+                <div id="wrap_tracking" class="preregs-field preregs-field--full">
+                    <label for="tracking_external" class="preregs-field-label">Tracking externo</label>
+                    <input type="text" name="tracking_external" id="tracking_external" class="preregs-input" placeholder="1Z999AA10123456784">
+                    <p class="preregs-hint">Requerido si es Courier.</p>
                 </div>
 
-                <!-- Cantidad de bultos: solo Drop Off, default 1 -->
-                <div id="wrap_bultos_count" style="display: none;">
-                    <label for="bultos_count" style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 4px;">Cantidad de bultos *</label>
-                    <input type="number" name="bultos_count" id="bultos_count" min="1" max="20" value="1" style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white;">
-                    <p style="margin-top: 4px; font-size: 12px; color: #6b7280;">Mismo warehouse para todos; cada bulto lleva su detalle abajo.</p>
+                <div id="wrap_bultos_count" class="preregs-field preregs-field--full" style="display: none;">
+                    <label for="bultos_count" class="preregs-field-label">Cantidad de bultos <span class="preregs-req">*</span></label>
+                    <input type="number" name="bultos_count" id="bultos_count" class="preregs-input preregs-input--narrow" min="1" max="20" value="1">
+                    <p class="preregs-hint">Mismo warehouse para todos; cada bulto lleva su detalle abajo.</p>
                 </div>
+                </div>
+            </div>
 
-                <!-- Un solo bulto (Drop Off 1 o Courier) -->
-                <div id="wrap_single_bulto" style="display: grid; grid-column: span 2; grid-template-columns: repeat(2, 1fr); gap: 24px; align-items: start;">
-                    <div>
-                        <label for="label_name" style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 4px;">Nombre en Etiqueta *</label>
-                        <input 
-                            type="text" 
-                            name="label_name" 
-                            id="label_name" 
-                            style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white; cursor: text;"
-                        >
+            <div class="preregs-form-panel">
+                <h3 class="preregs-form-panel-title"><span class="preregs-panel-icon" aria-hidden="true">📦</span> Detalle del paquete</h3>
+                <div id="wrap_single_bulto" class="preregs-create-grid preregs-create-grid--nested">
+                    <div class="preregs-field">
+                        <label for="label_name" class="preregs-field-label">Nombre en etiqueta <span class="preregs-req">*</span></label>
+                        <input type="text" name="label_name" id="label_name" class="preregs-input">
                     </div>
-                    <div>
-                        <label for="service_type" style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 4px;">Tipo de Servicio *</label>
-                        <select id="service_type" required style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white; cursor: pointer;">
+                    <div class="preregs-field">
+                        <label for="service_type" class="preregs-field-label">Tipo de servicio <span class="preregs-req">*</span></label>
+                        <select id="service_type" class="preregs-input preregs-select" required>
                             <option value="AIR">Aéreo</option>
                             <option value="SEA">Marítimo</option>
                         </select>
                     </div>
-                    <div>
-                        <label for="intake_weight_lbs" style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 4px;">Peso (lbs) *</label>
-                        <input 
-                            type="number" 
-                            step="0.01" 
-                            name="intake_weight_lbs" 
-                            id="intake_weight_lbs" 
-                            style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white; cursor: text;"
-                        >
+                    <div class="preregs-field">
+                        <label for="intake_weight_lbs" class="preregs-field-label">Peso (lbs) <span class="preregs-req">*</span></label>
+                        <input type="number" step="0.01" name="intake_weight_lbs" id="intake_weight_lbs" class="preregs-input">
                     </div>
-                    <div id="wrap_dimension" style="display: none;">
-                        <label for="dimension" style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 4px;">Dimensión * <span style="font-weight: normal; color: #6b7280;">(Largo x Ancho x Alto en pulgadas, ej: 10 x 8 x 5 in)</span></label>
-                        <input 
-                            type="text" 
-                            name="dimension" 
-                            id="dimension" 
-                            style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white; cursor: text;"
-                            placeholder="Largo x Ancho x Alto"
-                        >
-                        <p style="margin-top: 4px; font-size: 13px; color: #0d9488;"><strong>Pie cúbico:</strong> <span id="cubic_feet_display">—</span></p>
+                    <div id="wrap_dimension" class="preregs-field" style="display: none;">
+                        <label for="dimension" class="preregs-field-label">Dimensión <span class="preregs-req">*</span> <span class="preregs-field-label-muted">(L × A × H en pulgadas, ej. 10 × 8 × 5 in)</span></label>
+                        <input type="text" name="dimension" id="dimension" class="preregs-input" placeholder="Ej. 10 x 8 x 5 in">
+                        <p class="preregs-cubic-line"><span class="preregs-cubic-label">Pie cúbico</span> <span id="cubic_feet_display" class="preregs-cubic-value">—</span></p>
                     </div>
-                    <div style="grid-column: span 2;">
-                        <label for="description" style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 4px;">Descripción del contenido (opcional)</label>
-                        <input 
-                            type="text" 
-                            name="description" 
-                            id="description" 
-                            maxlength="500"
-                            style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white; cursor: text;"
-                            placeholder="Ej: Ropa, electrónicos, documentos..."
-                        >
-                        <p style="margin-top: 4px; font-size: 12px; color: #6b7280;">Control de lo que viene dentro del paquete.</p>
+                    <div class="preregs-field preregs-field--full">
+                        <label for="description" class="preregs-field-label">Descripción del contenido <span class="preregs-opt">(opcional)</span></label>
+                        <input type="text" name="description" id="description" class="preregs-input" maxlength="500" placeholder="Ej: Ropa, electrónicos, documentos…">
+                        <p class="preregs-hint">Control de lo que viene dentro del paquete.</p>
                     </div>
                 </div>
 
-                <!-- Varios bultos (Drop Off): un bulto por vez, imprimir etiqueta y continuar -->
-                <div id="wrap_multi_bultos" style="display: none; grid-column: span 2; margin-top: 16px;">
-                    <p style="margin-bottom: 12px; font-size: 13px; color: #6b7280;">Se mostrará un formulario por cada bulto. Al guardar podrás imprimir la etiqueta de ese bulto y luego continuar con el siguiente.</p>
-                    <div>
-                        <label for="service_type_multi" style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 4px;">Tipo de Servicio *</label>
-                        <select id="service_type_multi" style="width: 100%; max-width: 200px; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white; cursor: pointer;">
+                <div id="wrap_multi_bultos" class="preregs-multi-bultos-wrap" style="display: none;">
+                    <p class="preregs-multi-lead">Se mostrará un formulario por cada bulto. Al guardar podrás imprimir la etiqueta de ese bulto y luego continuar con el siguiente.</p>
+                    <div class="preregs-field preregs-field--inline">
+                        <label for="service_type_multi" class="preregs-field-label">Tipo de servicio <span class="preregs-req">*</span></label>
+                        <select id="service_type_multi" class="preregs-input preregs-select preregs-input--narrow">
                             <option value="AIR">Aéreo</option>
                             <option value="SEA">Marítimo</option>
                         </select>
                     </div>
-                    <div id="bultos_container" style="margin-top: 20px;"></div>
+                    <div id="bultos_container" class="preregs-bultos-container"></div>
                     <input type="hidden" name="dropoff_step" id="dropoff_step_input" value="1">
                 </div>
             </div>
 
             <!-- Preview de etiqueta (solo Drop Off) -->
-            <div id="wrap_label_preview" class="preregs-form-section preregs-label-preview-wrap">
-                <h3 class="preregs-section-title">Vista previa de la etiqueta</h3>
-                <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">Así se verá la etiqueta que se imprimirá al guardar. El código de almacén se asignará al crear el preregistro.</p>
+            <div id="wrap_label_preview" class="preregs-form-section preregs-form-panel preregs-label-preview-wrap">
+                <h3 class="preregs-form-panel-title"><span class="preregs-panel-icon" aria-hidden="true">🏷️</span> Vista previa de la etiqueta</h3>
+                <p class="preregs-hint preregs-hint--block">Así se verá la etiqueta que se imprimirá al guardar. El código de almacén se asignará al crear el preregistro.</p>
                 <div id="label_preview" class="preregs-label-preview-box">
                     <div class="preregs-label-preview-brand">BCH Tracking</div>
                     <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 8px;">Código de almacén</div>
@@ -218,28 +200,20 @@
             </div>
 
             <!-- Sección de Fotos (un solo bulto o Courier; si hay varios bultos, cada uno lleva su foto en el bloque) -->
-            <div id="wrap_photo_section" class="preregs-form-section preregs-photo-section">
-                <h3 class="preregs-section-title">Foto del Paquete *</h3>
-                <p style="font-size: 14px; color: #6b7280; margin-bottom: 16px;">La foto es obligatoria. Solo se permite una foto por paquete (máximo 10MB).</p>
-                
-                <div>
-                    <label for="photo" style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 4px;">Seleccionar Foto</label>
-                    <input 
-                        type="file" 
-                        name="photo" 
-                        id="photo" 
-                        accept="image/jpeg,image/jpg,image/png,image/webp"
-                        capture="environment"
-                        required
-                        style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: white; cursor: pointer;"
-                    >
-                    <p style="margin-top: 4px; font-size: 12px; color: #6b7280;">En celular se abrirá la cámara. Formatos: JPG, PNG, WEBP. Máximo 10MB.</p>
+            <div id="wrap_photo_section" class="preregs-form-section preregs-form-panel preregs-photo-section">
+                <h3 class="preregs-form-panel-title"><span class="preregs-panel-icon" aria-hidden="true">⬆️</span> Foto del paquete <span class="preregs-req">*</span></h3>
+                <p class="preregs-photo-lead">La foto es obligatoria (máximo 10MB). Formatos: JPG, PNG o WEBP.</p>
+                <div class="preregs-field">
+                    <label for="photo" class="preregs-field-label">Seleccionar foto</label>
+                    <input type="file" name="photo" id="photo" class="preregs-input preregs-input--file" accept="image/jpeg,image/jpg,image/png,image/webp" required>
+                    <p class="preregs-file-state" id="photoFileState">Ningún archivo seleccionado.</p>
+                    <p class="preregs-hint">En celular suele abrirse la cámara. Formatos: JPG, PNG, WEBP.</p>
                 </div>
 
-                <div id="photoPreview" style="margin-top: 16px; display: none;"></div>
+                <div id="photoPreview" class="preregs-photo-preview"></div>
             </div>
 
-            <div class="preregs-form-actions">
+            <div class="preregs-form-actions preregs-form-actions--footer">
                 <a href="{{ route('preregistrations.index') }}" class="preregs-btn preregs-btn-secondary">Cancelar</a>
                 <button type="submit" class="preregs-btn preregs-btn-primary" id="submitPreregBtn" @if($agencies->isEmpty()) disabled @endif>
                     Crear Preregistro con Foto
@@ -252,32 +226,151 @@
 </div>
 
 <style>
-.preregs-form-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
-.preregs-form-page .preregs-hero {
-    background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%);
-    border-radius: 1rem; padding: 1.75rem 1.5rem; margin-bottom: 1.5rem;
-    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25);
+.preregs-form-page {
+    padding: 1.5rem 0 2.25rem;
+    max-width: 96rem;
+    margin: 0 auto;
+    width: 100%;
+    background: linear-gradient(180deg, #f7f9fc 0%, #f8fafc 100%);
+    border-radius: 1rem;
 }
-.preregs-form-page .preregs-hero-title { color: #fff; margin: 0; font-size: 1.75rem; font-weight: 700; }
-.preregs-form-page .preregs-hero-subtitle { color: rgba(255,255,255,0.9); margin: 0.35rem 0 0; font-size: 0.9375rem; }
+.preregs-form-page .preregs-hero {
+    background: linear-gradient(135deg, #0f766e 0%, #0f766e 50%, #128176 100%);
+    border-radius: 0.9rem;
+    padding: 1.2rem 1.4rem;
+    margin: 0 1rem 1.5rem;
+    box-shadow: 0 8px 22px rgba(15, 118, 110, 0.18);
+}
+.preregs-form-page .preregs-hero-title { color: #fff; margin: 0; font-size: 1.72rem; font-weight: 600; letter-spacing: -0.02em; }
+.preregs-form-page .preregs-hero-subtitle { color: rgba(236, 253, 245, 0.95); margin: 0.3rem 0 0; font-size: 0.9rem; font-weight: 400; }
 .preregs-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-.preregs-hero-btn { display: inline-flex; align-items: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600; background: #fff; color: #0f766e; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none; }
-.preregs-hero-btn:hover { background: #f0fdfa; color: #0d9488; }
+.preregs-hero-btn { display: inline-flex; align-items: center; padding: 0.56rem 1rem; font-size: 0.875rem; font-weight: 500; background: rgba(255, 255, 255, 0.95); color: #0f766e; border: 1px solid rgba(255,255,255,0.7); border-radius: 0.625rem; text-decoration: none; transition: all 0.2s ease; }
+.preregs-hero-btn:hover { background: #ffffff; color: #0d9488; transform: translateY(-1px); box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12); }
 .preregs-alert { padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.875rem; }
 .preregs-alert-danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
 .preregs-alert-title { font-weight: 600; margin-bottom: 0.35rem; }
 .preregs-alert-list { margin: 0; padding-left: 1.25rem; }
-.preregs-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; margin-bottom: 1.5rem; }
-.preregs-card-header.preregs-form-header { background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%); padding: 0.75rem 1.5rem; }
-.preregs-form-header .preregs-card-title { color: #fff; margin: 0; font-size: 1rem; font-weight: 600; }
-.preregs-card-body { padding: 1.25rem 1.5rem; }
-.preregs-form-body { padding: 1.5rem; }
-.preregs-form-body #preregForm { margin: 0; }
-.preregs-form-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; }
-.preregs-label-preview-wrap { display: none; margin-bottom: 1.5rem; }
+.preregs-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e2e8f0; box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06); overflow: hidden; margin: 0 1rem 1.6rem; }
+.preregs-card-header.preregs-form-header { padding: 0; border-bottom: 1px solid #e2e8f0; background: #fafbfc; }
+.preregs-form-header--sheet { background: #fff !important; }
+.preregs-form-header-text { padding: 1.2rem 1.6rem; }
+.preregs-form-header--sheet .preregs-card-title { color: #0f172a; margin: 0; font-size: 1.25rem; font-weight: 600; letter-spacing: -0.02em; }
+.preregs-form-header-desc { margin: 0.35rem 0 0; font-size: 0.84rem; color: #64748b; line-height: 1.45; max-width: 48rem; font-weight: 400; }
+.preregs-form-header--sheet .preregs-form-header-desc { margin-top: 0.25rem; }
+.preregs-dropoff-meta { font-size: 0.875rem; color: #475569; margin: 0 0 1rem; padding: 0.75rem 1rem; background: #f8fafc; border-radius: 0.5rem; border: 1px solid #e2e8f0; }
+.preregs-create-formwrap {
+    margin: 0 auto;
+    max-width: 48rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+.preregs-form-panel { margin-bottom: 1.4rem; padding: 1.25rem 1.3rem; background: #ffffff; border: 1px solid #e6edf5; border-radius: 0.75rem; box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04); }
+.preregs-form-panel-title { margin: 0 0 1rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.09em; color: #64748b; display: inline-flex; align-items: center; gap: 0.4rem; }
+.preregs-panel-icon { font-size: 0.78rem; opacity: 0.8; }
+.preregs-create-grid--root { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.25rem; align-items: start; }
+.preregs-create-grid--nested { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.25rem; align-items: start; }
+.preregs-field--full { grid-column: 1 / -1; }
+.preregs-field--inline { max-width: 12rem; }
+.preregs-field-label { display: block; font-size: 0.78rem; font-weight: 500; color: #334155; margin-bottom: 0.4rem; line-height: 1.35; }
+.preregs-field-label-muted { font-weight: 500; color: #94a3b8; text-transform: none; letter-spacing: 0; font-size: 0.75rem; }
+.preregs-req { color: #0d9488; font-weight: 500; opacity: 0.82; }
+.preregs-opt { color: #94a3b8; font-weight: 500; font-size: 0.75rem; }
+.preregs-input {
+    width: 100%; padding: 0.68rem 0.82rem; font-size: 0.875rem; border: 1px solid #dbe5ef; border-radius: 0.625rem;
+    background: #fff; color: #0f172a; box-sizing: border-box; transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.preregs-input::placeholder { color: #94a3b8; }
+.preregs-input:hover { border-color: #c9d6e4; background: #fcfdff; }
+.preregs-input--narrow { max-width: 8rem; }
+.preregs-input--file {
+    padding: 0.85rem 1rem;
+    cursor: pointer;
+    border-style: dashed;
+    border-width: 1.5px;
+    border-color: #cbd5e1;
+    background: #f8fafc;
+    min-height: 3.2rem;
+    position: relative;
+}
+.preregs-input--file:hover {
+    border-color: #0d9488;
+    background: #f0fdfa;
+}
+.preregs-input--file::before {
+    content: "↑  Arrastra o selecciona una foto";
+    color: #475569;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    margin-right: 0.65rem;
+}
+.preregs-input--file::file-selector-button {
+    border: 1px solid #dbe3ec;
+    background: #ffffff;
+    color: #334155;
+    border-radius: 0.5rem;
+    padding: 0.38rem 0.62rem;
+    margin-right: 0.6rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.preregs-input--file::file-selector-button:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+.preregs-input--file.has-file {
+    border-color: #86efac;
+    background: #f0fdf4;
+}
+.preregs-file-state {
+    margin: 0.45rem 0 0;
+    font-size: 0.74rem;
+    color: #64748b;
+}
+.preregs-select { cursor: pointer; appearance: auto; }
+.preregs-hint { margin: 0.42rem 0 0; font-size: 0.73rem; color: #64748b; line-height: 1.35; }
+.preregs-hint--block { margin-bottom: 0.75rem; }
+.preregs-inline-warn { padding: 0.75rem 1rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: 0.5rem; font-size: 0.8125rem; color: #92400e; margin: 0; }
+.preregs-inline-warn a { color: #b45309; font-weight: 600; }
+.preregs-combo-wrap { position: relative; }
+.preregs-combo-dropdown {
+    display: none; position: absolute; left: 0; right: 0; top: 100%; margin-top: 0.25rem;
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 0.5rem;
+    box-shadow: 0 10px 40px rgba(15, 23, 42, 0.12); max-height: 220px; overflow-y: auto; z-index: 100;
+}
+#agency_dropdown .agency-combo-item { padding: 0.65rem 0.875rem; cursor: pointer; font-size: 0.875rem; border-bottom: 1px solid #f1f5f9; color: #334155; }
+#agency_dropdown .agency-combo-item:last-child { border-bottom: none; }
+#agency_dropdown .agency-combo-item:hover { background: #f1f5f9; }
+.preregs-combo-empty { padding: 0.65rem 0.875rem; font-size: 0.875rem; color: #64748b; }
+.preregs-create-grid--bulto3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 900px) {
+    .preregs-create-grid--bulto3 { grid-template-columns: 1fr; }
+}
+.preregs-cubic-line { margin: 0.5rem 0 0; font-size: 0.8125rem; color: #0f766e; }
+.preregs-cubic-label { font-weight: 600; color: #64748b; margin-right: 0.35rem; }
+.preregs-cubic-value { font-weight: 700; font-variant-numeric: tabular-nums; }
+.preregs-multi-bultos-wrap { margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #cbd5e1; }
+.preregs-multi-lead { font-size: 0.8125rem; color: #64748b; margin: 0 0 0.75rem; line-height: 1.45; }
+.preregs-bultos-container { margin-top: 0.75rem; }
+.preregs-bulto-block { padding: 1rem; margin-bottom: 0.9rem; border: 1px solid #e5ebf2; border-radius: 0.625rem; background: #ffffff; }
+.preregs-bulto-block h4 { margin: 0 0 0.75rem; font-size: 0.8125rem; font-weight: 700; color: #0d9488; text-transform: uppercase; letter-spacing: 0.04em; }
+.preregs-photo-lead { font-size: 0.875rem; color: #64748b; margin: 0 0 1rem; line-height: 1.5; }
+.preregs-photo-preview { margin-top: 1rem; display: none; }
+.preregs-photo-preview img,
+.preregs-photo-preview-img { max-width: 22rem; width: 100%; height: auto; border-radius: 0.5rem; border: 1px solid #e2e8f0; }
+.preregs-form-actions--footer { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #e2e8f0; }
+@media (max-width: 768px) {
+    .preregs-create-grid--root,
+    .preregs-create-grid--nested { grid-template-columns: 1fr; }
+    .preregs-field--inline { max-width: none; }
+    .preregs-form-page { border-radius: 0; }
+}
+.preregs-card-body { padding: 1.3rem 1.55rem; }
+.preregs-form-body { padding: 1.35rem 1.6rem 1.65rem; }
+.preregs-form-section { margin-top: 1.25rem; padding-top: 0; border-top: none; }
+.preregs-label-preview-wrap { display: none; margin-top: 1rem; margin-bottom: 0; }
 .preregs-label-preview-wrap[style*="display: block"] { display: block !important; }
-.preregs-section-title { font-size: 1.125rem; font-weight: 600; color: #0d9488; margin-bottom: 0.75rem; }
-.preregs-label-preview-box { width: 100%; max-width: 4in; min-height: 4in; background: #fff; border: 2px solid #111; border-radius: 0.5rem; padding: 0.875rem 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.preregs-section-title { font-size: 1rem; font-weight: 700; color: #0f172a; margin-bottom: 0.5rem; }
+.preregs-label-preview-box { width: 100%; max-width: 4in; min-height: 4in; background: #fff; border: none; border-radius: 0; padding: 0.875rem 1rem; box-shadow: none; }
 .preregs-label-preview-brand { font-size: 0.875rem; font-weight: 700; color: #0d9488; letter-spacing: 0.02em; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid #0d9488; }
 .preregs-label-preview-note { margin-top: 1rem; padding: 0.75rem 0.875rem; background: rgba(13, 148, 136, 0.1); border: 1px solid #0d9488; border-radius: 0.5rem; }
 .preregs-label-preview-note-label { font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.06em; color: #0d9488; font-weight: 700; margin-bottom: 0.25rem; }
@@ -285,15 +378,17 @@
 .preregs-label-preview-service { margin-top: 0.25rem; font-size: 1.25rem; font-weight: 800; letter-spacing: 0.03em; }
 .preregs-label-preview-service-air { color: #0f766e; }
 .preregs-label-preview-service-sea { color: #1e40af; }
-.preregs-photo-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; }
-.preregs-form-actions { margin-top: 1.5rem; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.75rem; }
-.preregs-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; }
-.preregs-btn-primary { background: #0d9488; color: #fff; border-color: #0d9488; font-weight: 600; }
-.preregs-btn-primary:hover { background: #0f766e; border-color: #0f766e; color: #fff; }
+.preregs-photo-section { margin-top: 0; padding-top: 0; border-top: none; }
+.preregs-form-panel.preregs-label-preview-wrap,
+.preregs-form-panel.preregs-photo-section { margin-top: 1rem; }
+.preregs-form-actions { margin-top: 1rem; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.85rem; align-items: center; }
+.preregs-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.58rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.625rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; transition: all 0.2s ease; }
+.preregs-btn-primary { background: #0d9488; color: #fff; border-color: #0d9488; font-weight: 600; padding-left: 1.3rem; padding-right: 1.3rem; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.22); }
+.preregs-btn-primary:hover { background: #0f766e; border-color: #0f766e; color: #fff; transform: translateY(-1px); box-shadow: 0 8px 18px rgba(15, 118, 110, 0.24); }
 .preregs-btn-primary:disabled { background: #9ca3af; border-color: #9ca3af; cursor: not-allowed; }
-.preregs-btn-secondary { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
-.preregs-btn-secondary:hover { background: #e5e7eb; color: #111827; }
-.preregs-form-card input:focus, .preregs-form-card select:focus, .preregs-form-card textarea:focus { outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15); }
+.preregs-btn-secondary { background: #ffffff; color: #475569; border-color: #dbe3ec; }
+.preregs-btn-secondary:hover { background: #f8fafc; color: #1e293b; border-color: #cbd5e1; }
+.preregs-form-card input:focus, .preregs-form-card select:focus, .preregs-form-card textarea:focus { outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.14); }
 </style>
 
 @push('scripts')
@@ -460,26 +555,20 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!bultosContainer) return;
         var n = getBultosCount();
         bultosContainer.innerHTML = '';
-        var styleRow = 'padding: 16px; margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;';
-        var styleLabel = 'display: block; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 4px;';
-        var styleInput = 'width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;';
         var photoAccept = 'image/jpeg,image/jpg,image/png,image/webp';
         // Un solo bloque: Bulto 1 de N. Al guardar se imprime etiqueta 1/N y luego el usuario continúa con el siguiente.
         var div = document.createElement('div');
-        div.className = 'bulto-block bulto-block-step';
+        div.className = 'preregs-bulto-block bulto-block bulto-block-step';
         div.setAttribute('data-index', 0);
         div.innerHTML =
-            '<h4 style="font-size: 14px; color: #0d9488; margin-bottom: 12px;">Bulto 1 de ' + n + '</h4>' +
-            '<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">' +
-            '<div><label style="' + styleLabel + '">Nombre en etiqueta *</label><input type="text" name="label_name" required style="' + styleInput + '" placeholder="Nombre del destinatario"></div>' +
-            '<div><label style="' + styleLabel + '">Peso (lbs) *</label><input type="number" step="0.01" name="intake_weight_lbs" required style="' + styleInput + '" placeholder="0.00"></div>' +
-            '<div><label style="' + styleLabel + '">Dimensión * <span style="font-weight: normal; color: #6b7280;">(L x A x H pulg)</span></label><input type="text" name="dimension" class="dimension-input-multi" required style="' + styleInput + '" placeholder="10 x 8 x 5 in"><p style="margin-top: 4px; font-size: 12px; color: #0d9488;"><strong>Pie cúbico:</strong> <span class="cubic-feet-display">—</span></p></div>' +
+            '<h4>Bulto 1 de ' + n + '</h4>' +
+            '<div class="preregs-create-grid preregs-create-grid--nested preregs-create-grid--bulto3">' +
+            '<div class="preregs-field"><label class="preregs-field-label">Nombre en etiqueta <span class="preregs-req">*</span></label><input type="text" name="label_name" class="preregs-input" required placeholder="Nombre del destinatario"></div>' +
+            '<div class="preregs-field"><label class="preregs-field-label">Peso (lbs) <span class="preregs-req">*</span></label><input type="number" step="0.01" name="intake_weight_lbs" class="preregs-input" required placeholder="0.00"></div>' +
+            '<div class="preregs-field preregs-field--full"><label class="preregs-field-label">Dimensión <span class="preregs-req">*</span> <span class="preregs-field-label-muted">(L × A × H pulg.)</span></label><input type="text" name="dimension" class="preregs-input dimension-input-multi" required placeholder="10 x 8 x 5 in"><p class="preregs-cubic-line"><span class="preregs-cubic-label">Pie cúbico</span> <span class="cubic-feet-display preregs-cubic-value">—</span></p></div>' +
             '</div>' +
-            '<div style="margin-bottom: 12px;"><label style="' + styleLabel + '">Descripción del contenido (opcional)</label><input type="text" name="description" maxlength="500" style="' + styleInput + '" placeholder="Ej: Ropa, electrónicos..."></div>' +
-            '<div><label style="' + styleLabel + '">Foto del bulto *</label>' +
-            '<input type="file" name="photo" accept="' + photoAccept + '" capture="environment" required style="' + styleInput + '">' +
-            '<p style="margin-top: 4px; font-size: 11px; color: #6b7280;">Completa este bulto y al guardar podrás imprimir la etiqueta 1/' + n + '. Luego continúa con el siguiente. JPG, PNG o WEBP. Máx. 10MB.</p></div>';
-        div.style.cssText = styleRow;
+            '<div class="preregs-field preregs-field--full" style="margin-top:0.75rem"><label class="preregs-field-label">Descripción <span class="preregs-opt">(opcional)</span></label><input type="text" name="description" class="preregs-input" maxlength="500" placeholder="Ej: Ropa, electrónicos…"></div>' +
+            '<div class="preregs-field preregs-field--full" style="margin-top:0.75rem"><label class="preregs-field-label">Foto del bulto <span class="preregs-req">*</span></label><input type="file" name="photo" class="preregs-input preregs-input--file" accept="' + photoAccept + '" required><p class="preregs-hint">Al guardar podrá imprimir la etiqueta 1/' + n + '. Luego continúa con el siguiente. JPG, PNG o WEBP. Máx. 10MB.</p></div>';
         bultosContainer.appendChild(div);
         var dropoffStepInput = document.getElementById('dropoff_step_input');
         if (dropoffStepInput) dropoffStepInput.value = '1';
@@ -660,8 +749,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             dropdown.innerHTML = list.length ? list.map(function(a) {
                 var label = (a.code || '') + ' - ' + (a.name || '');
-                return '<div class="agency-combo-item" data-id="' + a.id + '" data-label="' + label.replace(/"/g, '&quot;') + '" style="padding: 10px 12px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #f3f4f6;" onmouseover="this.style.background=\'#f3f4f6\'" onmouseout="this.style.background=\'\'">' + (a.code || '') + ' - ' + (a.name || '') + '</div>';
-            }).join('') : '<div style="padding: 10px 12px; font-size: 14px; color: #6b7280;">No hay coincidencias</div>';
+                return '<div class="agency-combo-item" data-id="' + a.id + '" data-label="' + label.replace(/"/g, '&quot;') + '">' + (a.code || '') + ' - ' + (a.name || '') + '</div>';
+            }).join('') : '<div class="preregs-combo-empty">No hay coincidencias</div>';
             dropdown.style.display = 'block';
         }
         function selectAgency(id, label) {
@@ -694,23 +783,32 @@ document.addEventListener('DOMContentLoaded', function() {
     // Foto preview
     var photoInput = document.getElementById('photo');
     var preview = document.getElementById('photoPreview');
+    var photoState = document.getElementById('photoFileState');
     if (photoInput && preview) {
         photoInput.addEventListener('change', function(e) {
             preview.innerHTML = '';
             preview.style.display = 'none';
             var file = e.target.files[0];
-            if (!file) return;
+            if (!file) {
+                photoInput.classList.remove('has-file');
+                if (photoState) photoState.textContent = 'Ningún archivo seleccionado.';
+                return;
+            }
             if (file.size > 10 * 1024 * 1024) {
                 alert('La foto excede el tamaño máximo de 10MB');
                 e.target.value = '';
+                photoInput.classList.remove('has-file');
+                if (photoState) photoState.textContent = 'Ningún archivo seleccionado.';
                 return;
             }
+            photoInput.classList.add('has-file');
+            if (photoState) photoState.textContent = 'Archivo seleccionado: ' + file.name;
             var reader = new FileReader();
             reader.onload = function(event) {
                 var img = document.createElement('img');
                 img.src = event.target.result;
                 img.alt = 'Vista previa';
-                img.style.cssText = 'max-width: 400px; height: auto; border-radius: 6px; border: 1px solid #d1d5db;';
+                img.className = 'preregs-photo-preview-img';
                 preview.appendChild(img);
                 preview.style.display = 'block';
             };

@@ -283,7 +283,7 @@ Sustituye la URL por la de tu repo. Si es privado, necesitarás configurar acces
 
 ```bash
 cd /var/www/bch-tracking
-git clone https://github.com/TU_USUARIO/skylink-chcargo.git .
+git clone https://github.com/cchurtado18/BCHTracking.git .
 ```
 
 Si da error de permisos, hazlo como `root` y luego:
@@ -562,7 +562,7 @@ Después de tener el Droplet con PHP, Composer, Nginx y MySQL instalados:
 
 ```bash
 cd /var/www/bch-tracking
-git clone https://github.com/TU_USUARIO/skylink-chcargo.git .
+git clone https://github.com/cchurtado18/BCHTracking.git .
 composer install --no-dev --optimize-autoloader
 cp .env.example .env
 nano .env   # rellenar APP_URL, DB_*, etc.

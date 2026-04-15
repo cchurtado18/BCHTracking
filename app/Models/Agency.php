@@ -33,6 +33,38 @@ class Agency extends Model
     }
 
     /**
+     * Si esta agencia es CH LOGISTICS o subagencia de CH LOGISTICS (encomienda familiar).
+     * Se usa para mostrar la "Nota de cobro" con diseño CH Logistics en lugar del comprobante BCH.
+     */
+    public function isChLogistics(): bool
+    {
+        $name = strtoupper((string) ($this->name ?? ''));
+        if ($name === 'CH LOGISTICS' || (string) $this->code === '0002') {
+            return true;
+        }
+        if ($this->parent_agency_id && $this->relationLoaded('parent') && $this->parent) {
+            return strtoupper((string) $this->parent->name) === 'CH LOGISTICS' || (string) $this->parent->code === '0002';
+        }
+        return false;
+    }
+
+    /**
+     * Si esta agencia es SkyLink One o subagencia de SkyLink One.
+     * Se usa para renderizar la etiqueta con el diseño "SkyLink One Logistics".
+     */
+    public function isSkyLinkOne(): bool
+    {
+        $name = strtoupper((string) ($this->name ?? ''));
+        if ($name === 'SKYLINK ONE' || (string) $this->code === '0001') {
+            return true;
+        }
+        if ($this->parent_agency_id && $this->relationLoaded('parent') && $this->parent) {
+            return strtoupper((string) $this->parent->name) === 'SKYLINK ONE' || (string) $this->parent->code === '0001';
+        }
+        return false;
+    }
+
+    /**
      * URL del logo (para etiquetas y vistas).
      */
     public function getLogoUrlAttribute(): ?string

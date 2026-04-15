@@ -22,7 +22,7 @@
             <dl class="audit-dl">
                 <div class="audit-dl-row">
                     <dt class="audit-dt">Fecha y hora</dt>
-                    <dd class="audit-dd">{{ $log->created_at->timezone(config('app.timezone', 'America/Managua'))->format('d/m/Y H:i:s') }}</dd>
+                    <dd class="audit-dd">{{ $log->created_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i:s') }}</dd>
                 </div>
                 <div class="audit-dl-row">
                     <dt class="audit-dt">Acción</dt>

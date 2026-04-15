@@ -16,7 +16,10 @@
         }
     @endphp
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50" style="background:
+    radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.07), transparent 40%),
+    radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.06), transparent 42%),
+    linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);">
     <style>.nav-logo-dark { display: inline-block; line-height: 0; } .nav-logo-dark img { height: 4rem; width: auto; display: block; object-fit: contain; }</style>
     <nav class="bg-white shadow-sm border-b border-gray-200">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -39,6 +42,14 @@
         </div>
     </main>
     <style>
+    .tracking-surface,
+    .tracking-layout-inner .bg-white,
+    .tracking-layout-inner .card {
+        background: #ffffff;
+        border: 1px solid #e5ecf3;
+        border-radius: 0.75rem;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 24px rgba(15, 23, 42, 0.03);
+    }
     .tracking-layout-inner { max-width: 96rem; margin-left: auto; margin-right: auto; padding-left: 1rem; padding-right: 1rem; width: 100%; }
     @media (min-width: 640px) { .tracking-layout-inner { padding-left: 1.5rem; padding-right: 1.5rem; } }
     @media (min-width: 1024px) { .tracking-layout-inner { padding-left: 2rem; padding-right: 2rem; } }

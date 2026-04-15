@@ -67,12 +67,13 @@ class TrackingController extends Controller
     /**
      * Pasos de la línea de tiempo para mostrar en la vista de tracking.
      * Cada paso: key, label, is_completed, is_current, timestamp (Carbon|null).
+     * Se fuerza America/New_York (Miami) para que las fechas siempre se muestren en hora de Miami.
      */
-    public static function timelineSteps(Preregistration $p): array
+    public static function timelineSteps(Preregistration $p, ?string $timezone = null): array
     {
         $status = $p->status ?? 'RECEIVED_MIAMI';
         $currentOrder = self::TIMELINE_ORDER[$status] ?? 1;
-        $tz = config('app.timezone', 'America/New_York');
+        $tz = $timezone ?? config('app.timezone', 'America/New_York');
 
         $steps = [
             [

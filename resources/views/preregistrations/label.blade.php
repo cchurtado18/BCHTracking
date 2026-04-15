@@ -18,10 +18,10 @@
             max-width: 100%;
             margin: 0 auto;
             background: white;
-            border: 2px solid #111;
-            border-radius: 8px;
+            border: none;
+            border-radius: 0;
             padding: 14px 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: none;
         }
         .label-sheet .label-header {
             display: flex;
@@ -299,21 +299,39 @@
             font-size: 14px;
         }
 
+        /*
+         * Hoja 4" × 6" (101.6 × 152.4 mm), retrato: ancho 4", alto 6".
+         * Sin esto, Chrome/Safari suelen usar Letter/A4 y escalar la etiqueta.
+         */
+        @page {
+            size: 4in 6in;
+            margin: 0;
+        }
+
         @media print {
+            html, body {
+                width: 4in;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #fff !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
             body { background: white; padding: 0; }
             .no-print { display: none !important; }
         .label-sheet {
-                width: 4in;
+                width: 4in !important;
                 min-height: 6in;
                 max-width: none;
                 margin: 0;
-                border: 1px solid #000;
+                border: none;
                 box-shadow: none;
                 page-break-after: auto;
                 page-break-inside: avoid;
                 break-after: avoid;
                 padding: 10px 12px;
                 border-radius: 0;
+                box-sizing: border-box;
             }
 
             /* Compactar la altura para que no se “escape” a otra hoja */
@@ -376,7 +394,7 @@
         <p style="margin-bottom: 12px; padding: 10px; background: #fef3c7; color: #92400e; border-radius: 6px; font-size: 14px;">{{ session('warning') }}</p>
         @endif
         <button type="button" onclick="printLabel();" class="no-print-btn">🖨️ Imprimir etiqueta</button>
-        <p class="no-print-hint">Seleccione la impresora de etiquetas en el cuadro de impresión.</p>
+        <p class="no-print-hint">En impresión: papel <strong>4×6 pulgadas</strong> (10×15&nbsp;cm), escala <strong>100&nbsp;%</strong>, márgenes <strong>ninguno</strong> y desactive <strong>«Ajustar al área imprimible» / «Fit to page»</strong>. Si la impresora imprime cortado o en blanco, en preferencias del driver elija el mismo tamaño de etiqueta.</p>
         @if(!empty($dropoffNextStep) && !empty($dropoffTotal))
         <p style="margin-top: 14px;">
             <a href="{{ route('preregistrations.create') }}" style="display: inline-block; padding: 8px 14px; background: #0d9488; color: #fff; border-radius: 6px; font-weight: 600; text-decoration: none;">Continuar con el siguiente bulto ({{ $dropoffNextStep }}/{{ $dropoffTotal }})</a>

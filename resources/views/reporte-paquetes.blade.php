@@ -54,7 +54,7 @@
                     <td>{{ $p->service_type ?? '—' }}</td>
                     <td class="text-end">{{ number_format($p->verified_weight_lbs ?? $p->intake_weight_lbs ?? 0, 2) }}</td>
                     <td>{{ $p->status ?? '—' }}</td>
-                    <td>{{ $p->created_at ? $p->created_at->format('d/m/Y H:i') : '—' }}</td>
+                    <td>{{ $p->created_at ? $p->created_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') : '—' }}</td>
                 </tr>
                 @endforeach
             </tbody>

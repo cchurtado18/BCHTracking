@@ -42,8 +42,9 @@
 
         @foreach($preregistrations as $p)
         @php
-            $steps = \App\Http\Controllers\Web\TrackingController::timelineSteps($p);
-            $receivedAt = $p->created_at?->timezone(config('app.timezone', 'America/New_York'));
+            $displayTz = config('app.display_timezone', 'America/New_York');
+            $steps = \App\Http\Controllers\Web\TrackingController::timelineSteps($p, $displayTz);
+            $receivedAt = $p->created_at ? $p->created_at->timezone($displayTz) : null;
             $weight = $p->verified_weight_lbs ?? $p->intake_weight_lbs;
             $weightStr = $weight !== null && $weight !== '' ? number_format((float) $weight, 1) . ' lb(s)' : '—';
         @endphp

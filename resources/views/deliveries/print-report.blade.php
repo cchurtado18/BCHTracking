@@ -329,7 +329,7 @@
     </div>
 
     <footer class="doc-footer">
-        Generado {{ now()->timezone(config('app.timezone'))->format('d/m/Y H:i') }} — BCH Tracking
+        Generado {{ now()->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }} — BCH Tracking
     </footer>
     </div>
 </body>

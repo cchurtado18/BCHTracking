@@ -85,7 +85,7 @@
                             </td>
                             <td class="delivery-num">{{ $p->verified_weight_lbs ?? $p->intake_weight_lbs ?? '—' }}</td>
                             <td class="delivery-muted delivery-name-cell" title="{{ $p->agency->name ?? '' }}">{{ Str::limit($p->agency->name ?? '—', 20) }}</td>
-                            <td class="delivery-muted">{{ $p->ready_at ? $p->ready_at->format('d/m/Y H:i') : '—' }}</td>
+                            <td class="delivery-muted">{{ $p->ready_at ? $p->ready_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') : '—' }}</td>
                         </tr>
                         @endforeach
                     </tbody>
@@ -136,7 +136,7 @@
                     @endphp
                     <tr>
                         <td><span class="delivery-code">{{ $note->code }}</span></td>
-                        <td class="delivery-muted">{{ $firstDelivery ? $firstDelivery->delivered_at->format('d/m/Y H:i') : ($note->created_at ? $note->created_at->format('d/m/Y H:i') : '—') }}</td>
+                        <td class="delivery-muted">{{ $firstDelivery ? $firstDelivery->delivered_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') : ($note->created_at ? $note->created_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') : '—') }}</td>
                         <td class="delivery-num">{{ $note->deliveries_count }}</td>
                         <td class="delivery-name-cell" title="{{ $firstDelivery?->delivered_to }}">{{ $firstDelivery?->delivered_to ?? '—' }}</td>
                         <td>

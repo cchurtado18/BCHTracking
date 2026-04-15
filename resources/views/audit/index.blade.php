@@ -101,7 +101,7 @@
                 <tbody>
                     @forelse($logs as $log)
                     <tr>
-                        <td class="audit-muted">{{ $log->created_at->timezone(config('app.timezone', 'America/Managua'))->format('d/m/Y H:i') }}</td>
+                        <td class="audit-muted">{{ $log->created_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</td>
                         <td>
                             @if($log->action === 'created')
                             <span class="audit-badge audit-badge-created">Creado</span>

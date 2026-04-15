@@ -56,16 +56,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Application Timezone
+    | Application Timezone (storage)
     |--------------------------------------------------------------------------
     |
-    | Here you may specify the default timezone for your application, which
-    | will be used by the PHP date and date-time functions. The timezone
-    | is set to "UTC" by default as it is suitable for most use cases.
+    | We store dates in UTC. Display is always converted to America/New_York
+    | (Miami) in views. Use UTC here so that created_at, etc. are stored
+    | consistently and we convert to Miami only when showing to the user.
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'UTC'),
+
+    /* Zona horaria para mostrar fechas al usuario (Miami). */
+    'display_timezone' => 'America/New_York',
 
     /*
     |--------------------------------------------------------------------------

@@ -8,14 +8,19 @@
         @php
             $first = $preregistrations->first();
             $isSkyLinkOne = $first && $first->agency && $first->agency->isSkyLinkOne();
+            $labelFormat = $labelFormat ?? '4x6';
+            $isNarrow = $labelFormat === 'narrow';
+            $pageSizeCss = $isNarrow ? '2.25in 4in' : '4in 6in';
+            $sheetWidthCss = $isNarrow ? '2.25in' : '4in';
+            $sheetMinHeightCss = $isNarrow ? '4in' : '6in';
         @endphp
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f3f4f6; padding: 16px; }
         .label-sheet {
             width: 4in; min-height: 6in; max-width: 100%;
-            margin: 16px auto; background: white; border: 2px solid #111;
-            border-radius: 8px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin: 16px auto; background: white; border: none;
+            border-radius: 0; padding: 14px 16px; box-shadow: none;
         }
         .label-sheet .label-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid #1e40af; }
         .label-sheet .label-header .company-block { margin: 0; padding: 0; border: none; }
@@ -75,12 +80,6 @@
         .no-print button:hover { background: #1d4ed8; }
         .no-print a { display: inline-block; margin-left: 12px; color: #4b5563; font-size: 14px; }
         .no-print-hint { font-size: 13px; color: #6b7280; margin-top: 8px; }
-        @media print {
-            body { background: white; padding: 0; }
-            .no-print { display: none !important; }
-            .label-sheet { width: 4in; min-height: 6in; max-width: none; margin: 0; border: 1px solid #000; box-shadow: none; page-break-after: always; }
-            .label-sheet:last-child { page-break-after: auto; }
-        }
 
         /* SkyLink One (para que Drop Off se vea igual que Courier) */
         .label-sheet {
@@ -88,8 +87,8 @@
             min-height: 6in;
             margin: 0 auto;
             background: #fff;
-            border: 2px solid #111;
-            border-radius: 8px;
+            border: none;
+            border-radius: 0;
             padding: 12px 14px;
         }
         .sl-top-logo {
@@ -280,26 +279,107 @@
             margin-top: 8px;
             font-weight: 600;
         }
+
+        .label-paper-narrow .label-sheet {
+            width: 2.25in;
+            min-height: 4in;
+            padding: 6px 8px;
+        }
+        .label-paper-narrow .sl-top-logo { min-height: 36px; margin-bottom: 4px; }
+        .label-paper-narrow .sl-top-logo img { max-height: 36px; }
+        .label-paper-narrow .sl-divider { margin: 4px 0 8px; height: 2px; }
+        .label-paper-narrow .sl-agency-box { padding: 8px 10px; margin-top: 4px; }
+        .label-paper-narrow .sl-agency-box::before { width: 5px; left: 10px; top: 8px; bottom: 8px; }
+        .label-paper-narrow .sl-agency-title { font-size: 9px; margin-left: 12px; }
+        .label-paper-narrow .sl-agency-value { font-size: 13px; margin-left: 12px; line-height: 1.15; }
+        .label-paper-narrow .sl-bulto-badge { font-size: 9px; padding: 1px 6px; right: 6px; top: 6px; }
+        .label-paper-narrow .sl-warehouse-title { font-size: 10px; margin-bottom: 4px; }
+        .label-paper-narrow .sl-warehouse-code { font-size: 22px; letter-spacing: 0.05em; }
+        .label-paper-narrow .sl-barcode-row { flex-wrap: wrap; gap: 4px; justify-content: center; }
+        .label-paper-narrow .sl-service-mark-large { font-size: 28px; margin-bottom: 4px; margin-left: 0; }
+        .label-paper-narrow .sl-tracking-global-label { font-size: 9px; }
+        .label-paper-narrow .sl-tracking-global-value { font-size: 11px; line-height: 1.15; }
+        .label-paper-narrow .sl-tracking-row {
+            grid-template-columns: 1fr;
+            gap: 2px;
+            margin-bottom: 6px;
+        }
+        .label-paper-narrow .sl-tracking-cubic { text-align: left; font-size: 10px; white-space: normal; }
+        .label-paper-narrow .sl-destination-title { font-size: 10px; margin-top: 6px; }
+        .label-paper-narrow .sl-destination-name { font-size: 14px; }
+        .label-paper-narrow .sl-grid-3 {
+            grid-template-columns: 1fr;
+            margin-top: 8px;
+        }
+        .label-paper-narrow .sl-grid-cell + .sl-grid-cell { border-left: none; border-top: 1px solid #e5e7eb; }
+        .label-paper-narrow .sl-grid-cell { padding: 8px 6px; }
+        .label-paper-narrow .sl-grid-title { font-size: 10px; margin-bottom: 4px; }
+        .label-paper-narrow .sl-grid-value { font-size: 12px; }
+        .label-paper-narrow .sl-service-badge { font-size: 12px; padding: 2px 8px; }
+        .label-paper-narrow .sl-code-mini-date { font-size: 11px; margin-top: 4px; }
+        .label-paper-narrow .sl-description-title { font-size: 9px; margin-top: 6px; }
+        .label-paper-narrow .sl-description-value { font-size: 11px; margin-bottom: 4px; }
+        .label-paper-narrow .sl-review-text { font-size: 9px; margin-top: 4px; }
+
+        /* Al final: si no, reglas posteriores de .label-sheet pisan el borde/padding en impresión */
+        @page {
+            size: {{ $pageSizeCss }};
+            margin: 0;
+        }
+
         @media print {
-            .label-sheet {
-                border: 2px solid #111;
-                transform: scale(0.94);
-                transform-origin: top left;
-                page-break-inside: avoid;
+            html, body {
+                width: {{ $sheetWidthCss }};
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #fff !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
-            .sl-tracking-global-value { font-size: 18px; margin-bottom: 6px; }
-            .sl-description-value { margin-bottom: 6px; }
-            .sl-review-text { font-size: 12px; margin-top: 6px; }
+            body { background: white; padding: 0; }
+            .no-print { display: none !important; }
+            .label-sheet {
+                width: {{ $sheetWidthCss }} !important;
+                min-height: {{ $sheetMinHeightCss }};
+                max-width: none;
+                margin: 0;
+                padding: 8px 10px;
+                border: none;
+                box-shadow: none;
+                page-break-after: always;
+                page-break-inside: avoid;
+                box-sizing: border-box;
+                border-radius: 0;
+            }
+            .label-sheet:last-child { page-break-after: auto; }
+            .sl-top-logo { min-height: 44px; margin-bottom: 6px; }
+            .sl-top-logo img { max-height: 44px; }
+            .sl-divider { margin: 6px 0 10px; height: 2px; }
+            .sl-agency-box { padding: 10px 12px; margin-top: 4px; }
+            .sl-warehouse-code { font-size: 34px; }
+            .sl-service-mark-large { font-size: 50px; margin-bottom: 10px; }
+            .sl-destination-name { font-size: 18px; }
+            .sl-grid-3 { margin-top: 10px; }
+            .sl-grid-cell { padding: 8px 6px; }
+            .sl-grid-value { font-size: 15px; }
+            .sl-description-title { margin-top: 10px; }
+            .sl-description-value { font-size: 15px; margin-bottom: 6px; }
+            .sl-tracking-global-value { font-size: 17px; margin-bottom: 6px; }
+            .sl-review-text { font-size: 11px; margin-top: 6px; }
         }
     </style>
 </head>
-<body>
+<body class="{{ $isNarrow ? 'label-paper-narrow' : 'label-paper-4x6' }}">
     <div class="no-print">
         @if(session('success'))
         <p style="margin-bottom: 12px; padding: 10px; background: #d1fae5; color: #065f46; border-radius: 6px; font-size: 14px;">{{ session('success') }}</p>
         @endif
         <button type="button" onclick="window.print();">🖨️ Imprimir todas las etiquetas</button>
-        <p class="no-print-hint">Se imprimirá una etiqueta por cada bulto (mismo código de almacén).</p>
+        @if($isNarrow)
+        <p class="no-print-hint">Vista <strong>2.25×4&nbsp;pulgadas</strong>: en el diálogo deje ese tamaño. Una etiqueta por bulto. Si usa rollo <strong>4×6</strong>, abra la misma página con el enlace «4×6» desde el preregistro.</p>
+        @else
+        <p class="no-print-hint">Se imprimirá una etiqueta por cada bulto. En impresión use papel <strong>4×6&nbsp;pulgadas</strong> (no 2.25×4), escala <strong>100&nbsp;%</strong>, sin márgenes. ¿Solo le sale 2.25×4? Vuelva al detalle y abra <strong>Etiqueta 2.25×4</strong>.</p>
+        @endif
         <a href="{{ route('preregistrations.index', session('preregistrations_index_filters', [])) }}">← Volver a preregistros</a>
     </div>
 
@@ -309,13 +389,19 @@
 
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
     <script>
+        var labelNarrow = {{ $isNarrow ? 'true' : 'false' }};
         document.querySelectorAll('.barcode-canvas').forEach(function(el) {
             if (!el.dataset.barcode) return;
 
             var isSkylink = el.id && el.id.indexOf('-skylink') !== -1;
-            var opts = isSkylink
-                ? { format: 'CODE128', width: 2.2, height: 44, displayValue: true, fontSize: 13, margin: 0 }
-                : { format: 'CODE128', width: 2.5, height: 50, displayValue: true, fontSize: 16, margin: 8 };
+            var opts;
+            if (labelNarrow && isSkylink) {
+                opts = { format: 'CODE128', width: 1, height: 28, displayValue: true, fontSize: 8, margin: 0 };
+            } else if (isSkylink) {
+                opts = { format: 'CODE128', width: 2.2, height: 44, displayValue: true, fontSize: 13, margin: 0 };
+            } else {
+                opts = { format: 'CODE128', width: 2.5, height: 50, displayValue: true, fontSize: 16, margin: 8 };
+            }
 
             JsBarcode(el, el.dataset.barcode, opts);
         });

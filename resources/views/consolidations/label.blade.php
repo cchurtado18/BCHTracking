@@ -17,10 +17,10 @@
             max-width: 100%;
             margin: 0 auto;
             background: white;
-            border: 2px solid #111;
-            border-radius: 8px;
+            border: none;
+            border-radius: 0;
             padding: 14px 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: none;
         }
         .label-sheet .label-header {
             margin-bottom: 10px;
@@ -83,17 +83,32 @@
             font-size: 14px;
         }
 
+        @page {
+            size: 4in 6in;
+            margin: 0;
+        }
+
         @media print {
+            html, body {
+                width: 4in;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #fff !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
             body { background: white; padding: 0; }
             .no-print { display: none !important; }
             .label-sheet {
-                width: 4in;
+                width: 4in !important;
                 min-height: 6in;
                 max-width: none;
                 margin: 0;
-                border: 1px solid #000;
+                border: none;
                 box-shadow: none;
                 page-break-after: always;
+                box-sizing: border-box;
+                border-radius: 0;
             }
         }
     </style>
@@ -104,7 +119,7 @@
         <p style="margin-bottom: 12px; padding: 10px; background: #d1fae5; color: #065f46; border-radius: 6px; font-size: 14px;">{{ session('success') }}</p>
         @endif
         <button type="button" onclick="window.print();" class="no-print-btn">🖨️ Imprimir etiqueta del saco</button>
-        <p class="no-print-hint">Seleccione la impresora de etiquetas en el cuadro de impresión.</p>
+        <p class="no-print-hint">Papel <strong>4×6&nbsp;pulgadas</strong>, escala <strong>100&nbsp;%</strong>, sin márgenes. En la impresora térmica, el driver debe coincidir con ese tamaño.</p>
         <a href="{{ route('consolidations.show', $consolidation->id) }}">← Volver al saco</a>
     </div>
 

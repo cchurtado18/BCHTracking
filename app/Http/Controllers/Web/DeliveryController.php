@@ -205,8 +205,8 @@ class DeliveryController extends Controller
         $deliveryNotesInReport = collect();
 
         if ($request->filled('delivery_note_id')) {
-            $deliveryNote = DeliveryNote::with('agency')->findOrFail((int) $request->delivery_note_id);
-            $deliveries = Delivery::with('preregistration.agency', 'deliveryNote')
+            $deliveryNote = DeliveryNote::with('agency.parent')->findOrFail((int) $request->delivery_note_id);
+            $deliveries = Delivery::with('preregistration.agency', 'preregistration.agencyClient', 'deliveryNote')
                 ->where('delivery_note_id', $deliveryNote->id)
                 ->orderBy('delivered_at')
                 ->get();
@@ -215,18 +215,18 @@ class DeliveryController extends Controller
             $date = $deliveries->first()?->delivered_at?->toDateString() ?? $date;
             $deliveryNotesInReport = collect([$deliveryNote]);
         } else {
-            $query = Delivery::with('preregistration.agency', 'deliveryNote')
+            $query = Delivery::with('preregistration.agency', 'preregistration.agencyClient', 'deliveryNote')
                 ->whereDate('delivered_at', $date);
 
             if ($request->filled('agency_id')) {
                 $query->whereHas('preregistration', fn ($q) => $q->where('agency_id', (int) $request->agency_id));
-                $agency = Agency::find((int) $request->agency_id);
+                $agency = Agency::with('parent')->find((int) $request->agency_id);
             } else {
                 $mid = (int) $request->main_agency_id;
                 $query->whereHas('preregistration', function ($q) use ($mid) {
                     $q->whereHas('agency', fn ($q2) => $q2->where('id', $mid)->orWhere('parent_agency_id', $mid));
                 });
-                $agency = Agency::find($mid);
+                $agency = Agency::with('parent')->find($mid);
             }
 
             $deliveries = $query->orderBy('delivered_at')->get();
@@ -243,6 +243,20 @@ class DeliveryController extends Controller
             ? $first->retirer_id_number : null;
         $retiradoTelefono = $first && $deliveries->pluck('delivered_to')->unique()->count() === 1 && $deliveries->pluck('retirer_phone')->unique()->count() === 1
             ? $first->retirer_phone : null;
+
+        // Encomienda familiar (CH LOGISTICS): usar diseño "Nota de cobro" igual al de la factura CH Logistics
+        if ($agency && $agency->isChLogistics()) {
+            $firstPrereg = $first?->preregistration;
+            $clientName = $firstPrereg?->agencyClient?->full_name ?? $firstPrereg?->label_name ?? $retiradoPor ?? '—';
+            $clientPhone = $firstPrereg?->agencyClient?->phone ?? $retiradoTelefono ?? '—';
+            $clientAddress = '—';
+            $deliveryAddress = $agency->address ?? null;
+            $deliveryPhone = $agency->phone ?? null;
+            return view('deliveries.print-report-nota-cobro', compact(
+                'deliveries', 'agencyName', 'agency', 'date', 'deliveryNote',
+                'clientName', 'clientPhone', 'clientAddress', 'deliveryAddress', 'deliveryPhone'
+            ));
+        }
 
         return view('deliveries.print-report', compact('deliveries', 'agencyName', 'agency', 'date', 'retiradoPor', 'retiradoCedula', 'retiradoTelefono', 'deliveryNote', 'deliveryNotesInReport'));
     }

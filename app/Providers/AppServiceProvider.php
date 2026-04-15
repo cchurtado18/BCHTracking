@@ -18,13 +18,11 @@ class AppServiceProvider extends ServiceProvider
 
     /**
      * Bootstrap any application services.
-     * Fijamos la zona horaria de Miami para que al guardar paquetes (created_at, etc.)
-     * y al mostrar fechas se use siempre hora de Miami.
+     * Las fechas se guardan en UTC; en las vistas se convierten a America/New_York (Miami).
      */
     public function boot(): void
     {
-        $tz = config('app.timezone', 'America/New_York');
-        date_default_timezone_set($tz);
+        date_default_timezone_set(config('app.timezone', 'UTC'));
 
         Preregistration::observe(PreregistrationObserver::class);
     }

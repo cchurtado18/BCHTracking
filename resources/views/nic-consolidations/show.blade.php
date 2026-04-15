@@ -92,7 +92,7 @@
                                 <span class="nic-item-bulto">(bulto {{ $item->preregistration->bulto_index }} de {{ $item->preregistration->bultos_total }})</span>
                                 @endif
                             </div>
-                            <div class="nic-item-scanned-at">✓ {{ $item->scanned_at->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</div>
+                            <div class="nic-item-scanned-at">✓ {{ $item->scanned_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</div>
                         </div>
                         @endforeach
                     </div>
