@@ -39,12 +39,16 @@ class PreregistrationPhotoService
         $filename = Str::uuid() . '.' . $extension;
         $path = $file->storeAs($directory, $filename, 'public');
 
+        $maxOrder = $preregistration->photos()->max('sort_order');
+        $nextOrder = is_numeric($maxOrder) ? ((int) $maxOrder) + 1 : 0;
+
         // Crear registro en base de datos
         $photo = PreregistrationPhoto::create([
             'preregistration_id' => $preregistration->id,
             'path' => $path,
             'mime' => $file->getMimeType(),
             'size_bytes' => $file->getSize(),
+            'sort_order' => $nextOrder,
         ]);
 
         return $photo;

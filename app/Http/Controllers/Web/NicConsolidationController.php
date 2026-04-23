@@ -56,11 +56,15 @@ class NicConsolidationController extends Controller
         }
 
         $items = $consolidation->items;
-        $totalItems = $items->count();
-        $scannedItems = $items->whereNotNull('scanned_at');
-        $missingItems = $items->whereNull('scanned_at');
+        $receivableItems = $items->whereNotNull('preregistration_id')->values();
+        $unmatchedItems = $items->whereNull('preregistration_id')->values();
+
+        $totalItems = $receivableItems->count();
+        $scannedItems = $receivableItems->whereNotNull('scanned_at')->values();
+        $missingItems = $receivableItems->whereNull('scanned_at')->values();
         $scannedCount = $scannedItems->count();
         $missingCount = $missingItems->count();
+        $scannedLbsTotal = $scannedItems->sum(fn (ConsolidationItem $i) => $this->preregistrationWeightLbs($i->preregistration));
 
         return view('nic-consolidations.show', compact(
             'consolidation',
@@ -68,7 +72,9 @@ class NicConsolidationController extends Controller
             'scannedCount',
             'missingCount',
             'scannedItems',
-            'missingItems'
+            'missingItems',
+            'unmatchedItems',
+            'scannedLbsTotal',
         ));
     }
 
@@ -144,12 +150,17 @@ class NicConsolidationController extends Controller
 
         if ($request->expectsJson() || $request->ajax()) {
             $consolidation->load(['items' => fn ($q) => $q->with('preregistration')]);
-            $scannedCount = $consolidation->items->whereNotNull('scanned_at')->count();
-            $missingCount = $consolidation->items->count() - $scannedCount;
+            $receivable = $consolidation->items->whereNotNull('preregistration_id');
+            $scannedCount = $receivable->whereNotNull('scanned_at')->count();
+            $missingCount = $receivable->count() - $scannedCount;
             $scannedCode = $preregistration->warehouse_code ?? $preregistration->tracking_external ?? $code;
             $scannedRowHtml = view('nic-consolidations.partials.scanned-row', [
                 'item' => $item->fresh(['preregistration']),
             ])->render();
+
+            $scannedLbsTotal = $receivable
+                ->filter(fn (ConsolidationItem $i) => $i->scanned_at !== null)
+                ->sum(fn (ConsolidationItem $i) => $this->preregistrationWeightLbs($i->preregistration));
 
             return response()->json([
                 'success' => true,
@@ -157,12 +168,22 @@ class NicConsolidationController extends Controller
                 'scanned_code' => $scannedCode,
                 'scanned_count' => $scannedCount,
                 'missing_count' => $missingCount,
-                'total_items' => $consolidation->items->count(),
+                'total_items' => $receivable->count(),
+                'scanned_lbs_total' => round($scannedLbsTotal, 1),
                 'scanned_row_html' => $scannedRowHtml,
             ]);
         }
 
         return redirect()->route('nic-consolidations.show', $consolidation->id)
             ->with('success', $message);
+    }
+
+    private function preregistrationWeightLbs(?Preregistration $p): float
+    {
+        if ($p === null) {
+            return 0.0;
+        }
+
+        return (float) ($p->verified_weight_lbs ?? $p->intake_weight_lbs ?? 0);
     }
 }

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PreregistrationPhoto extends Model
 {
-    protected $fillable = ['preregistration_id', 'path', 'mime', 'size_bytes'];
+    protected $fillable = ['preregistration_id', 'path', 'mime', 'size_bytes', 'sort_order'];
 
     public function preregistration(): BelongsTo
     {

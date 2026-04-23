@@ -44,11 +44,33 @@
                     <span class="nic-stat-label">Escaneados</span>
                     <span id="nic-scanned-count" class="nic-stat-value nic-stat-value-success">{{ $scannedCount }}</span>
                 </div>
+                <div class="nic-stat-card nic-stat-lbs">
+                    <span class="nic-stat-label">Lbs escaneadas</span>
+                    <span id="nic-scanned-lbs" class="nic-stat-value nic-stat-value-lbs">{{ number_format($scannedLbsTotal ?? 0, 1) }}</span>
+                </div>
                 <div class="nic-stat-card nic-stat-danger">
                     <span class="nic-stat-label">Faltantes</span>
                     <span id="nic-missing-count" class="nic-stat-value nic-stat-value-danger">{{ $missingCount }}</span>
                 </div>
             </div>
+
+            @if(isset($unmatchedItems) && $unmatchedItems->count() > 0)
+            <div class="nic-card" style="border-color: #fcd34d;">
+                <div class="nic-card-header" style="background: #fffbeb;">
+                    <h2 class="nic-card-title" style="color: #92400e;">Códigos en saco sin preregistro ({{ $unmatchedItems->count() }})</h2>
+                </div>
+                <div class="nic-card-body">
+                    <p class="nic-scan-hint mb-4">Estas líneas se guardaron en Miami sin coincidir en el sistema. No requieren escaneo en Nicaragua.</p>
+                    <div class="nic-item-list">
+                        @foreach($unmatchedItems as $uItem)
+                        <div class="nic-item-row" style="border-color: #fde68a;">
+                            <div class="nic-item-meta font-mono font-semibold">{{ $uItem->unmatched_code }}</div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+            @endif
 
             @if($missingItems->count() > 0)
             <div class="nic-card">
@@ -138,7 +160,10 @@
 .nic-btn-primary:hover { background: #0f766e; border-color: #0f766e; color: #fff; }
 .nic-btn-secondary { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
 .nic-btn-secondary:hover { background: #e5e7eb; color: #111827; }
-.nic-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+.nic-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+@media (min-width: 640px) {
+    .nic-stats { grid-template-columns: repeat(4, 1fr); }
+}
 .nic-show-stats .nic-stat-card { margin-bottom: 0; }
 .nic-stat-card { background: #fff; border-radius: 0.75rem; padding: 1rem 1.25rem; border: 1px solid #e5e7eb; display: flex; flex-direction: column; gap: 0.25rem; }
 .nic-stat-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #6b7280; }
@@ -150,6 +175,10 @@
 .nic-stat-danger { border-left: 4px solid #dc2626; }
 .nic-stat-danger .nic-stat-label { color: #b91c1c; }
 .nic-stat-value-danger { color: #dc2626; }
+.nic-stat-lbs { border-left: 4px solid #2563eb; }
+.nic-stat-lbs .nic-stat-label { color: #1d4ed8; }
+.nic-stat-value-lbs { color: #1d4ed8; font-variant-numeric: tabular-nums; }
+.nic-item-weight { font-size: 0.8125rem; font-weight: 700; color: #1d4ed8; margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
 .nic-alert { padding: 0.5rem 0.75rem; font-size: 0.875rem; border-radius: 0.5rem; margin: 0 0 1rem; border: 1px solid; }
 .nic-alert-amber { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
 .nic-item-list { max-height: 16rem; overflow-y: auto; }
@@ -210,6 +239,10 @@
                 document.getElementById('nic-missing-count').textContent = result.data.missing_count;
                 document.getElementById('nic-total-items').textContent = result.data.total_items;
                 document.getElementById('nic-scanned-label-count').textContent = result.data.scanned_count;
+                var lbsEl = document.getElementById('nic-scanned-lbs');
+                if (lbsEl && result.data.scanned_lbs_total !== undefined) {
+                    lbsEl.textContent = Number(result.data.scanned_lbs_total).toFixed(1);
+                }
 
                 var scannedList = document.getElementById('nic-scanned-list');
                 if (scannedList) {

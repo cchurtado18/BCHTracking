@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreConsolidationRequest;
+use App\Http\Requests\StoreConsolidationScanRequest;
 use App\Models\Consolidation;
 use App\Models\ConsolidationItem;
 use App\Models\Preregistration;
 use App\Services\ConsolidationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ConsolidationController extends Controller
 {
@@ -62,6 +64,11 @@ class ConsolidationController extends Controller
 
     public function create()
     {
+        return view('consolidations.create');
+    }
+
+    public function createSelect()
+    {
         $availablePreregistrations = Preregistration::where('status', 'RECEIVED_MIAMI')
             ->whereDoesntHave('consolidationItem')
             ->orderBy('created_at', 'desc')
@@ -72,7 +79,18 @@ class ConsolidationController extends Controller
             'AIR' => $availablePreregistrations->get('AIR', collect()),
             'SEA' => $availablePreregistrations->get('SEA', collect()),
         ];
-        return view('consolidations.create', compact('availableByServiceType'));
+
+        return view('consolidations.create-select', compact('availableByServiceType'));
+    }
+
+    public function createScan()
+    {
+        $scanLookup = Preregistration::where('status', 'RECEIVED_MIAMI')
+            ->whereDoesntHave('consolidationItem')
+            ->orderBy('created_at', 'desc')
+            ->get(['id', 'tracking_external', 'warehouse_code', 'label_name', 'service_type', 'intake_weight_lbs', 'verified_weight_lbs']);
+
+        return view('consolidations.create-scan', compact('scanLookup'));
     }
 
     public function store(StoreConsolidationRequest $request)
@@ -84,10 +102,11 @@ class ConsolidationController extends Controller
         $consolidation = Consolidation::create($data);
 
         $ids = $request->input('preregistration_ids', []);
+
         if (is_array($ids)) {
             foreach ($ids as $preregId) {
                 $pre = Preregistration::find($preregId);
-                if ($pre && $pre->status === 'RECEIVED_MIAMI' && $pre->service_type === $consolidation->service_type && !$pre->consolidationItem) {
+                if ($pre && $pre->status === 'RECEIVED_MIAMI' && $pre->service_type === $consolidation->service_type && ! $pre->consolidationItem) {
                     ConsolidationItem::create([
                         'consolidation_id' => $consolidation->id,
                         'preregistration_id' => $pre->id,
@@ -98,6 +117,116 @@ class ConsolidationController extends Controller
 
         return redirect()->route('consolidations.label', $consolidation->id)
             ->with('success', 'Saco creado. Imprime la etiqueta del saco para pegarla al mismo.');
+    }
+
+    public function storeScan(StoreConsolidationScanRequest $request)
+    {
+        $codes = collect($request->input('entry_codes', []))
+            ->map(fn ($c) => strtoupper(trim((string) $c)))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($codes->isEmpty()) {
+            return redirect()->route('consolidations.create-scan')
+                ->withInput($request->except('entry_codes'))
+                ->with('error', 'Agregue al menos un código escaneado antes de crear el saco.');
+        }
+
+        $sackService = $request->validated()['service_type'];
+        foreach ($codes as $code) {
+            $anyMatch = $this->findPreregistrationByCodeAnyService($code);
+            if ($anyMatch && $anyMatch->service_type !== $sackService) {
+                $sackLabel = $sackService === 'AIR' ? 'aéreo' : 'marítimo';
+                $pkgLabel = $anyMatch->service_type === 'AIR' ? 'aéreo' : 'marítimo';
+
+                return redirect()->route('consolidations.create-scan')
+                    ->withInput($request->except('entry_codes'))
+                    ->withErrors([
+                        'entry_codes' => "El código {$code} corresponde a un paquete {$pkgLabel} en preregistro, no {$sackLabel}. Cambie el tipo de servicio del saco o elimine ese código de la lista.",
+                    ]);
+            }
+        }
+
+        $consolidation = DB::transaction(function () use ($request, $codes) {
+            $consolidation = Consolidation::create([
+                'code' => $this->consolidationService->generateCode(),
+                'service_type' => $request->validated()['service_type'],
+                'status' => 'OPEN',
+                'notes' => $request->validated()['notes'] ?? null,
+            ]);
+
+            foreach ($codes as $code) {
+                $pre = $this->findPreregistrationForSackScan($code, $consolidation->service_type);
+                if ($pre) {
+                    if (! filled($pre->tracking_external)) {
+                        $pre->tracking_external = $code;
+                        $pre->save();
+                    }
+                    ConsolidationItem::create([
+                        'consolidation_id' => $consolidation->id,
+                        'preregistration_id' => $pre->id,
+                        'unmatched_code' => null,
+                    ]);
+                } else {
+                    ConsolidationItem::create([
+                        'consolidation_id' => $consolidation->id,
+                        'preregistration_id' => null,
+                        'unmatched_code' => $code,
+                    ]);
+                }
+            }
+
+            return $consolidation;
+        });
+
+        return redirect()->route('consolidations.label', $consolidation->id)
+            ->with('success', 'Saco creado por escaneo. Imprime la etiqueta del saco para pegarla al mismo.');
+    }
+
+    /**
+     * Busca preregistro en Miami por tracking/warehouse sin filtrar por tipo de servicio.
+     */
+    protected function findPreregistrationByCodeAnyService(string $normalizedCode): ?Preregistration
+    {
+        if ($normalizedCode === '') {
+            return null;
+        }
+
+        return Preregistration::query()
+            ->where('status', 'RECEIVED_MIAMI')
+            ->whereDoesntHave('consolidationItem')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->first(function (Preregistration $p) use ($normalizedCode) {
+                $t = strtoupper(trim((string) ($p->tracking_external ?? '')));
+                $w = strtoupper(trim((string) ($p->warehouse_code ?? '')));
+
+                return $normalizedCode === $t || $normalizedCode === $w;
+            });
+    }
+
+    /**
+     * Preregistro en Miami disponible para saco, coincidiendo por tracking o warehouse (mismo tipo de servicio).
+     */
+    protected function findPreregistrationForSackScan(string $normalizedCode, string $serviceType): ?Preregistration
+    {
+        if ($normalizedCode === '') {
+            return null;
+        }
+
+        return Preregistration::query()
+            ->where('status', 'RECEIVED_MIAMI')
+            ->where('service_type', $serviceType)
+            ->whereDoesntHave('consolidationItem')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->first(function (Preregistration $p) use ($normalizedCode) {
+                $t = strtoupper(trim((string) ($p->tracking_external ?? '')));
+                $w = strtoupper(trim((string) ($p->warehouse_code ?? '')));
+
+                return $normalizedCode === $t || $normalizedCode === $w;
+            });
     }
 
     public function label(string $id)
@@ -191,7 +320,7 @@ class ConsolidationController extends Controller
         }
         try {
             $this->consolidationService->sendConsolidation($consolidation);
-            return back()->with('success', 'Saco enviado. Los preregistros pasaron a IN_TRANSIT.');
+            return back()->with('success', 'Saco enviado. Los paquetes vinculados a un preregistro pasaron a IN_TRANSIT.');
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }

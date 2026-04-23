@@ -93,7 +93,7 @@ class Preregistration extends Model
 
     public function photos(): HasMany
     {
-        return $this->hasMany(PreregistrationPhoto::class);
+        return $this->hasMany(PreregistrationPhoto::class)->orderBy('sort_order')->orderBy('id');
     }
 
     public function agency(): BelongsTo

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePreregistrationRequest;
 use App\Models\Agency;
 use App\Models\Preregistration;
+use App\Models\PreregistrationPhoto;
 use App\Services\PreregistrationPhotoService;
 use App\Services\WarehouseService;
 use Illuminate\Http\Request;
@@ -528,6 +529,43 @@ class PreregistrationController extends Controller
             }
             return redirect()->route('preregistrations.show', $preregistration->id)->with('error', $e->getMessage());
         }
+    }
+
+    public function movePhoto(Request $request, string $id, PreregistrationPhoto $photo)
+    {
+        $preregistration = Preregistration::findOrFail($id);
+        if ((int) $photo->preregistration_id !== (int) $preregistration->id) {
+            abort(404);
+        }
+
+        $request->validate([
+            'direction' => ['required', Rule::in(['up', 'down'])],
+        ]);
+
+        $photos = $preregistration->photos()->orderBy('sort_order')->orderBy('id')->get();
+        $index = $photos->search(fn (PreregistrationPhoto $p) => (int) $p->id === (int) $photo->id);
+        if ($index === false) {
+            abort(404);
+        }
+
+        $offset = $request->input('direction') === 'up' ? -1 : 1;
+        $swapIndex = $index + $offset;
+        if ($swapIndex < 0 || $swapIndex >= $photos->count()) {
+            return redirect()->route('preregistrations.edit', $preregistration->id)
+                ->with('error', 'No se puede mover la foto en esa dirección.');
+        }
+
+        $a = $photos[$index];
+        $b = $photos[$swapIndex];
+        $orderA = (int) $a->sort_order;
+        $orderB = (int) $b->sort_order;
+        $a->sort_order = $orderB;
+        $b->sort_order = $orderA;
+        $a->save();
+        $b->save();
+
+        return redirect()->route('preregistrations.edit', $preregistration->id)
+            ->with('success', 'Orden de las fotos actualizado.');
     }
 
     public function label(Request $request, string $id)

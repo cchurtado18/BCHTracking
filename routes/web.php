@@ -54,8 +54,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('preregistrations/{id}/label', [PreregistrationController::class, 'label'])->name('preregistrations.label');
     Route::get('preregistrations-dropoff-labels', [PreregistrationController::class, 'dropoffLabels'])->name('preregistrations.dropoff-labels');
     Route::post('preregistrations/{id}/photos', [PreregistrationController::class, 'uploadPhoto'])->name('preregistrations.upload-photo');
+    Route::post('preregistrations/{id}/photos/{photo}/move', [PreregistrationController::class, 'movePhoto'])->name('preregistrations.photos.move');
 
     Route::post('preregistrations/{preregistration}/create-single-consolidation', [ConsolidationController::class, 'createSingleFromPreregistration'])->name('preregistrations.create-single-consolidation');
+    Route::get('consolidations/create/select', [ConsolidationController::class, 'createSelect'])->name('consolidations.create-select');
+    Route::get('consolidations/create/scan', [ConsolidationController::class, 'createScan'])->name('consolidations.create-scan');
+    Route::post('consolidations/store-scan', [ConsolidationController::class, 'storeScan'])->name('consolidations.store-scan');
     Route::resource('consolidations', ConsolidationController::class);
     Route::get('consolidations/{id}/label', [ConsolidationController::class, 'label'])->name('consolidations.label');
     Route::post('consolidations/{id}/add-item', [ConsolidationController::class, 'addItem'])->name('consolidations.add-item');

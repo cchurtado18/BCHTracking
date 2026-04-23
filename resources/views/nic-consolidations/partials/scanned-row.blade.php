@@ -1,4 +1,7 @@
-<div class="nic-item-row nic-scan-item nic-scanned-item" data-code="{{ $item->preregistration->warehouse_code ?? $item->preregistration->tracking_external ?? '' }}">
+@php
+    $rowLbs = round((float) ($item->preregistration->verified_weight_lbs ?? $item->preregistration->intake_weight_lbs ?? 0), 2);
+@endphp
+<div class="nic-item-row nic-scan-item nic-scanned-item" data-code="{{ $item->preregistration->warehouse_code ?? $item->preregistration->tracking_external ?? '' }}" data-weight-lbs="{{ $rowLbs }}">
     <div class="nic-item-name">{{ $item->preregistration->label_name }}</div>
     <div class="nic-item-meta">
         Código: <span class="font-mono">{{ $item->preregistration->warehouse_code ?? $item->preregistration->tracking_external ?? 'N/A' }}</span>
@@ -6,5 +9,6 @@
         <span class="nic-item-bulto">(bulto {{ $item->preregistration->bulto_index }} de {{ $item->preregistration->bultos_total }})</span>
         @endif
     </div>
+    <div class="nic-item-weight">{{ number_format($rowLbs, 2) }} lbs</div>
     <div class="nic-item-scanned-at">✓ {{ $item->scanned_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</div>
 </div>

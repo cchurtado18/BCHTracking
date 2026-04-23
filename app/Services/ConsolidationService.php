@@ -58,8 +58,10 @@ class ConsolidationService
             ]);
 
             // Update all preregistrations to IN_TRANSIT
-            $preregistrationIds = $consolidation->items()->pluck('preregistration_id');
-            
+            $preregistrationIds = $consolidation->items()
+                ->whereNotNull('preregistration_id')
+                ->pluck('preregistration_id');
+
             DB::table('preregistrations')
                 ->whereIn('id', $preregistrationIds)
                 ->update(['status' => 'IN_TRANSIT']);
@@ -76,18 +78,22 @@ class ConsolidationService
     {
         $items = $consolidation->items()->with('preregistration')->get();
 
+        $linkedItems = $items->whereNotNull('preregistration_id');
+        $unmatchedItems = $items->whereNull('preregistration_id');
+
         $totalItems = $items->count();
-        $totalLbs = $items->sum(function ($item) {
+        $totalLbs = $linkedItems->sum(function ($item) {
             return $item->preregistration->intake_weight_lbs ?? 0;
         });
-        $scannedCount = $items->whereNotNull('scanned_at')->count();
-        $missingCount = $totalItems - $scannedCount;
+        $scannedCount = $linkedItems->whereNotNull('scanned_at')->count();
+        $missingCount = $linkedItems->count() - $scannedCount;
 
         return [
             'total_items' => $totalItems,
             'total_lbs' => round($totalLbs, 2),
             'scanned_count' => $scannedCount,
             'missing_count' => $missingCount,
+            'unmatched_count' => $unmatchedItems->count(),
         ];
     }
 }

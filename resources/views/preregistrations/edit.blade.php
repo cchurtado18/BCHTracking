@@ -25,6 +25,17 @@
     </div>
     @endif
 
+    @if(session('success'))
+    <div class="preregs-alert preregs-alert-success" role="status">
+        <p class="preregs-alert-title">{{ session('success') }}</p>
+    </div>
+    @endif
+    @if(session('error'))
+    <div class="preregs-alert preregs-alert-danger" role="alert">
+        <p class="preregs-alert-title">{{ session('error') }}</p>
+    </div>
+    @endif
+
     <div class="preregs-card preregs-form-card">
         <div class="preregs-card-header preregs-form-header">
             <h2 class="preregs-card-title">Datos del preregistro</h2>
@@ -113,12 +124,34 @@
             @if($preregistration->photos->count() > 0)
             <aside class="preregs-edit-photo">
                 <h3 class="preregs-edit-photo-title">Fotos del paquete ({{ $preregistration->photos->count() }})</h3>
+                @if($preregistration->photos->count() > 1)
+                <p class="preregs-edit-photo-order-hint">Use las flechas para cambiar el orden en que se muestran las fotos.</p>
+                @endif
                 <div class="preregs-edit-photos-list">
+                    @php $photoTotal = $preregistration->photos->count(); @endphp
                     @foreach($preregistration->photos as $idx => $photo)
                     <div class="preregs-photo-wrap">
                         <a href="{{ $photo->url }}" target="_blank" class="preregs-photo-link-block" title="Abrir foto {{ $idx + 1 }} en tamaño completo">
                             <img src="{{ $photo->url }}" alt="Foto del paquete {{ $idx + 1 }}" class="preregs-photo-img">
                         </a>
+                        @if($photoTotal > 1)
+                        <div class="preregs-photo-order-row" role="group" aria-label="Orden de la foto {{ $idx + 1 }}">
+                            <form method="POST" action="{{ route('preregistrations.photos.move', ['id' => $preregistration->id, 'photo' => $photo->id]) }}" class="preregs-photo-order-form">
+                                @csrf
+                                <input type="hidden" name="direction" value="up">
+                                <button type="submit" class="preregs-photo-order-btn" title="Mover arriba" aria-label="Mover foto {{ $idx + 1 }} hacia arriba" @if($idx === 0) disabled @endif>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m18 15-6-6-6 6"/></svg>
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ route('preregistrations.photos.move', ['id' => $preregistration->id, 'photo' => $photo->id]) }}" class="preregs-photo-order-form">
+                                @csrf
+                                <input type="hidden" name="direction" value="down">
+                                <button type="submit" class="preregs-photo-order-btn" title="Mover abajo" aria-label="Mover foto {{ $idx + 1 }} hacia abajo" @if($idx === $photoTotal - 1) disabled @endif>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>
+                                </button>
+                            </form>
+                        </div>
+                        @endif
                         <p class="preregs-photo-link-wrap">
                             <a href="{{ $photo->url }}" target="_blank" class="preregs-link">Usar foto {{ $idx + 1 }} (ver completa)</a>
                         </p>
@@ -149,6 +182,7 @@
 .preregs-hero-btn:hover { background: #f0fdfa; color: #0d9488; }
 .preregs-alert { padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.875rem; }
 .preregs-alert-danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+.preregs-alert-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
 .preregs-alert-title { font-weight: 600; margin-bottom: 0.35rem; }
 .preregs-alert-list { margin: 0; padding-left: 1.25rem; }
 .preregs-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; margin-bottom: 1.5rem; }
@@ -177,5 +211,16 @@
 .preregs-photo-link-wrap { margin-top: 0.75rem; font-size: 0.8125rem; }
 .preregs-edit-photo-title { font-size: 0.95rem; font-weight: 600; color: #374151; margin: 0 0 0.75rem; }
 .preregs-edit-photo-hint { font-size: 0.8125rem; color: #6b7280; margin-top: 0.75rem; }
+.preregs-edit-photo-order-hint { font-size: 0.8125rem; color: #6b7280; margin: 0 0 0.75rem; }
+.preregs-photo-order-row { display: flex; gap: 0.35rem; justify-content: center; align-items: center; margin-top: 0.5rem; }
+.preregs-photo-order-form { margin: 0; display: inline; }
+.preregs-photo-order-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 2.25rem; height: 2.25rem; padding: 0;
+    border: 1px solid #d1d5db; border-radius: 0.375rem; background: #f9fafb; color: #374151;
+    cursor: pointer; line-height: 0;
+}
+.preregs-photo-order-btn:hover:not(:disabled) { background: #f0fdfa; border-color: #0d9488; color: #0f766e; }
+.preregs-photo-order-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 </style>
 @endsection
