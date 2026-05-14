@@ -11,10 +11,143 @@ use Illuminate\Http\Request;
 
 class DeliveryController extends Controller
 {
+    private const SESSION_BATCH_RETIRER = 'delivery_batch_retirer';
+
+    private const SESSION_SCAN_RETIRER = 'delivery_scan_retirer';
+
+    private function batchRetirerSignature(int $agencyId, ?string $serviceType): string
+    {
+        return hash('sha256', json_encode(['agency_id' => $agencyId, 'service_type' => $serviceType ?? '']));
+    }
+
+    private function batchRetirerSessionMatches(?array $session, DeliveryNote $deliveryNote, int $agencyId, ?string $serviceType): bool
+    {
+        if (! is_array($session)) {
+            return false;
+        }
+
+        return (int) ($session['delivery_note_id'] ?? 0) === (int) $deliveryNote->id
+            && ($session['signature'] ?? '') === $this->batchRetirerSignature($agencyId, $serviceType);
+    }
+
+    private function mergeBatchRetirerFromSession(Request $request): void
+    {
+        if (! $request->boolean('return_to_batch') || ! $request->filled('delivery_note_id')) {
+            return;
+        }
+
+        $note = DeliveryNote::find((int) $request->delivery_note_id);
+        if (! $note) {
+            return;
+        }
+
+        $agencyId = $request->filled('agency_id') ? (int) $request->agency_id : ($request->filled('main_agency_id') ? (int) $request->main_agency_id : 0);
+        if ($agencyId <= 0) {
+            return;
+        }
+
+        $serviceType = $request->filled('service_type') && in_array($request->service_type, ['AIR', 'SEA'], true)
+            ? $request->service_type
+            : null;
+
+        $session = session(self::SESSION_BATCH_RETIRER);
+        if (! $this->batchRetirerSessionMatches($session, $note, $agencyId, $serviceType)) {
+            return;
+        }
+
+        $merge = [];
+        if (! $request->filled('delivered_to')) {
+            $merge['delivered_to'] = $session['delivered_to'] ?? '';
+        }
+        if (! $request->filled('retirer_id_number')) {
+            $merge['retirer_id_number'] = $session['retirer_id_number'] ?? '';
+        }
+        if (! $request->filled('retirer_phone')) {
+            $merge['retirer_phone'] = $session['retirer_phone'] ?? '';
+        }
+        if (! $request->filled('delivery_type')) {
+            $merge['delivery_type'] = $session['delivery_type'] ?? 'PICKUP';
+        }
+
+        if ($merge !== []) {
+            $request->merge($merge);
+        }
+    }
+
+    private function mergeScanRetirerFromSession(Request $request): void
+    {
+        if ($request->boolean('return_to_batch')) {
+            return;
+        }
+
+        $session = session(self::SESSION_SCAN_RETIRER);
+        if (! is_array($session)) {
+            return;
+        }
+
+        $merge = [];
+        if (! $request->filled('delivered_to')) {
+            $merge['delivered_to'] = $session['delivered_to'] ?? '';
+        }
+        if (! $request->filled('retirer_id_number')) {
+            $merge['retirer_id_number'] = $session['retirer_id_number'] ?? '';
+        }
+        if (! $request->filled('retirer_phone')) {
+            $merge['retirer_phone'] = $session['retirer_phone'] ?? '';
+        }
+        if (! $request->filled('delivery_type')) {
+            $merge['delivery_type'] = $session['delivery_type'] ?? 'PICKUP';
+        }
+
+        if ($merge !== []) {
+            $request->merge($merge);
+        }
+    }
+
+    private function persistBatchRetirerSession(Request $request): void
+    {
+        if (! $request->boolean('return_to_batch') || ! $request->filled('delivery_note_id')) {
+            return;
+        }
+
+        $agencyId = $request->filled('agency_id') ? (int) $request->agency_id : ($request->filled('main_agency_id') ? (int) $request->main_agency_id : 0);
+        if ($agencyId <= 0) {
+            return;
+        }
+
+        $serviceType = $request->filled('service_type') && in_array($request->service_type, ['AIR', 'SEA'], true)
+            ? $request->service_type
+            : null;
+
+        session([self::SESSION_BATCH_RETIRER => [
+            'delivery_note_id' => (int) $request->delivery_note_id,
+            'signature' => $this->batchRetirerSignature($agencyId, $serviceType),
+            'delivered_to' => $request->delivered_to,
+            'retirer_id_number' => $request->retirer_id_number,
+            'retirer_phone' => $request->retirer_phone,
+            'delivery_type' => $request->delivery_type,
+        ]]);
+    }
+
+    private function persistScanRetirerSession(Request $request): void
+    {
+        if ($request->boolean('return_to_batch')) {
+            return;
+        }
+
+        session([self::SESSION_SCAN_RETIRER => [
+            'delivered_to' => $request->delivered_to,
+            'retirer_id_number' => $request->retirer_id_number,
+            'retirer_phone' => $request->retirer_phone,
+            'delivery_type' => $request->delivery_type,
+        ]]);
+    }
+
     public function index(Request $request)
     {
         if ($request->has('clear_agency')) {
             session()->forget(['deliveries_index_agency_id', 'deliveries_index_service_type']);
+
             return redirect()->route('deliveries.index');
         }
 
@@ -30,6 +163,7 @@ class DeliveryController extends Controller
             if (session()->has('deliveries_index_service_type')) {
                 $params['service_type'] = session('deliveries_index_service_type');
             }
+
             return redirect()->route('deliveries.index', $params);
         }
 
@@ -37,8 +171,8 @@ class DeliveryController extends Controller
         $mainAgencies = Agency::mainAgencies()->where('is_active', true)->orderBy('name')->get();
         $subAgencies = Agency::where('is_main', false)->where('is_active', true)->with('parent')->orderBy('name')->get();
         $agenciesForSelect = collect()
-            ->merge($mainAgencies->map(fn ($a) => (object) ['id' => $a->id, 'name' => $a->name . ' (Agencia principal)', 'is_main' => true]))
-            ->merge($subAgencies->map(fn ($a) => (object) ['id' => $a->id, 'name' => $a->name . ($a->parent ? ' — ' . $a->parent->name : ''), 'is_main' => false]))
+            ->merge($mainAgencies->map(fn ($a) => (object) ['id' => $a->id, 'name' => $a->name.' (Agencia principal)', 'is_main' => true]))
+            ->merge($subAgencies->map(fn ($a) => (object) ['id' => $a->id, 'name' => $a->name.($a->parent ? ' — '.$a->parent->name : ''), 'is_main' => false]))
             ->sortBy('name')
             ->values();
 
@@ -131,7 +265,7 @@ class DeliveryController extends Controller
 
         if ($agencyId > 0) {
             $agency = Agency::find($agencyId);
-            if (!$agency) {
+            if (! $agency) {
                 return redirect()->route('deliveries.index')->with('error', 'Agencia no encontrada.');
             }
             $mainAgencyId = $agency->is_main ? $agency->id : null;
@@ -167,7 +301,7 @@ class DeliveryController extends Controller
 
         if ($request->filled('delivery_note_id')) {
             $deliveryNote = DeliveryNote::find((int) $request->delivery_note_id);
-            if (!$deliveryNote) {
+            if (! $deliveryNote) {
                 return redirect()->route('deliveries.batch', $filterParams)->with('error', 'Nota de entrega no encontrada.');
             }
         } else {
@@ -175,16 +309,78 @@ class DeliveryController extends Controller
                 'code' => DeliveryNote::generateCode(),
                 'agency_id' => $agency?->id,
             ]);
+
             return redirect()->route('deliveries.batch', array_merge($filterParams, ['delivery_note_id' => $deliveryNote->id]));
         }
+
+        $batchRetirerSession = session(self::SESSION_BATCH_RETIRER);
+        $retirerSessionActive = $this->batchRetirerSessionMatches($batchRetirerSession, $deliveryNote, (int) $agency->id, $serviceType);
 
         return view('deliveries.batch', compact(
             'availablePackages',
             'agencyName',
             'agency',
             'filterParams',
-            'deliveryNote'
+            'deliveryNote',
+            'retirerSessionActive',
+            'batchRetirerSession'
         ));
+    }
+
+    public function storeBatchRetirerSession(Request $request)
+    {
+        $validated = $request->validate([
+            'delivery_note_id' => 'required|exists:delivery_notes,id',
+            'agency_id' => 'required|exists:agencies,id',
+            'service_type' => 'nullable|in:AIR,SEA',
+            'delivered_to' => 'required|string|max:255',
+            'retirer_id_number' => 'required|string|max:50',
+            'retirer_phone' => 'required|string|max:50',
+            'delivery_type' => 'required|in:PICKUP,DELIVERY',
+        ], [
+            'delivered_to.required' => 'El nombre de quien retira es obligatorio.',
+            'retirer_id_number.required' => 'El número de cédula de quien retira es obligatorio.',
+            'retirer_phone.required' => 'El número telefónico de quien retira es obligatorio.',
+        ]);
+
+        $serviceType = $validated['service_type'] ?? null;
+        session([self::SESSION_BATCH_RETIRER => [
+            'delivery_note_id' => (int) $validated['delivery_note_id'],
+            'signature' => $this->batchRetirerSignature((int) $validated['agency_id'], $serviceType),
+            'delivered_to' => $validated['delivered_to'],
+            'retirer_id_number' => $validated['retirer_id_number'],
+            'retirer_phone' => $validated['retirer_phone'],
+            'delivery_type' => $validated['delivery_type'],
+        ]]);
+
+        $redirectParams = array_filter([
+            'agency_id' => (int) $validated['agency_id'],
+            'service_type' => $serviceType,
+            'delivery_note_id' => (int) $validated['delivery_note_id'],
+        ]);
+
+        return redirect()->route('deliveries.batch', $redirectParams)
+            ->with('success', 'Datos de quien retira guardados. Ya puede escanear los paquetes.');
+    }
+
+    public function clearBatchRetirerSession(Request $request)
+    {
+        $request->validate([
+            'delivery_note_id' => 'required|exists:delivery_notes,id',
+            'agency_id' => 'required|exists:agencies,id',
+            'service_type' => 'nullable|in:AIR,SEA',
+        ]);
+
+        session()->forget(self::SESSION_BATCH_RETIRER);
+
+        $redirectParams = array_filter([
+            'agency_id' => (int) $request->agency_id,
+            'service_type' => $request->filled('service_type') ? $request->service_type : null,
+            'delivery_note_id' => (int) $request->delivery_note_id,
+        ]);
+
+        return redirect()->route('deliveries.batch', $redirectParams)
+            ->with('success', 'Indique de nuevo los datos de quien retira para continuar escaneando.');
     }
 
     /**
@@ -252,6 +448,7 @@ class DeliveryController extends Controller
             $clientAddress = '—';
             $deliveryAddress = $agency->address ?? null;
             $deliveryPhone = $agency->phone ?? null;
+
             return view('deliveries.print-report-nota-cobro', compact(
                 'deliveries', 'agencyName', 'agency', 'date', 'deliveryNote',
                 'clientName', 'clientPhone', 'clientAddress', 'deliveryAddress', 'deliveryPhone'
@@ -263,11 +460,52 @@ class DeliveryController extends Controller
 
     public function scan()
     {
-        return view('deliveries.scan');
+        $scanRetirerSession = session(self::SESSION_SCAN_RETIRER);
+        $scanRetirerSessionActive = is_array($scanRetirerSession)
+            && filled($scanRetirerSession['delivered_to'] ?? null)
+            && filled($scanRetirerSession['retirer_id_number'] ?? null)
+            && filled($scanRetirerSession['retirer_phone'] ?? null);
+
+        return view('deliveries.scan', compact('scanRetirerSession', 'scanRetirerSessionActive'));
+    }
+
+    public function storeScanRetirerSession(Request $request)
+    {
+        $validated = $request->validate([
+            'delivered_to' => 'required|string|max:255',
+            'retirer_id_number' => 'required|string|max:50',
+            'retirer_phone' => 'required|string|max:50',
+            'delivery_type' => 'required|in:PICKUP,DELIVERY',
+        ], [
+            'delivered_to.required' => 'El nombre de quien retira es obligatorio.',
+            'retirer_id_number.required' => 'El número de cédula de quien retira es obligatorio.',
+            'retirer_phone.required' => 'El número telefónico de quien retira es obligatorio.',
+        ]);
+
+        session([self::SESSION_SCAN_RETIRER => [
+            'delivered_to' => $validated['delivered_to'],
+            'retirer_id_number' => $validated['retirer_id_number'],
+            'retirer_phone' => $validated['retirer_phone'],
+            'delivery_type' => $validated['delivery_type'],
+        ]]);
+
+        return redirect()->route('deliveries.scan')
+            ->with('success', 'Datos de quien retira guardados. Ya puede escanear los códigos warehouse.');
+    }
+
+    public function clearScanRetirerSession()
+    {
+        session()->forget(self::SESSION_SCAN_RETIRER);
+
+        return redirect()->route('deliveries.scan')
+            ->with('success', 'Indique de nuevo los datos de quien retira.');
     }
 
     public function processScan(Request $request)
     {
+        $this->mergeBatchRetirerFromSession($request);
+        $this->mergeScanRetirerFromSession($request);
+
         $request->validate([
             'warehouse_code' => 'required|string|size:6|regex:/^\d{6}$/',
             'bulto_index' => 'nullable|integer|min:1|max:255',
@@ -291,7 +529,7 @@ class DeliveryController extends Controller
 
         if ($candidates->isEmpty()) {
             $any = Preregistration::where('warehouse_code', $request->warehouse_code)->first();
-            if (!$any) {
+            if (! $any) {
                 return back()->with('error', 'Código de almacén no encontrado.')->withInput();
             }
             if ($any->status !== 'READY') {
@@ -300,6 +538,7 @@ class DeliveryController extends Controller
             if ($any->delivery) {
                 return back()->with('error', 'El paquete ya fue entregado.')->withInput();
             }
+
             return back()->with('error', 'No hay paquetes pendientes con ese código.')->withInput();
         }
 
@@ -309,8 +548,8 @@ class DeliveryController extends Controller
                 return back()->with('error', 'Varios bultos con este código. Indique cuál entregó (ej. 1/11, 2/11…).')->withInput();
             }
             $preregistration = $candidates->firstWhere('bulto_index', $bultoIndex);
-            if (!$preregistration) {
-                return back()->with('error', 'Bulto ' . $bultoIndex . '/' . ($candidates->first()->bultos_total ?? '?') . ' no encontrado o ya entregado.')->withInput();
+            if (! $preregistration) {
+                return back()->with('error', 'Bulto '.$bultoIndex.'/'.($candidates->first()->bultos_total ?? '?').' no encontrado o ya entregado.')->withInput();
             }
         } else {
             $preregistration = $candidates->first();
@@ -348,23 +587,31 @@ class DeliveryController extends Controller
 
         $preregistration->update(['status' => 'DELIVERED']);
 
+        $this->persistBatchRetirerSession($request);
+        $this->persistScanRetirerSession($request);
+
         if ($request->boolean('return_to_batch')) {
             $params = array_filter([
                 'main_agency_id' => $request->main_agency_id,
                 'agency_id' => $request->agency_id,
                 'delivery_note_id' => $request->delivery_note_id,
+                'service_type' => $request->filled('service_type') && in_array($request->service_type, ['AIR', 'SEA'], true)
+                    ? $request->service_type
+                    : null,
             ]);
+
             return redirect()->route('deliveries.batch', $params)
-                ->with('success', 'Entrega registrada: ' . $preregistration->label_name);
+                ->with('success', 'Entrega registrada: '.$preregistration->label_name);
         }
 
         return redirect()->route('deliveries.show', $delivery->id)
-            ->with('success', 'Entrega registrada: ' . $preregistration->label_name);
+            ->with('success', 'Entrega registrada: '.$preregistration->label_name);
     }
 
     public function show(string $id)
     {
         $delivery = Delivery::with('preregistration.agency')->findOrFail($id);
+
         return view('deliveries.show', compact('delivery'));
     }
 }

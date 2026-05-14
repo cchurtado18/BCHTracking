@@ -42,6 +42,7 @@ class AuditLog extends Model
             'created' => 'Creado',
             'updated' => 'Modificado',
             'deleted' => 'Eliminado',
+            'admin_reset_to_miami' => 'Admin: volver a Miami',
             default => $this->action,
         };
     }

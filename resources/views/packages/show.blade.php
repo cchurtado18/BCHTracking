@@ -39,6 +39,9 @@
     </header>
 
     <div class="packages-show-grid">
+        <div class="packages-admin-reset-span">
+            @include('preregistrations.partials.admin-reset-to-miami', ['preregistration' => $package, 'returnToPackage' => true])
+        </div>
         {{-- Card Información --}}
         <div class="packages-card">
             <div class="packages-card-header packages-table-header">
@@ -195,6 +198,9 @@
             @endif
         </div>
     </div>
+    @if(session('open_label_autoprint') && $package->warehouse_code)
+    <iframe src="{{ route('preregistrations.label', $package->id) }}?autoprint=1" title="Impresión de etiqueta" class="packages-label-print-helper" aria-hidden="true"></iframe>
+    @endif
 </div>
 
 <style>
@@ -236,6 +242,7 @@
 .packages-btn-sm { padding: 0.35rem 0.65rem; font-size: 0.8125rem; }
 .mb-3 { margin-bottom: 0.75rem; }
 .packages-show-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; min-width: 0; }
+.packages-admin-reset-span { grid-column: 1 / -1; min-width: 0; }
 .packages-show-grid > .packages-card { min-width: 0; }
 .packages-show-grid > .packages-show-sidebar { min-width: 0; }
 @media (min-width: 992px) { .packages-show-grid { grid-template-columns: 1fr 1fr; } }
@@ -291,5 +298,6 @@
 .packages-label-embed { border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; background: #f9fafb; max-width: 100%; min-width: 0; }
 .packages-label-iframe { width: 100%; height: 380px; border: none; display: block; }
 @media (max-width: 639px) { .packages-label-iframe { height: 320px; } }
+.packages-label-print-helper { position: absolute; left: -9999px; top: 0; width: 1px; height: 1px; border: 0; visibility: hidden; pointer-events: none; }
 </style>
 @endsection

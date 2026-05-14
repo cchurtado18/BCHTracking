@@ -7,7 +7,7 @@
     <div class="mb-6 flex justify-between items-center">
         <div>
             <h1 class="text-3xl font-bold text-gray-900">Procesar Paquete #{{ $package->id }}</h1>
-            <p class="mt-2 text-sm text-gray-600">Asignar agencia y verificar peso</p>
+            <p class="mt-2 text-sm text-gray-600">Verificar peso; la agencia del preregistro se conserva salvo que elija otra</p>
         </div>
         <a href="{{ route('packages.show', $package->id) }}" class="text-gray-600 hover:text-gray-900">
             ← Volver
@@ -29,6 +29,16 @@
                 <div>
                     <dt class="text-sm font-medium text-gray-500">Peso Actual</dt>
                     <dd class="mt-1 text-sm text-gray-900">{{ $package->intake_weight_lbs }} lbs</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Agencia del preregistro</dt>
+                    <dd class="mt-1 text-sm text-gray-900">
+                        @if($package->agency)
+                            {{ $package->agency->name }}@if($package->agency->code) ({{ $package->agency->code }})@endif
+                        @else
+                            <span class="text-amber-700">Sin agencia — deberá elegir una al procesar</span>
+                        @endif
+                    </dd>
                 </div>
             </dl>
         </div>
@@ -52,16 +62,27 @@
                 @csrf
 
                 <div class="space-y-6">
+                    @php
+                        $processAgencyOld = old('agency_id');
+                        if ($processAgencyOld === null) {
+                            $processAgencySelected = $package->agency_id !== null ? (string) $package->agency_id : '';
+                        } else {
+                            $processAgencySelected = (string) $processAgencyOld;
+                        }
+                        $processAgencyBlankSelected = $package->agency_id && $processAgencySelected === '';
+                        $processAgencyPlaceholderSelected = ! $package->agency_id && $processAgencySelected === '';
+                    @endphp
                     <div>
-                        <label for="agency_id" class="block text-sm font-medium text-gray-700">Agencia *</label>
-                        <select name="agency_id" id="agency_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
-                            <option value="">Seleccione una agencia</option>
+                        <label for="agency_id" class="block text-sm font-medium text-gray-700">Cambiar agencia (opcional)</label>
+                        <select name="agency_id" id="agency_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            <option value="" @selected($processAgencyBlankSelected || $processAgencyPlaceholderSelected)>{{ $package->agency_id ? 'Mantener agencia del preregistro' : 'Seleccione una agencia' }}</option>
                             @foreach($agencies as $agency)
-                                <option value="{{ $agency->id }}" {{ old('agency_id') == $agency->id ? 'selected' : '' }}>
+                                <option value="{{ $agency->id }}" @selected(! $processAgencyBlankSelected && (string) $agency->id === $processAgencySelected)>
                                     {{ $agency->name }} @if($agency->code)({{ $agency->code }})@endif
                                 </option>
                             @endforeach
                         </select>
+                        <p class="mt-1 text-sm text-gray-500">Solo el peso verificado es obligatorio. Use esta lista si debe corregir la agencia.</p>
                         @error('agency_id')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror

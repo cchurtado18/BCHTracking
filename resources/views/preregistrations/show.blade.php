@@ -155,6 +155,8 @@
             </div>
         </div>
 
+        @include('preregistrations.partials.admin-reset-to-miami', ['preregistration' => $preregistration])
+
         <div class="preregs-card">
             <div class="preregs-card-header preregs-table-header preregs-card-header-photo">
                 <h2 class="preregs-card-title">Fotos del paquete ({{ $preregistration->photos->count() }}/3)</h2>

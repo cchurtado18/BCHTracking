@@ -7,17 +7,17 @@ use App\Models\Agency;
 use App\Models\Preregistration;
 use App\Services\PackageProcessingService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class PackageController extends Controller
 {
-    public function __construct(protected PackageProcessingService $packageService)
-    {
-    }
+    public function __construct(protected PackageProcessingService $packageService) {}
 
     public function index(Request $request)
     {
         if ($request->has('clear_filters')) {
             session()->forget('packages_index_filters');
+
             return redirect()->route('packages.index');
         }
 
@@ -100,17 +100,18 @@ class PackageController extends Controller
 
     public function show(string $id)
     {
-        $package = Preregistration::with(['photos', 'agency', 'consolidationItem.consolidation'])->findOrFail($id);
+        $package = Preregistration::with(['photos', 'agency', 'consolidationItem.consolidation', 'delivery'])->findOrFail($id);
         if (auth()->user() && auth()->user()->isAgencyUser() && (int) $package->agency_id !== (int) auth()->user()->agency_id) {
             abort(403, 'No tiene permiso para ver este paquete.');
         }
-        $package->photos->each(fn ($p) => $p->url = asset('storage/' . $p->path));
+        $package->photos->each(fn ($p) => $p->url = asset('storage/'.$p->path));
+
         return view('packages.show', compact('package'));
     }
 
     public function showProcess(string $id)
     {
-        $package = Preregistration::findOrFail($id);
+        $package = Preregistration::with('agency')->findOrFail($id);
         if (auth()->user() && auth()->user()->isAgencyUser() && (int) $package->agency_id !== (int) auth()->user()->agency_id) {
             abort(403, 'No tiene permiso para procesar este paquete.');
         }
@@ -119,6 +120,7 @@ class PackageController extends Controller
                 ->with('error', 'Solo se pueden procesar paquetes en almacén Nicaragua.');
         }
         $agencies = Agency::where('is_active', true)->orderBy('name')->get();
+
         return view('packages.process', compact('package', 'agencies'));
     }
 
@@ -126,17 +128,32 @@ class PackageController extends Controller
     {
         $package = Preregistration::findOrFail($id);
         $request->validate([
-            'agency_id' => 'required|exists:agencies,id',
+            'agency_id' => [
+                Rule::requiredIf(fn () => $package->agency_id === null),
+                'nullable',
+                'exists:agencies,id',
+            ],
             'verified_weight_lbs' => 'required|numeric|min:0.01',
         ]);
+        $agencyId = $request->filled('agency_id')
+            ? (int) $request->agency_id
+            : (int) $package->agency_id;
+        if ($agencyId <= 0) {
+            return back()
+                ->withErrors(['agency_id' => 'Seleccione una agencia: este paquete aún no tiene agencia asignada.'])
+                ->withInput();
+        }
         try {
             $this->packageService->processPackage(
                 $package,
-                (int) $request->agency_id,
+                $agencyId,
                 (float) $request->verified_weight_lbs
             );
-            return redirect()->route('packages.show', $package->id)
-                ->with('success', 'Paquete procesado. Estado: READY.');
+
+            return redirect()
+                ->route('packages.show', $package->id)
+                ->with('success', 'Paquete procesado (READY). Si no aparece el diálogo de impresión, use «Imprimir etiqueta».')
+                ->with('open_label_autoprint', true);
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage())->withInput();
         }
@@ -150,6 +167,7 @@ class PackageController extends Controller
         }
         try {
             $this->packageService->reprintLabel($package);
+
             return back()->with('success', 'Etiqueta reimprimida.');
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());

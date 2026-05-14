@@ -4,13 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Schema;
 
 class Preregistration extends Model
 {
     use SoftDeletes;
+
+    /** @var bool|null Cache: tabla preregistration_photos tiene columna sort_order */
+    protected static ?bool $preregistrationPhotosHasSortOrder = null;
 
     protected $fillable = [
         'intake_type',
@@ -49,6 +53,7 @@ class Preregistration extends Model
         if ($parsed === null) {
             return null;
         }
+
         return round(($parsed[0] * $parsed[1] * $parsed[2]) / 1728, 4);
     }
 
@@ -67,6 +72,7 @@ class Preregistration extends Model
                 return $nums;
             }
         }
+
         return null;
     }
 
@@ -93,7 +99,17 @@ class Preregistration extends Model
 
     public function photos(): HasMany
     {
-        return $this->hasMany(PreregistrationPhoto::class)->orderBy('sort_order')->orderBy('id');
+        $relation = $this->hasMany(PreregistrationPhoto::class);
+        if (static::$preregistrationPhotosHasSortOrder === null) {
+            static::$preregistrationPhotosHasSortOrder = Schema::hasColumn('preregistration_photos', 'sort_order');
+        }
+        if (static::$preregistrationPhotosHasSortOrder) {
+            $relation->orderBy('sort_order')->orderBy('id');
+        } else {
+            $relation->orderBy('id');
+        }
+
+        return $relation;
     }
 
     public function agency(): BelongsTo

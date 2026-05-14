@@ -8,6 +8,8 @@
     if (isset($deliveryNote)) {
         $printReportParams['delivery_note_id'] = $deliveryNote->id;
     }
+    $retirerSessionActive = $retirerSessionActive ?? false;
+    $batchRetirerSession = is_array($batchRetirerSession ?? null) ? $batchRetirerSession : [];
 @endphp
 
 <div class="delivery-page delivery-batch-page">
@@ -72,35 +74,83 @@
                 </table>
             </div>
 
-            <div class="delivery-scan-box">
-                <h3 class="delivery-scan-title">Proceder a escanear</h3>
-                <form action="{{ route('deliveries.process-scan') }}" method="POST" class="delivery-scan-form">
+            @if(!$retirerSessionActive)
+            <div class="delivery-retirer-confirm-box">
+                <h3 class="delivery-retirer-step-title">1. Datos de quien retira (una sola vez)</h3>
+                <p class="delivery-hint delivery-retirer-step-hint">Indique nombre completo, cédula y teléfono de la persona que retira. Luego podrá escanear todos los paquetes sin volver a escribir estos datos.</p>
+                <form action="{{ route('deliveries.batch-retirer-session') }}" method="POST" class="delivery-retirer-form">
                     @csrf
-                    <input type="hidden" name="return_to_batch" value="1">
-                    @if(isset($deliveryNote))<input type="hidden" name="delivery_note_id" value="{{ $deliveryNote->id }}">@endif
-                    @if(!empty($filterParams['main_agency_id']))<input type="hidden" name="main_agency_id" value="{{ $filterParams['main_agency_id'] }}">@endif
-                    @if(!empty($filterParams['agency_id']))<input type="hidden" name="agency_id" value="{{ $filterParams['agency_id'] }}">@endif
+                    <input type="hidden" name="delivery_note_id" value="{{ $deliveryNote->id }}">
+                    <input type="hidden" name="agency_id" value="{{ $agency->id }}">
+                    @if(!empty($filterParams['service_type']))
+                    <input type="hidden" name="service_type" value="{{ $filterParams['service_type'] }}">
+                    @endif
                     <div class="delivery-scan-row">
                         <div class="delivery-field">
-                            <label for="delivered_to" class="delivery-label">Nombre de quien retira *</label>
-                            <input type="text" name="delivered_to" id="delivered_to" value="{{ old('delivered_to') }}" class="delivery-input" placeholder="Nombre completo" required>
+                            <label for="retirer_delivered_to" class="delivery-label">Nombre completo *</label>
+                            <input type="text" name="delivered_to" id="retirer_delivered_to" value="{{ old('delivered_to') }}" class="delivery-input @error('delivered_to') delivery-input-invalid @enderror" placeholder="Nombre completo" required autofocus>
+                            @error('delivered_to')<span class="delivery-field-error">{{ $message }}</span>@enderror
                         </div>
                         <div class="delivery-field">
-                            <label for="retirer_id_number" class="delivery-label">Cédula de quien retira *</label>
-                            <input type="text" name="retirer_id_number" id="retirer_id_number" value="{{ old('retirer_id_number') }}" class="delivery-input" placeholder="Nº cédula" required>
+                            <label for="retirer_id_number_form" class="delivery-label">Cédula *</label>
+                            <input type="text" name="retirer_id_number" id="retirer_id_number_form" value="{{ old('retirer_id_number') }}" class="delivery-input @error('retirer_id_number') delivery-input-invalid @enderror" placeholder="Nº cédula" required>
+                            @error('retirer_id_number')<span class="delivery-field-error">{{ $message }}</span>@enderror
                         </div>
                         <div class="delivery-field">
-                            <label for="retirer_phone" class="delivery-label">Teléfono de quien retira *</label>
-                            <input type="text" name="retirer_phone" id="retirer_phone" value="{{ old('retirer_phone') }}" class="delivery-input" placeholder="Nº telefónico" required>
+                            <label for="retirer_phone_form" class="delivery-label">Teléfono *</label>
+                            <input type="text" name="retirer_phone" id="retirer_phone_form" value="{{ old('retirer_phone') }}" class="delivery-input @error('retirer_phone') delivery-input-invalid @enderror" placeholder="Nº telefónico" required>
+                            @error('retirer_phone')<span class="delivery-field-error">{{ $message }}</span>@enderror
                         </div>
                         <div class="delivery-field">
-                            <label for="delivery_type" class="delivery-label">Tipo</label>
-                            <select name="delivery_type" id="delivery_type" class="delivery-select">
+                            <label for="retirer_delivery_type" class="delivery-label">Tipo</label>
+                            <select name="delivery_type" id="retirer_delivery_type" class="delivery-select">
                                 <option value="PICKUP" {{ old('delivery_type', 'PICKUP') == 'PICKUP' ? 'selected' : '' }}>Retiro</option>
                                 <option value="DELIVERY" {{ old('delivery_type') == 'DELIVERY' ? 'selected' : '' }}>Entrega</option>
                             </select>
+                            @error('delivery_type')<span class="delivery-field-error">{{ $message }}</span>@enderror
+                        </div>
+                        <div class="delivery-field delivery-field-btn">
+                            <button type="submit" class="delivery-btn delivery-btn-primary">Guardar y escanear paquetes</button>
                         </div>
                     </div>
+                </form>
+            </div>
+            @else
+            <div class="delivery-retirer-banner">
+                <div class="delivery-retirer-banner-text">
+                    <strong>Quien retira:</strong> {{ $batchRetirerSession['delivered_to'] ?? '—' }}
+                    <span class="delivery-retirer-banner-sep">·</span>
+                    <strong>Cédula:</strong> {{ $batchRetirerSession['retirer_id_number'] ?? '—' }}
+                    <span class="delivery-retirer-banner-sep">·</span>
+                    <strong>Tel.:</strong> {{ $batchRetirerSession['retirer_phone'] ?? '—' }}
+                    <span class="delivery-retirer-banner-sep">·</span>
+                    <strong>Tipo:</strong> {{ ($batchRetirerSession['delivery_type'] ?? 'PICKUP') === 'DELIVERY' ? 'Entrega' : 'Retiro' }}
+                </div>
+                <form action="{{ route('deliveries.batch-clear-retirer-session') }}" method="POST" class="delivery-retirer-banner-clear">
+                    @csrf
+                    <input type="hidden" name="delivery_note_id" value="{{ $deliveryNote->id }}">
+                    <input type="hidden" name="agency_id" value="{{ $agency->id }}">
+                    @if(!empty($filterParams['service_type']))
+                    <input type="hidden" name="service_type" value="{{ $filterParams['service_type'] }}">
+                    @endif
+                    <button type="submit" class="delivery-btn delivery-btn-ghost">Cambiar persona que retira</button>
+                </form>
+            </div>
+
+            <div class="delivery-scan-box">
+                <h3 class="delivery-scan-title">2. Escanear paquetes</h3>
+                <form action="{{ route('deliveries.process-scan') }}" method="POST" class="delivery-scan-form" id="delivery-batch-scan-form">
+                    @csrf
+                    <input type="hidden" name="return_to_batch" value="1">
+                    <input type="hidden" name="delivery_note_id" value="{{ $deliveryNote->id }}">
+                    <input type="hidden" name="agency_id" value="{{ $filterParams['agency_id'] ?? $agency->id }}">
+                    @if(!empty($filterParams['service_type']))
+                    <input type="hidden" name="service_type" value="{{ $filterParams['service_type'] }}">
+                    @endif
+                    <input type="hidden" name="delivered_to" value="{{ $batchRetirerSession['delivered_to'] ?? '' }}">
+                    <input type="hidden" name="retirer_id_number" value="{{ $batchRetirerSession['retirer_id_number'] ?? '' }}">
+                    <input type="hidden" name="retirer_phone" value="{{ $batchRetirerSession['retirer_phone'] ?? '' }}">
+                    <input type="hidden" name="delivery_type" value="{{ $batchRetirerSession['delivery_type'] ?? 'PICKUP' }}">
                     <div class="delivery-scan-row delivery-scan-row-code">
                         <div class="delivery-field">
                             <label for="warehouse_code" class="delivery-label">Código warehouse (escanear) *</label>
@@ -122,6 +172,7 @@
                     <a href="{{ route('deliveries.print-report', $printReportParams) }}" target="_blank" class="delivery-link">Imprimir nota de entrega ({{ $deliveryNote->code ?? 'esta sesión' }})</a>
                 </p>
             </div>
+            @endif
             @endif
         </div>
     </div>
@@ -162,7 +213,27 @@
 .delivery-badge { display: inline-block; padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem; }
 .delivery-badge-air { background: #dbeafe; color: #1d4ed8; }
 .delivery-badge-sea { background: #d1fae5; color: #047857; }
-.delivery-scan-box { background: linear-gradient(180deg, #f0fdf4 0%, #ecfdf5 100%); border: 2px solid #059669; border-radius: 0.75rem; padding: 1.25rem; margin-top: 1.5rem; }
+.delivery-retirer-confirm-box {
+    background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+    border: 2px solid #d97706; border-radius: 0.75rem; padding: 1.25rem; margin-top: 1.5rem;
+}
+.delivery-retirer-step-title { margin: 0 0 0.5rem; font-size: 1rem; font-weight: 600; color: #92400e; }
+.delivery-retirer-step-hint { margin-bottom: 1rem !important; color: #78350f !important; }
+.delivery-retirer-form { margin: 0; }
+.delivery-field-error { display: block; font-size: 0.75rem; color: #b91c1c; margin-top: 0.25rem; }
+.delivery-input-invalid { border-color: #f87171 !important; }
+.delivery-retirer-banner {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem;
+    background: #ecfdf5; border: 1px solid #6ee7b7; border-radius: 0.75rem; padding: 0.875rem 1rem; margin-top: 1.5rem; font-size: 0.875rem; color: #065f46;
+}
+.delivery-retirer-banner-text { flex: 1; min-width: 0; line-height: 1.5; }
+.delivery-retirer-banner-sep { color: #34d399; margin: 0 0.25rem; }
+.delivery-retirer-banner-clear { margin: 0; }
+.delivery-btn-ghost {
+    background: #fff; color: #047857; border: 1px solid #6ee7b7; font-size: 0.8125rem; padding: 0.4rem 0.75rem;
+}
+.delivery-btn-ghost:hover { background: #f0fdf4; }
+.delivery-scan-box { background: linear-gradient(180deg, #f0fdf4 0%, #ecfdf5 100%); border: 2px solid #059669; border-radius: 0.75rem; padding: 1.25rem; margin-top: 1rem; }
 .delivery-scan-title { margin: 0 0 1rem; font-size: 1rem; font-weight: 600; color: #047857; }
 .delivery-scan-form { margin-bottom: 0.75rem; }
 .delivery-scan-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; margin-bottom: 1rem; }
@@ -198,12 +269,12 @@
         })->values()->all();
     })->filter();
 @endphp
+@if($retirerSessionActive && !$availablePackages->isEmpty())
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    var form = document.querySelector('.delivery-scan-box form');
+    var form = document.getElementById('delivery-batch-scan-form');
     var codeInput = document.getElementById('warehouse_code');
-    var deliveredTo = document.getElementById('delivered_to');
     var bultoWrap = document.getElementById('bulto-select-wrap');
     var bultoSelect = document.getElementById('bulto_index');
     var bultosByCode = @json($bultosByCode);
@@ -238,10 +309,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return digits.length === 6 && bultosByCode[digits] && bultosByCode[digits].length > 1;
     }
 
-    var retirerId = document.getElementById('retirer_id_number');
-    var retirerPhone = document.getElementById('retirer_phone');
     function canSubmit() {
-        if (!deliveredTo || !deliveredTo.value.trim() || !retirerId || !retirerId.value.trim() || !retirerPhone || !retirerPhone.value.trim()) return false;
         if (needsBultoSelection() && (!bultoSelect || !bultoSelect.value)) return false;
         return true;
     }
@@ -265,7 +333,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var digits = getDigitsOnly(this.value);
             updateBultoSelect(this.value);
             if (digits.length === 6 && canSubmit()) form.submit();
-            else if (digits.length === 6) { if (!deliveredTo || !deliveredTo.value.trim()) deliveredTo && deliveredTo.focus(); else if (retirerId && !retirerId.value.trim()) retirerId.focus(); else if (retirerPhone && !retirerPhone.value.trim()) retirerPhone.focus(); else if (needsBultoSelection() && bultoSelect) bultoSelect.focus(); }
+            else if (digits.length === 6 && needsBultoSelection() && bultoSelect) bultoSelect.focus();
         }
     });
 
@@ -277,4 +345,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endpush
+@endif
 @endsection

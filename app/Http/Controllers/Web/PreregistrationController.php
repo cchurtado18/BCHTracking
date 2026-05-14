@@ -10,12 +10,14 @@ use App\Models\PreregistrationPhoto;
 use App\Services\PreregistrationPhotoService;
 use App\Services\WarehouseService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class PreregistrationController extends Controller
 {
     protected WarehouseService $warehouseService;
+
     protected PreregistrationPhotoService $photoService;
 
     public function __construct(WarehouseService $warehouseService, PreregistrationPhotoService $photoService)
@@ -28,6 +30,7 @@ class PreregistrationController extends Controller
     {
         if ($request->has('clear_filters')) {
             session()->forget('preregistrations_index_filters');
+
             return redirect()->route('preregistrations.index');
         }
 
@@ -114,6 +117,7 @@ class PreregistrationController extends Controller
     {
         if ($request->has('cancel_dropoff')) {
             session()->forget(['dropoff_warehouse_code', 'dropoff_bultos_total', 'dropoff_agency_id', 'dropoff_service_type', 'dropoff_tracking_external', 'dropoff_created_ids']);
+
             return redirect()->route('preregistrations.create');
         }
 
@@ -172,9 +176,10 @@ class PreregistrationController extends Controller
             $preregistration = Preregistration::create($data);
         } catch (\Throwable $e) {
             \Log::error('Preregistration store failed', ['exception' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'data' => $data]);
+
             return redirect()->back()
                 ->withInput()
-                ->withErrors(['general' => 'No se pudo guardar el preregistro. ' . $e->getMessage()]);
+                ->withErrors(['general' => 'No se pudo guardar el preregistro. '.$e->getMessage()]);
         }
 
         if ($request->hasFile('photo')) {
@@ -184,16 +189,17 @@ class PreregistrationController extends Controller
                     return redirect()->route('preregistrations.show', $preregistration->id)
                         ->with('error', 'La foto excede el tamaño máximo de 10MB.');
                 }
-                if (!in_array($photo->getMimeType(), ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'])) {
+                if (! in_array($photo->getMimeType(), ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'])) {
                     return redirect()->route('preregistrations.show', $preregistration->id)
                         ->with('error', 'El formato de la foto no es válido.');
                 }
                 $this->photoService->uploadPhoto($preregistration, $photo);
+
                 return redirect()->route('preregistrations.label', $preregistration->id)
                     ->with('success', 'Preregistro creado con foto. Imprime la etiqueta para pegarla al paquete.');
             } catch (\Exception $e) {
                 return redirect()->route('preregistrations.show', $preregistration->id)
-                    ->with('error', 'Error al subir la foto: ' . $e->getMessage());
+                    ->with('error', 'Error al subir la foto: '.$e->getMessage());
             }
         }
 
@@ -250,11 +256,13 @@ class PreregistrationController extends Controller
                     'dropoff_tracking_external' => $dropoffTracking,
                     'dropoff_created_ids' => [$preregistration->id],
                 ]);
+
                 return redirect()->route('preregistrations.label', $preregistration->id)
                     ->with('success', "Bulto 1 de {$total} guardado. Imprime esta etiqueta y luego continúa con el siguiente.");
             } catch (\Throwable $e) {
                 \Log::error('Preregistration storeDropoffBultoStep step 1 failed', ['exception' => $e->getMessage()]);
-                return redirect()->back()->withInput()->withErrors(['general' => 'No se pudo guardar. ' . $e->getMessage()]);
+
+                return redirect()->back()->withInput()->withErrors(['general' => 'No se pudo guardar. '.$e->getMessage()]);
             }
         }
 
@@ -268,6 +276,7 @@ class PreregistrationController extends Controller
 
         if (! $warehouseCode || $sessionTotal < 2 || $step > $sessionTotal || $step !== count($createdIds) + 1) {
             session()->forget(['dropoff_warehouse_code', 'dropoff_bultos_total', 'dropoff_agency_id', 'dropoff_service_type', 'dropoff_tracking_external', 'dropoff_created_ids']);
+
             return redirect()->route('preregistrations.create')
                 ->with('error', 'Sesión de drop off expirada o inválida. Comienza de nuevo con el bulto 1.');
         }
@@ -301,6 +310,7 @@ class PreregistrationController extends Controller
 
             if ($step >= $sessionTotal) {
                 session()->forget(['dropoff_warehouse_code', 'dropoff_bultos_total', 'dropoff_agency_id', 'dropoff_service_type', 'dropoff_tracking_external', 'dropoff_created_ids']);
+
                 return redirect()->route('preregistrations.label', $preregistration->id)
                     ->with('success', "Bulto {$step} de {$sessionTotal} guardado. Ya completaste todos los bultos. Imprime esta etiqueta.");
             }
@@ -309,7 +319,8 @@ class PreregistrationController extends Controller
                 ->with('success', "Bulto {$step} de {$sessionTotal} guardado. Imprime esta etiqueta y luego continúa con el siguiente.");
         } catch (\Throwable $e) {
             \Log::error('Preregistration storeDropoffBultoStep step > 1 failed', ['exception' => $e->getMessage()]);
-            return redirect()->back()->withInput()->withErrors(['general' => 'No se pudo guardar. ' . $e->getMessage()]);
+
+            return redirect()->back()->withInput()->withErrors(['general' => 'No se pudo guardar. '.$e->getMessage()]);
         }
     }
 
@@ -330,7 +341,7 @@ class PreregistrationController extends Controller
                 'agency_id' => $data['agency_id'],
                 'service_type' => $data['service_type'],
                 'status' => 'RECEIVED_MIAMI',
-                'tracking_external' => !empty($data['tracking_external']) ? trim((string) $data['tracking_external']) : null,
+                'tracking_external' => ! empty($data['tracking_external']) ? trim((string) $data['tracking_external']) : null,
             ];
             $ids = [];
             for ($i = 0; $i < $n; $i++) {
@@ -344,7 +355,7 @@ class PreregistrationController extends Controller
                     'bultos_total' => $n,
                 ]));
                 $ids[] = $preregistration->id;
-                $photoKey = 'photo_bulto_' . $i;
+                $photoKey = 'photo_bulto_'.$i;
                 if ($request->hasFile($photoKey)) {
                     try {
                         $photo = $request->file($photoKey);
@@ -352,26 +363,28 @@ class PreregistrationController extends Controller
                             $this->photoService->uploadPhoto($preregistration, $photo);
                         }
                     } catch (\Throwable $e) {
-                        \Log::warning('Dropoff multi: photo upload failed for bulto ' . ($i + 1), ['e' => $e->getMessage()]);
+                        \Log::warning('Dropoff multi: photo upload failed for bulto '.($i + 1), ['e' => $e->getMessage()]);
                     }
                 }
             }
             $idsParam = implode(',', $ids);
+
             return redirect()->route('preregistrations.dropoff-labels', ['ids' => $idsParam])
                 ->with('success', "Se crearon {$n} bultos con el mismo código de almacén ({$warehouseCode}). Imprime una etiqueta por cada bulto.");
         } catch (\Throwable $e) {
             \Log::error('Preregistration storeMultiBultoDropoff failed', ['exception' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+
             return redirect()->back()
                 ->withInput()
-                ->withErrors(['general' => 'No se pudo guardar los bultos. ' . $e->getMessage()]);
+                ->withErrors(['general' => 'No se pudo guardar los bultos. '.$e->getMessage()]);
         }
     }
 
     public function show(string $id)
     {
-        $preregistration = Preregistration::with(['photos', 'agency', 'consolidationItem.consolidation'])->findOrFail($id);
+        $preregistration = Preregistration::with(['photos', 'agency', 'consolidationItem.consolidation', 'delivery'])->findOrFail($id);
         $preregistration->photos->each(function ($photo) {
-            $photo->url = asset('storage/' . $photo->path);
+            $photo->url = asset('storage/'.$photo->path);
         });
         $dropoffLabelIds = [];
         if ($preregistration->warehouse_code && $preregistration->bultos_total && $preregistration->bultos_total > 1) {
@@ -381,6 +394,7 @@ class PreregistrationController extends Controller
                 ->pluck('id')
                 ->toArray();
         }
+
         return view('preregistrations.show', compact('preregistration', 'dropoffLabelIds'));
     }
 
@@ -388,9 +402,10 @@ class PreregistrationController extends Controller
     {
         $preregistration = Preregistration::with('photos', 'agency')->findOrFail($id);
         $preregistration->photos->each(function ($photo) {
-            $photo->url = asset('storage/' . $photo->path);
+            $photo->url = asset('storage/'.$photo->path);
         });
         $agencies = Agency::where('is_active', true)->orderBy('name')->get();
+
         return view('preregistrations.edit', compact('preregistration', 'agencies'));
     }
 
@@ -471,6 +486,7 @@ class PreregistrationController extends Controller
             if ($request->expectsJson()) {
                 return response()->json(['message' => $message], 422);
             }
+
             return redirect()->back()->withInput()->withErrors(['photo' => $message]);
         }
 
@@ -508,6 +524,7 @@ class PreregistrationController extends Controller
                 if ($request->expectsJson()) {
                     return response()->json(['message' => $message], 422);
                 }
+
                 return redirect()->route('preregistrations.show', $preregistration->id)->with('error', $message);
             }
 
@@ -516,7 +533,7 @@ class PreregistrationController extends Controller
             if ($request->expectsJson()) {
                 return response()->json([
                     'id' => $photo->id,
-                    'url' => asset('storage/' . $photo->path),
+                    'url' => asset('storage/'.$photo->path),
                     'message' => 'Foto subida.',
                     'photos_count' => $preregistration->photos()->count(),
                 ]);
@@ -527,12 +544,18 @@ class PreregistrationController extends Controller
             if ($request->expectsJson()) {
                 return response()->json(['message' => $e->getMessage()], 422);
             }
+
             return redirect()->route('preregistrations.show', $preregistration->id)->with('error', $e->getMessage());
         }
     }
 
     public function movePhoto(Request $request, string $id, PreregistrationPhoto $photo)
     {
+        if (! Schema::hasColumn('preregistration_photos', 'sort_order')) {
+            return redirect()->route('preregistrations.edit', $id)
+                ->with('error', 'La base de datos aún no tiene la columna de orden de fotos. Ejecute en el servidor: php artisan migrate --force');
+        }
+
         $preregistration = Preregistration::findOrFail($id);
         if ((int) $photo->preregistration_id !== (int) $preregistration->id) {
             abort(404);

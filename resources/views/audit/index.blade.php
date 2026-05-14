@@ -53,6 +53,7 @@
                             <option value="created" {{ request('action') == 'created' ? 'selected' : '' }}>Creado</option>
                             <option value="updated" {{ request('action') == 'updated' ? 'selected' : '' }}>Modificado</option>
                             <option value="deleted" {{ request('action') == 'deleted' ? 'selected' : '' }}>Eliminado</option>
+                            <option value="admin_reset_to_miami" {{ request('action') == 'admin_reset_to_miami' ? 'selected' : '' }}>Admin: volver a Miami</option>
                         </select>
                     </div>
                     <div class="audit-field">
@@ -107,6 +108,8 @@
                             <span class="audit-badge audit-badge-created">Creado</span>
                             @elseif($log->action === 'updated')
                             <span class="audit-badge audit-badge-updated">Modificado</span>
+                            @elseif($log->action === 'admin_reset_to_miami')
+                            <span class="audit-badge audit-badge-updated">Admin: Miami</span>
                             @else
                             <span class="audit-badge audit-badge-deleted">Eliminado</span>
                             @endif

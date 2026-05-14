@@ -3,116 +3,163 @@
 @section('title', 'Escanear Entrega')
 
 @section('content')
+@php
+    $scanRetirerSessionActive = $scanRetirerSessionActive ?? false;
+    $scanRetirerSession = is_array($scanRetirerSession ?? null) ? $scanRetirerSession : [];
+@endphp
 <div class="py-6">
     <div class="mb-6 flex justify-between items-center">
         <div>
-            <h1 class="text-3xl font-bold text-gray-900">Escanear Entrega</h1>
-            <p class="mt-2 text-sm text-gray-600">Escanea el código warehouse para entregar un paquete</p>
+            <h1 class="text-3xl font-bold text-gray-900">Escanear entrega</h1>
+            <p class="mt-2 text-sm text-gray-600">Indique una sola vez quién retira; luego escanee solo el código warehouse de cada paquete.</p>
         </div>
         <a href="{{ route('deliveries.index') }}" class="text-gray-600 hover:text-gray-900">
             ← Volver
         </a>
     </div>
 
-    <div class="max-w-2xl">
-        <div class="bg-white shadow rounded-lg p-6">
-            <form action="{{ route('deliveries.process-scan') }}" method="POST">
+    @if(session('success'))
+    <div class="mb-4 rounded-md bg-green-50 p-4 text-sm text-green-800 border border-green-200">{{ session('success') }}</div>
+    @endif
+    @if(session('error'))
+    <div id="delivery-scan-error" class="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-800 border border-red-200">{{ session('error') }}</div>
+    @endif
+
+    <div class="max-w-2xl space-y-6">
+        @if(!$scanRetirerSessionActive)
+        <div class="bg-amber-50 border border-amber-200 shadow rounded-lg p-6">
+            <h2 class="text-lg font-semibold text-amber-900 mb-2">1. Datos de quien retira (una sola vez)</h2>
+            <p class="text-sm text-amber-800 mb-4">Después de guardar, podrá escanear varios paquetes seguidos sin volver a escribir nombre, cédula ni teléfono.</p>
+            <form action="{{ route('deliveries.scan-retirer-session') }}" method="POST">
                 @csrf
+                <div class="space-y-4">
+                    <div>
+                        <label for="delivered_to" class="block text-sm font-medium text-gray-700">Nombre completo *</label>
+                        <input type="text" name="delivered_to" id="delivered_to" value="{{ old('delivered_to') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm @error('delivered_to') border-red-500 @enderror" required autofocus placeholder="Nombre completo">
+                        @error('delivered_to')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="retirer_id_number" class="block text-sm font-medium text-gray-700">Cédula *</label>
+                            <input type="text" name="retirer_id_number" id="retirer_id_number" value="{{ old('retirer_id_number') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm @error('retirer_id_number') border-red-500 @enderror" required placeholder="Nº cédula">
+                            @error('retirer_id_number')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                        </div>
+                        <div>
+                            <label for="retirer_phone" class="block text-sm font-medium text-gray-700">Teléfono *</label>
+                            <input type="text" name="retirer_phone" id="retirer_phone" value="{{ old('retirer_phone') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm @error('retirer_phone') border-red-500 @enderror" required placeholder="Nº telefónico">
+                            @error('retirer_phone')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                        </div>
+                    </div>
+                    <div>
+                        <label for="delivery_type" class="block text-sm font-medium text-gray-700">Tipo de entrega</label>
+                        <select name="delivery_type" id="delivery_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            <option value="PICKUP" {{ old('delivery_type', 'PICKUP') == 'PICKUP' ? 'selected' : '' }}>Retiro en almacén</option>
+                            <option value="DELIVERY" {{ old('delivery_type') == 'DELIVERY' ? 'selected' : '' }}>Entrega a domicilio</option>
+                        </select>
+                        @error('delivery_type')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end">
+                    <button type="submit" class="bg-teal-600 text-white px-4 py-2 rounded-md hover:bg-teal-700 font-medium">
+                        Guardar y escanear
+                    </button>
+                </div>
+            </form>
+        </div>
+        @else
+        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-emerald-900">
+            <div>
+                <span class="font-semibold">Quien retira:</span> {{ $scanRetirerSession['delivered_to'] ?? '—' }}
+                <span class="text-emerald-600 mx-1">·</span>
+                <span class="font-semibold">Cédula:</span> {{ $scanRetirerSession['retirer_id_number'] ?? '—' }}
+                <span class="text-emerald-600 mx-1">·</span>
+                <span class="font-semibold">Tel.:</span> {{ $scanRetirerSession['retirer_phone'] ?? '—' }}
+                <span class="text-emerald-600 mx-1">·</span>
+                <span class="font-semibold">Tipo:</span> {{ ($scanRetirerSession['delivery_type'] ?? 'PICKUP') === 'DELIVERY' ? 'Entrega a domicilio' : 'Retiro en almacén' }}
+            </div>
+            <form action="{{ route('deliveries.scan-clear-retirer-session') }}" method="POST" class="shrink-0">
+                @csrf
+                <button type="submit" class="text-sm font-medium text-emerald-800 underline hover:text-emerald-950">Cambiar persona que retira</button>
+            </form>
+        </div>
+
+        <div class="bg-white shadow rounded-lg p-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">2. Escanear código warehouse</h2>
+            <form action="{{ route('deliveries.process-scan') }}" method="POST" id="delivery-standalone-scan-form">
+                @csrf
+                <input type="hidden" name="delivered_to" value="{{ $scanRetirerSession['delivered_to'] ?? '' }}">
+                <input type="hidden" name="retirer_id_number" value="{{ $scanRetirerSession['retirer_id_number'] ?? '' }}">
+                <input type="hidden" name="retirer_phone" value="{{ $scanRetirerSession['retirer_phone'] ?? '' }}">
+                <input type="hidden" name="delivery_type" value="{{ $scanRetirerSession['delivery_type'] ?? 'PICKUP' }}">
 
                 <div class="space-y-6">
                     <div>
-                        <label for="warehouse_code" class="block text-sm font-medium text-gray-700">Warehouse Code (6 dígitos) *</label>
-                        <input 
-                            type="text" 
-                            name="warehouse_code" 
-                            id="warehouse_code" 
+                        <label for="warehouse_code" class="block text-sm font-medium text-gray-700">Warehouse (6 dígitos) *</label>
+                        <input
+                            type="text"
+                            name="warehouse_code"
+                            id="warehouse_code"
                             value="{{ old('warehouse_code') }}"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-center text-2xl font-mono tracking-widest" 
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-center text-2xl font-mono tracking-widest"
                             required
                             maxlength="6"
                             pattern="\d{6}"
                             placeholder="123456"
                             autofocus
+                            inputmode="numeric"
+                            autocomplete="off"
                         >
-                        <p class="mt-1 text-sm text-gray-500">Escanea o ingresa el código de 6 dígitos del paquete</p>
+                        <p class="mt-1 text-sm text-gray-500">Con 6 dígitos se envía automáticamente (un bulto por código).</p>
                         @error('warehouse_code')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
 
                     <div>
-                        <label for="delivered_to" class="block text-sm font-medium text-gray-700">Nombre de quien retira *</label>
-                        <input 
-                            type="text" 
-                            name="delivered_to" 
-                            id="delivered_to" 
-                            value="{{ old('delivered_to') }}"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" 
-                            required
-                            placeholder="Nombre completo"
-                        >
-                        @error('delivered_to')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div>
-                            <label for="retirer_id_number" class="block text-sm font-medium text-gray-700">Cédula de quien retira *</label>
-                            <input type="text" name="retirer_id_number" id="retirer_id_number" value="{{ old('retirer_id_number') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required placeholder="Nº cédula">
-                            @error('retirer_id_number')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                        </div>
-                        <div>
-                            <label for="retirer_phone" class="block text-sm font-medium text-gray-700">Teléfono de quien retira *</label>
-                            <input type="text" name="retirer_phone" id="retirer_phone" value="{{ old('retirer_phone') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required placeholder="Nº telefónico">
-                            @error('retirer_phone')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                        </div>
-                    </div>
-
-                    <div>
-                        <label for="delivery_type" class="block text-sm font-medium text-gray-700">Tipo de Entrega</label>
-                        <select name="delivery_type" id="delivery_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                            <option value="PICKUP" {{ old('delivery_type', 'PICKUP') == 'PICKUP' ? 'selected' : '' }}>Retiro en Almacén</option>
-                            <option value="DELIVERY" {{ old('delivery_type') == 'DELIVERY' ? 'selected' : '' }}>Entrega a Domicilio</option>
-                        </select>
-                        @error('delivery_type')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    <div>
-                        <label for="notes" class="block text-sm font-medium text-gray-700">Notas</label>
-                        <textarea 
-                            name="notes" 
-                            id="notes" 
-                            rows="3"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                            placeholder="Notas adicionales sobre la entrega"
-                        >{{ old('notes') }}</textarea>
-                        @error('notes')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
+                        <label for="notes" class="block text-sm font-medium text-gray-700">Notas (opcional)</label>
+                        <textarea name="notes" id="notes" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="Notas adicionales">{{ old('notes') }}</textarea>
+                        @error('notes')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                     </div>
                 </div>
 
                 <div class="mt-6 flex justify-end space-x-3">
-                    <a href="{{ route('deliveries.index') }}" class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400">
-                        Cancelar
-                    </a>
                     <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
-                        Procesar Entrega
+                        Registrar entrega
                     </button>
                 </div>
             </form>
         </div>
+        @endif
     </div>
 </div>
 
+@if($scanRetirerSessionActive)
 @push('scripts')
 <script>
-    // Auto-focus en el campo de código
-    document.getElementById('warehouse_code').focus();
+document.addEventListener('DOMContentLoaded', function() {
+    var form = document.getElementById('delivery-standalone-scan-form');
+    var input = document.getElementById('warehouse_code');
+    if (!form || !input) return;
+    if (document.getElementById('delivery-scan-error')) {
+        input.value = '';
+    }
+    input.focus();
+    function digits(v) { return (v || '').replace(/\D/g, ''); }
+    input.addEventListener('input', function() {
+        var d = digits(this.value);
+        if (d.length > 6) d = d.slice(0, 6);
+        this.value = d;
+        if (d.length === 6) form.submit();
+    });
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            var d = digits(this.value);
+            if (d.length === 6) form.submit();
+        }
+    });
+});
 </script>
 @endpush
+@endif
 @endsection
-

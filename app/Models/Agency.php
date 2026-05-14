@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
 
 class Agency extends Model
@@ -45,6 +45,7 @@ class Agency extends Model
         if ($this->parent_agency_id && $this->relationLoaded('parent') && $this->parent) {
             return strtoupper((string) $this->parent->name) === 'CH LOGISTICS' || (string) $this->parent->code === '0002';
         }
+
         return false;
     }
 
@@ -61,6 +62,7 @@ class Agency extends Model
         if ($this->parent_agency_id && $this->relationLoaded('parent') && $this->parent) {
             return strtoupper((string) $this->parent->name) === 'SKYLINK ONE' || (string) $this->parent->code === '0001';
         }
+
         return false;
     }
 
@@ -75,11 +77,12 @@ class Agency extends Model
         }
         try {
             if (Storage::disk('public')->exists($path)) {
-                return asset('storage/' . $path);
+                return asset('storage/'.$path);
             }
         } catch (\Throwable $e) {
             return null;
         }
+
         return null;
     }
 
@@ -91,6 +94,29 @@ class Agency extends Model
     public function preregistrations(): HasMany
     {
         return $this->hasMany(Preregistration::class);
+    }
+
+    /**
+     * Siguiente código numérico único para una nueva agencia/subagencia.
+     * No usa CAST en SQL (evita fallos o resultados incorrectos con SQLite o códigos no numéricos).
+     */
+    public static function nextAvailableNumericCode(): string
+    {
+        $max = 0;
+        foreach (static::query()->pluck('code') as $c) {
+            if ($c === null) {
+                continue;
+            }
+            $s = trim((string) $c);
+            if ($s !== '' && preg_match('/^\d+$/', $s)) {
+                $max = max($max, (int) $s);
+            }
+        }
+        $next = $max + 1;
+
+        return $next <= 9999
+            ? str_pad((string) $next, 4, '0', STR_PAD_LEFT)
+            : (string) $next;
     }
 
     /**

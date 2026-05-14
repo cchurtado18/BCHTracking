@@ -31,6 +31,8 @@
                         <span class="audit-badge audit-badge-created">Creado</span>
                         @elseif($log->action === 'updated')
                         <span class="audit-badge audit-badge-updated">Modificado</span>
+                        @elseif($log->action === 'admin_reset_to_miami')
+                        <span class="audit-badge audit-badge-updated">Admin: volver a Miami</span>
                         @else
                         <span class="audit-badge audit-badge-deleted">Eliminado</span>
                         @endif

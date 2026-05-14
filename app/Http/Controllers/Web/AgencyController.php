@@ -19,6 +19,7 @@ class AgencyController extends Controller
         'Jinotega', 'León', 'Madriz', 'Managua', 'Masaya', 'Matagalpa',
         'Nueva Segovia', 'RACN', 'RACS', 'Río San Juan', 'Rivas',
     ];
+
     public function index(Request $request)
     {
         $query = Agency::with('parent')->withCount(['clients', 'preregistrations']);
@@ -58,6 +59,7 @@ class AgencyController extends Controller
     {
         $departments = self::NICARAGUA_DEPARTMENTS;
         $mainAgencies = Agency::mainAgencies()->orderBy('name')->get();
+
         return view('agencies.create', compact('departments', 'mainAgencies'));
     }
 
@@ -94,12 +96,12 @@ class AgencyController extends Controller
         ]);
 
         $parent = Agency::find($request->parent_agency_id);
-        if (!$parent || !$parent->is_main) {
+        if (! $parent || ! $parent->is_main) {
             return redirect()->back()->withInput()->withErrors(['parent_agency_id' => 'Debe seleccionar SkyLink One o CH LOGISTICS.']);
         }
 
         $data = $request->only(['name', 'phone', 'address', 'department', 'parent_agency_id']);
-        $data['code'] = $this->generateNextAgencyCode();
+        $data['code'] = Agency::nextAvailableNumericCode();
         $data['is_active'] = true;
         $data['is_main'] = false;
 
@@ -108,6 +110,7 @@ class AgencyController extends Controller
                 $data['logo_path'] = $request->file('logo')->store('agencies/logos', 'public');
             } catch (\Throwable $e) {
                 \Log::warning('Agency logo upload failed', ['exception' => $e->getMessage()]);
+
                 return redirect()->back()
                     ->withInput()
                     ->withErrors(['logo' => 'No se pudo subir el logo. Intente de nuevo o deje el logo vacío.']);
@@ -122,6 +125,7 @@ class AgencyController extends Controller
             if (str_contains($e->getMessage(), 'UNIQUE') || str_contains($e->getMessage(), 'unique')) {
                 $message = 'Ya existe una subagencia con ese nombre. Elija otro nombre.';
             }
+
             return redirect()->back()
                 ->withInput()
                 ->withErrors(['name' => $message]);
@@ -142,26 +146,12 @@ class AgencyController extends Controller
         return redirect()->route('agencies.index')->with('success', 'Agencia creada. Se creó el usuario de acceso para la agencia (pueden iniciar sesión con el correo y contraseña indicados).');
     }
 
-    /**
-     * Genera el siguiente código de 4 dígitos para una nueva agencia.
-     */
-    private function generateNextAgencyCode(): string
-    {
-        try {
-            $max = Agency::query()->selectRaw('MAX(CAST(code AS INTEGER)) as m')->value('m');
-            $num = $max !== null && $max !== '' ? (int) $max + 1 : 1;
-            return str_pad((string) $num, 4, '0', STR_PAD_LEFT);
-        } catch (\Throwable $e) {
-            \Log::warning('Agency code generation fallback', ['exception' => $e->getMessage()]);
-            return '0001';
-        }
-    }
-
     public function show(string $id)
     {
         $agency = Agency::withCount(['clients', 'preregistrations'])
             ->with(['clients', 'users', 'parent', 'children' => fn ($q) => $q->withCount('clients')->orderBy('name')])
             ->findOrFail($id);
+
         return view('agencies.show', compact('agency'));
     }
 
@@ -169,6 +159,7 @@ class AgencyController extends Controller
     {
         $agency = Agency::findOrFail($id);
         $departments = self::NICARAGUA_DEPARTMENTS;
+
         return view('agencies.edit', compact('agency', 'departments'));
     }
 
@@ -181,7 +172,7 @@ class AgencyController extends Controller
             'address' => $request->filled('address') ? trim((string) $request->input('address')) : null,
         ]);
         $request->validate([
-            'name' => 'required|string|max:255|unique:agencies,name,' . $agency->id,
+            'name' => 'required|string|max:255|unique:agencies,name,'.$agency->id,
             'phone' => 'nullable|string|max:50',
             'address' => 'nullable|string|max:500',
             'department' => 'nullable|string|max:100',
@@ -206,13 +197,15 @@ class AgencyController extends Controller
             $data['is_active'] = (bool) $request->is_active;
         }
         $agency->update($data);
+
         return redirect()->route('agencies.show', $agency->id)->with('success', 'Agencia actualizada.');
     }
 
     public function toggle(string $id)
     {
         $agency = Agency::findOrFail($id);
-        $agency->update(['is_active' => !$agency->is_active]);
+        $agency->update(['is_active' => ! $agency->is_active]);
+
         return back()->with('success', $agency->is_active ? 'Agencia activada.' : 'Agencia desactivada.');
     }
 
@@ -257,6 +250,7 @@ class AgencyController extends Controller
         }
 
         $agency->delete();
+
         return redirect()->route('agencies.index')->with('success', 'Subagencia eliminada.');
     }
 }

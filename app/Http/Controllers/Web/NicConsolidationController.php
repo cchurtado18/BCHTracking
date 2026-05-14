@@ -19,6 +19,7 @@ class NicConsolidationController extends Controller
             if ($consolidation) {
                 return redirect()->route('nic-consolidations.show', $consolidation->id);
             }
+
             return redirect()->route('nic-consolidations.index')
                 ->with('error', 'Código de saco no encontrado o no está enviado.')
                 ->withInput($request->only('service_type'));
@@ -87,6 +88,7 @@ class NicConsolidationController extends Controller
             if ($wantsJson) {
                 return response()->json(['success' => false, 'message' => 'Solo se pueden escanear sacos enviados.'], 422);
             }
+
             return back()->with('error', 'Solo se pueden escanear sacos enviados.');
         }
 
@@ -104,6 +106,7 @@ class NicConsolidationController extends Controller
             if ($wantsJson) {
                 return response()->json(['success' => false, 'message' => 'Código no encontrado.'], 422);
             }
+
             return back()->with('error', 'Código no encontrado.');
         }
 
@@ -126,14 +129,26 @@ class NicConsolidationController extends Controller
             if ($wantsJson) {
                 return response()->json(['success' => false, 'message' => $message], 422);
             }
+
             return back()->with($anyInSack ? 'warning' : 'error', $message);
         }
 
         $preregistration = $item->preregistration ?? Preregistration::find($item->preregistration_id);
+        if ($preregistration->service_type !== $consolidation->service_type) {
+            $pkg = $preregistration->service_type === 'SEA' ? 'marítimo' : 'aéreo';
+            $saco = $consolidation->service_type === 'SEA' ? 'marítimo' : 'aéreo';
+            $msg = "El paquete es {$pkg} y el saco es {$saco}. Use el saco correcto o corrija el tipo de servicio del preregistro.";
+            if ($wantsJson) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+
+            return back()->with('error', $msg);
+        }
         if ($preregistration->status !== 'IN_TRANSIT') {
             if ($wantsJson) {
                 return response()->json(['success' => false, 'message' => 'El paquete no está en tránsito.'], 422);
             }
+
             return back()->with('error', 'El paquete no está en tránsito.');
         }
 
@@ -144,9 +159,9 @@ class NicConsolidationController extends Controller
         ]);
 
         $bultoInfo = ($preregistration->bultos_total && $preregistration->bultos_total > 1)
-            ? ' (bulto ' . $preregistration->bulto_index . ' de ' . $preregistration->bultos_total . ')'
+            ? ' (bulto '.$preregistration->bulto_index.' de '.$preregistration->bultos_total.')'
             : '';
-        $message = 'Paquete escaneado: ' . $preregistration->label_name . $bultoInfo;
+        $message = 'Paquete escaneado: '.$preregistration->label_name.$bultoInfo;
 
         if ($request->expectsJson() || $request->ajax()) {
             $consolidation->load(['items' => fn ($q) => $q->with('preregistration')]);

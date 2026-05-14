@@ -1,4 +1,5 @@
 @php
+    $labelAutoprint = request()->boolean('autoprint');
     $labelFormat = $labelFormat ?? '4x6';
     $isNarrow = $labelFormat === 'narrow';
     $pageSizeCss = $isNarrow ? '2.25in 4in' : '4in 6in';
@@ -561,6 +562,20 @@
             }
             setTimeout(printLabel, 200);
         }
+        @if(!empty($labelAutoprint))
+        (function () {
+            function run() {
+                printLabel();
+            }
+            if (document.readyState === 'complete') {
+                setTimeout(run, 400);
+            } else {
+                window.addEventListener('load', function () {
+                    setTimeout(run, 400);
+                });
+            }
+        })();
+        @endif
     </script>
 </body>
 </html>

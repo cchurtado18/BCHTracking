@@ -1,7 +1,8 @@
 <?php
 
-use App\Http\Controllers\Web\AgencyController;
+use App\Http\Controllers\Web\AdminPreregistrationResetController;
 use App\Http\Controllers\Web\AgencyClientController;
+use App\Http\Controllers\Web\AgencyController;
 use App\Http\Controllers\Web\ApiTokenController;
 use App\Http\Controllers\Web\AuditLogController;
 use App\Http\Controllers\Web\ConsolidationController;
@@ -10,6 +11,8 @@ use App\Http\Controllers\Web\DeliveryController;
 use App\Http\Controllers\Web\NicConsolidationController;
 use App\Http\Controllers\Web\PackageController;
 use App\Http\Controllers\Web\PreregistrationController;
+use App\Http\Controllers\Web\TimeEntryAdminController;
+use App\Http\Controllers\Web\TimeEntryController;
 use App\Http\Controllers\Web\TrackingController;
 use App\Http\Controllers\Web\UserController;
 use Illuminate\Support\Facades\Route;
@@ -44,6 +47,9 @@ Route::middleware(['auth'])->group(function () {
         });
         Route::get('auditoria', [AuditLogController::class, 'index'])->name('audit.index');
         Route::get('auditoria/{id}', [AuditLogController::class, 'show'])->name('audit.show');
+        Route::get('admin/time-entries', [TimeEntryAdminController::class, 'index'])->name('time-entries.admin.index');
+        Route::post('preregistrations/{id}/admin/reset-to-miami', [AdminPreregistrationResetController::class, 'resetToMiami'])
+            ->name('preregistrations.admin.reset-to-miami');
         Route::resource('users', UserController::class)->except(['show']);
     });
 
@@ -82,8 +88,12 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('deliveries')->name('deliveries.')->group(function () {
         Route::get('/', [DeliveryController::class, 'index'])->name('index');
         Route::get('/batch', [DeliveryController::class, 'batch'])->name('batch');
+        Route::post('/batch/retirer-session', [DeliveryController::class, 'storeBatchRetirerSession'])->name('batch-retirer-session');
+        Route::post('/batch/clear-retirer-session', [DeliveryController::class, 'clearBatchRetirerSession'])->name('batch-clear-retirer-session');
         Route::get('/print-report', [DeliveryController::class, 'printReport'])->name('print-report');
         Route::get('/scan', [DeliveryController::class, 'scan'])->name('scan');
+        Route::post('/scan/retirer-session', [DeliveryController::class, 'storeScanRetirerSession'])->name('scan-retirer-session');
+        Route::post('/scan/clear-retirer-session', [DeliveryController::class, 'clearScanRetirerSession'])->name('scan-clear-retirer-session');
         Route::post('/scan', [DeliveryController::class, 'processScan'])->name('process-scan');
         Route::get('/{id}', [DeliveryController::class, 'show'])->name('show');
     });
@@ -91,4 +101,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('api-tokens', [ApiTokenController::class, 'index'])->name('api-tokens.index');
     Route::post('api-tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store');
     Route::delete('api-tokens/{tokenId}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
+
+    Route::middleware('central.worker')->prefix('time-entries')->name('time-entries.')->group(function () {
+        Route::get('/', [TimeEntryController::class, 'index'])->name('index');
+        Route::post('/clock-in', [TimeEntryController::class, 'clockIn'])->name('clock-in');
+        Route::post('/clock-out', [TimeEntryController::class, 'clockOut'])->name('clock-out');
+        Route::post('/break-start', [TimeEntryController::class, 'breakStart'])->name('break-start');
+        Route::post('/break-end', [TimeEntryController::class, 'breakEnd'])->name('break-end');
+    });
 });
