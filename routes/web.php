@@ -69,6 +69,8 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('consolidations', ConsolidationController::class);
     Route::get('consolidations/{id}/label', [ConsolidationController::class, 'label'])->name('consolidations.label');
     Route::post('consolidations/{id}/add-item', [ConsolidationController::class, 'addItem'])->name('consolidations.add-item');
+    Route::post('consolidations/{id}/scan-item', [ConsolidationController::class, 'addItemByScan'])->name('consolidations.scan-item');
+    Route::delete('consolidations/{id}/items/{item}', [ConsolidationController::class, 'removeItem'])->name('consolidations.items.destroy');
     Route::post('consolidations/{id}/send', [ConsolidationController::class, 'send'])->name('consolidations.send');
 
     Route::prefix('nic-consolidations')->name('nic-consolidations.')->group(function () {

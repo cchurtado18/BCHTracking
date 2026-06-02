@@ -236,21 +236,30 @@ class ConsolidationController extends Controller
         return view('consolidations.label', compact('consolidation', 'report'));
     }
 
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
         $consolidation = Consolidation::with(['items.preregistration'])->findOrFail($id);
         $report = $this->consolidationService->getReport($consolidation);
 
         $availablePreregistrations = collect();
+        $scanLookup = collect();
         if ($consolidation->status === 'OPEN') {
             $availablePreregistrations = Preregistration::where('status', 'RECEIVED_MIAMI')
                 ->where('service_type', $consolidation->service_type)
                 ->whereDoesntHave('consolidationItem')
                 ->orderBy('created_at', 'desc')
                 ->get();
+
+            // Datos para que el JS pueda validar al instante (mismo formato que create-scan)
+            $scanLookup = Preregistration::where('status', 'RECEIVED_MIAMI')
+                ->whereDoesntHave('consolidationItem')
+                ->orderBy('created_at', 'desc')
+                ->get(['id', 'tracking_external', 'warehouse_code', 'label_name', 'service_type', 'intake_weight_lbs', 'verified_weight_lbs']);
         }
 
-        return view('consolidations.show', compact('consolidation', 'report', 'availablePreregistrations'));
+        $mode = in_array($request->query('mode'), ['scan', 'select'], true) ? $request->query('mode') : null;
+
+        return view('consolidations.show', compact('consolidation', 'report', 'availablePreregistrations', 'scanLookup', 'mode'));
     }
 
     public function edit(string $id)
@@ -307,6 +316,108 @@ class ConsolidationController extends Controller
             'preregistration_id' => $pre->id,
         ]);
         return back()->with('success', 'Item agregado.');
+    }
+
+    /**
+     * Agrega un ítem al saco abierto mediante un código escaneado (tracking o warehouse).
+     * Si coincide con un preregistro disponible del mismo servicio se enlaza,
+     * de lo contrario se guarda como código no enlazado (unmatched_code).
+     */
+    public function addItemByScan(Request $request, string $id)
+    {
+        $consolidation = Consolidation::findOrFail($id);
+        if ($consolidation->status !== 'OPEN') {
+            return redirect()->route('consolidations.show', $consolidation->id)
+                ->with('error', 'Solo se pueden agregar ítems a sacos abiertos.');
+        }
+
+        $request->validate([
+            'entry_code' => 'required|string|max:120',
+        ]);
+
+        $code = strtoupper(trim((string) $request->input('entry_code')));
+        if ($code === '') {
+            return redirect()->route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'scan'])
+                ->with('error', 'Debe ingresar un código.');
+        }
+
+        $duplicateInSack = $consolidation->items()->where(function ($q) use ($code) {
+            $q->where('unmatched_code', $code)
+              ->orWhereHas('preregistration', function ($qq) use ($code) {
+                  $qq->where('tracking_external', $code)
+                     ->orWhere('warehouse_code', $code);
+              });
+        })->exists();
+        if ($duplicateInSack) {
+            return redirect()->route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'scan'])
+                ->with('error', "El código {$code} ya está en este saco.");
+        }
+
+        $anyMatch = $this->findPreregistrationByCodeAnyService($code);
+        if ($anyMatch && $anyMatch->service_type !== $consolidation->service_type) {
+            $sackLabel = $consolidation->service_type === 'AIR' ? 'aéreo' : 'marítimo';
+            $pkgLabel = $anyMatch->service_type === 'AIR' ? 'aéreo' : 'marítimo';
+
+            return redirect()->route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'scan'])
+                ->with('error', "El código {$code} corresponde a un paquete {$pkgLabel} en preregistro, no {$sackLabel}.");
+        }
+
+        $pre = $this->findPreregistrationForSackScan($code, $consolidation->service_type);
+
+        if ($pre) {
+            if (! filled($pre->tracking_external)) {
+                $pre->tracking_external = $code;
+                $pre->save();
+            }
+            ConsolidationItem::create([
+                'consolidation_id' => $consolidation->id,
+                'preregistration_id' => $pre->id,
+                'unmatched_code' => null,
+            ]);
+
+            return redirect()->route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'scan'])
+                ->with('success', "Paquete {$code} agregado al saco.");
+        }
+
+        ConsolidationItem::create([
+            'consolidation_id' => $consolidation->id,
+            'preregistration_id' => null,
+            'unmatched_code' => $code,
+        ]);
+
+        return redirect()->route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'scan'])
+            ->with('warning', "Código {$code} agregado al saco sin preregistro asociado.");
+    }
+
+    /**
+     * Eliminar un ítem específico de un saco abierto. Permite corregir errores
+     * (ej. un paquete que no debía ir en el saco) antes de enviarlo.
+     */
+    public function removeItem(string $id, string $itemId)
+    {
+        $consolidation = Consolidation::findOrFail($id);
+        if ($consolidation->status !== 'OPEN') {
+            return redirect()->route('consolidations.show', $consolidation->id)
+                ->with('error', 'Solo se pueden eliminar ítems de sacos abiertos.');
+        }
+
+        $item = ConsolidationItem::where('consolidation_id', $consolidation->id)
+            ->where('id', $itemId)
+            ->first();
+
+        if (! $item) {
+            return redirect()->route('consolidations.show', $consolidation->id)
+                ->with('error', 'El ítem no existe en este saco.');
+        }
+
+        $label = $item->preregistration
+            ? ($item->preregistration->warehouse_code ?? $item->preregistration->tracking_external ?? $item->preregistration->label_name)
+            : $item->unmatched_code;
+
+        $item->delete();
+
+        return redirect()->route('consolidations.show', $consolidation->id)
+            ->with('success', "Ítem eliminado del saco" . ($label ? ": {$label}" : '.'));
     }
 
     public function send(string $id)

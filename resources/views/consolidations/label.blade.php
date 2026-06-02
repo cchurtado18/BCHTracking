@@ -82,6 +82,49 @@
             color: #4b5563;
             font-size: 14px;
         }
+        .edit-prompt {
+            margin: 16px auto 0;
+            max-width: 4in;
+            padding: 14px 16px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+            text-align: left;
+        }
+        .edit-prompt-title { margin: 0 0 4px; font-size: 14px; font-weight: 700; color: #0f172a; }
+        .edit-prompt-sub { margin: 0 0 12px; font-size: 12px; line-height: 1.45; color: #64748b; }
+        .edit-prompt-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+        .edit-prompt-btn {
+            flex: 1 1 140px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #0f766e;
+            background: #f0fdfa;
+            border: 1px solid rgba(13, 148, 136, 0.4);
+            border-radius: 8px;
+            text-decoration: none;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+        }
+        .edit-prompt-btn:hover {
+            background: #ccfbf1;
+            border-color: #0d9488;
+            color: #0f766e;
+        }
+        .edit-prompt-btn--primary {
+            color: #fff;
+            background: #0d9488;
+            border-color: #0d9488;
+        }
+        .edit-prompt-btn--primary:hover {
+            background: #0f766e;
+            border-color: #0f766e;
+            color: #fff;
+        }
 
         @page {
             size: 4in 6in;
@@ -120,6 +163,18 @@
         @endif
         <button type="button" onclick="window.print();" class="no-print-btn">🖨️ Imprimir etiqueta del saco</button>
         <p class="no-print-hint">Papel <strong>4×6&nbsp;pulgadas</strong>, escala <strong>100&nbsp;%</strong>, sin márgenes. En la impresora térmica, el driver debe coincidir con ese tamaño.</p>
+
+        @if($consolidation->status === 'OPEN')
+        <div class="edit-prompt">
+            <p class="edit-prompt-title">¿Cómo quieres seguir editando este saco?</p>
+            <p class="edit-prompt-sub">El saco está <strong>abierto</strong>. Puedes seguir agregando paquetes por escaneo o seleccionándolos manualmente. También puedes eliminar cualquier paquete si te equivocaste.</p>
+            <div class="edit-prompt-actions">
+                <a href="{{ route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'scan']) }}" class="edit-prompt-btn edit-prompt-btn--primary">▦ Seguir escaneando</a>
+                <a href="{{ route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'select']) }}" class="edit-prompt-btn">☰ Seleccionar manualmente</a>
+            </div>
+        </div>
+        @endif
+
         <a href="{{ route('consolidations.show', $consolidation->id) }}">← Volver al saco</a>
     </div>
 
