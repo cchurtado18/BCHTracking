@@ -31,6 +31,7 @@ class Preregistration extends Model
         'received_nic_at',
         'agency_id',
         'agency_client_id',
+        'receipt_note_id',
         'assignment_status',
         'holding_reason',
         'verified_weight_lbs',
@@ -120,6 +121,11 @@ class Preregistration extends Model
     public function agencyClient(): BelongsTo
     {
         return $this->belongsTo(AgencyClient::class);
+    }
+
+    public function receiptNote(): BelongsTo
+    {
+        return $this->belongsTo(ReceiptNote::class);
     }
 
     public function consolidationItem(): HasOne

@@ -21,6 +21,19 @@
                         <button type="submit" class="preregs-btn preregs-btn-primary">Enviar solo este paquete (saco de 1)</button>
                     </form>
                     @endif
+                    @if($preregistration->intake_type === 'DROP_OFF')
+                        @if($preregistration->receipt_note_id)
+                            <a href="{{ route('receipt-notes.print', $preregistration->receipt_note_id) }}" target="_blank" class="preregs-btn preregs-btn-outline-primary" title="Ver comprobante de recepción ya emitido">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+                                Ver comprobante REC
+                            </a>
+                        @else
+                            <button type="button" class="preregs-btn preregs-btn-outline-primary" onclick="document.getElementById('rn-quick-modal').style.display='flex';document.getElementById('rn-quick-delivered-by').focus();" title="Generar nota de recepción (cliente entrega 1 paquete)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+                                Comprobante de recepción
+                            </button>
+                        @endif
+                    @endif
                     <a href="{{ route('preregistrations.edit', $preregistration->id) }}" class="preregs-btn preregs-btn-outline-primary">Editar</a>
                     @if($preregistration->warehouse_code)
                     @if(!empty($dropoffLabelIds))
@@ -469,5 +482,75 @@
 .preregs-photo-item { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px; background: #fff; }
 .preregs-photo-item-actions { margin-top: 8px; display: flex; justify-content: center; }
 .preregs-pending-wrap { margin-top: 8px; margin-bottom: 10px; }
+
+/* Modal: comprobante de recepción rápido */
+.rn-quick-modal {
+    display: none;
+    position: fixed; inset: 0; z-index: 60;
+    background: rgba(15, 23, 42, 0.55);
+    align-items: center; justify-content: center;
+    padding: 1rem;
+}
+.rn-quick-modal-card {
+    background: #fff; border-radius: 0.85rem;
+    width: 100%; max-width: 30rem;
+    box-shadow: 0 24px 48px rgba(0,0,0,0.25);
+    overflow: hidden;
+}
+.rn-quick-modal-head {
+    padding: 1rem 1.25rem;
+    background: linear-gradient(135deg, #0f766e 0%, #0d9488 55%, #14b8a6 100%);
+    color: #fff;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.rn-quick-modal-title { margin: 0; font-size: 1rem; font-weight: 700; }
+.rn-quick-modal-close {
+    background: rgba(255,255,255,0.18); border: none; color: #fff;
+    width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 16px; line-height: 1;
+}
+.rn-quick-modal-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.85rem; }
+.rn-quick-modal-row { display: flex; flex-direction: column; gap: 0.3rem; }
+.rn-quick-modal-row label { font-size: 0.8125rem; font-weight: 600; color: #374151; }
+.rn-quick-modal-row input {
+    width: 100%; padding: 0.55rem 0.75rem; font-size: 0.875rem;
+    border: 1px solid #d1d5db; border-radius: 0.5rem; background: #fff; color: #111827;
+}
+.rn-quick-modal-row input:focus { outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13,148,136,0.15); }
+.rn-quick-modal-foot {
+    padding: 0.85rem 1.25rem; background: #f8fafc; border-top: 1px solid #e5e7eb;
+    display: flex; justify-content: flex-end; gap: 0.5rem; flex-wrap: wrap;
+}
+.rn-quick-hint { margin: 0; font-size: 0.75rem; color: #6b7280; line-height: 1.4; }
 </style>
+
+@if($preregistration->intake_type === 'DROP_OFF' && !$preregistration->receipt_note_id)
+<div id="rn-quick-modal" class="rn-quick-modal" role="dialog" aria-modal="true" aria-labelledby="rn-quick-modal-title">
+    <form action="{{ route('preregistrations.quick-receipt', $preregistration->id) }}" method="POST" class="rn-quick-modal-card">
+        @csrf
+        <div class="rn-quick-modal-head">
+            <h3 id="rn-quick-modal-title" class="rn-quick-modal-title">Generar comprobante de recepción</h3>
+            <button type="button" class="rn-quick-modal-close" onclick="document.getElementById('rn-quick-modal').style.display='none';" aria-label="Cerrar">×</button>
+        </div>
+        <div class="rn-quick-modal-body">
+            <p class="rn-quick-hint">Capture los datos del cliente que entregó este paquete. Se generará una nota REC-XXXXX para este único bulto.</p>
+            <div class="rn-quick-modal-row">
+                <label for="rn-quick-delivered-by">Nombre completo *</label>
+                <input type="text" name="delivered_by" id="rn-quick-delivered-by" required maxlength="200" placeholder="Nombre y apellidos">
+            </div>
+            <div class="rn-quick-modal-row">
+                <label for="rn-quick-id">Cédula / Identificación</label>
+                <input type="text" name="delivered_by_id_number" id="rn-quick-id" maxlength="50" placeholder="Opcional">
+            </div>
+            <div class="rn-quick-modal-row">
+                <label for="rn-quick-phone">Teléfono</label>
+                <input type="text" name="delivered_by_phone" id="rn-quick-phone" maxlength="50" placeholder="Opcional">
+            </div>
+        </div>
+        <div class="rn-quick-modal-foot">
+            <button type="button" class="preregs-btn preregs-btn-link" onclick="document.getElementById('rn-quick-modal').style.display='none';">Cancelar</button>
+            <button type="submit" class="preregs-btn preregs-btn-primary">Generar e imprimir</button>
+        </div>
+    </form>
+</div>
+@endif
 @endsection

@@ -300,6 +300,10 @@
                         <svg class="sidebar-link-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h11.25v10.5H3.75V6.75Zm11.25 3h3.19a1.5 1.5 0 0 1 1.22.63l1.59 2.24v4.63H15V9.75ZM7.5 18.75a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm12 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z" /></svg>
                         <span class="sidebar-link-label">Entregas</span>
                     </a>
+                    <a href="{{ route('receipt-notes.index') }}" class="sidebar-link {{ request()->routeIs('receipt-notes.*') ? 'sidebar-link-active' : '' }}">
+                        <svg class="sidebar-link-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M7.5 3.75h9a1.5 1.5 0 0 1 1.5 1.5v13.5a1.5 1.5 0 0 1-1.5 1.5h-9a1.5 1.5 0 0 1-1.5-1.5V5.25a1.5 1.5 0 0 1 1.5-1.5Zm1.5 4.5h6"/></svg>
+                        <span class="sidebar-link-label">Comprobantes recepción</span>
+                    </a>
                 </div>
                 <div class="sidebar-divider"></div>
                 <div class="sidebar-section">

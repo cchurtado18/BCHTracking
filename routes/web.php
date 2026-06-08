@@ -11,6 +11,7 @@ use App\Http\Controllers\Web\DeliveryController;
 use App\Http\Controllers\Web\NicConsolidationController;
 use App\Http\Controllers\Web\PackageController;
 use App\Http\Controllers\Web\PreregistrationController;
+use App\Http\Controllers\Web\ReceiptNoteController;
 use App\Http\Controllers\Web\TimeEntryAdminController;
 use App\Http\Controllers\Web\TimeEntryController;
 use App\Http\Controllers\Web\TrackingController;
@@ -63,6 +64,17 @@ Route::middleware(['auth'])->group(function () {
     Route::post('preregistrations/{id}/photos/{photo}/move', [PreregistrationController::class, 'movePhoto'])->name('preregistrations.photos.move');
 
     Route::post('preregistrations/{preregistration}/create-single-consolidation', [ConsolidationController::class, 'createSingleFromPreregistration'])->name('preregistrations.create-single-consolidation');
+    Route::post('preregistrations/{preregistration}/quick-receipt', [ReceiptNoteController::class, 'quickFromPreregistration'])->name('preregistrations.quick-receipt');
+
+    Route::prefix('receipt-notes')->name('receipt-notes.')->group(function () {
+        Route::get('/', [ReceiptNoteController::class, 'index'])->name('index');
+        Route::get('/batch', [ReceiptNoteController::class, 'batch'])->name('batch');
+        Route::post('/', [ReceiptNoteController::class, 'store'])->name('store');
+        Route::post('/{id}/items', [ReceiptNoteController::class, 'addItem'])->name('add-item');
+        Route::delete('/{id}/items/{preregistration}', [ReceiptNoteController::class, 'removeItem'])->name('remove-item');
+        Route::get('/{id}/print', [ReceiptNoteController::class, 'printReport'])->name('print');
+        Route::delete('/{id}', [ReceiptNoteController::class, 'destroy'])->name('destroy');
+    });
     Route::get('consolidations/create/select', [ConsolidationController::class, 'createSelect'])->name('consolidations.create-select');
     Route::get('consolidations/create/scan', [ConsolidationController::class, 'createScan'])->name('consolidations.create-scan');
     Route::post('consolidations/store-scan', [ConsolidationController::class, 'storeScan'])->name('consolidations.store-scan');
