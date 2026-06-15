@@ -41,12 +41,18 @@
                         <dd class="delivery-dd">{{ $delivery->retirer_phone }}</dd>
                     </div>
                     @endif
+                    @if($delivery->invoice_number)
                     <div class="delivery-dl-row">
-                        <dt class="delivery-dt">Tipo de entrega</dt>
-                        <dd class="delivery-dd">
-                            <span class="delivery-badge delivery-badge-{{ strtolower($delivery->delivery_type ?? '') }}">{{ $delivery->delivery_type == 'PICKUP' ? 'Retiro en almacén' : 'Entrega a domicilio' }}</span>
-                        </dd>
+                        <dt class="delivery-dt">Nº de factura</dt>
+                        <dd class="delivery-dd"><span class="delivery-code">{{ $delivery->invoice_number }}</span></dd>
                     </div>
+                    @endif
+                    @if($delivery->deliveryNote)
+                    <div class="delivery-dl-row">
+                        <dt class="delivery-dt">Nota de entrega</dt>
+                        <dd class="delivery-dd"><span class="delivery-code">{{ $delivery->deliveryNote->code }}</span></dd>
+                    </div>
+                    @endif
                     @if($delivery->notes)
                     <div class="delivery-dl-row">
                         <dt class="delivery-dt">Notas</dt>

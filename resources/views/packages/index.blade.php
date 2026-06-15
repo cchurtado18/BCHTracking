@@ -110,6 +110,16 @@
                         </select>
                     </div>
                     @endif
+                    <div class="packages-field-dates">
+                        <div class="packages-field">
+                            <label class="packages-label">Desde</label>
+                            <input type="date" name="date_from" value="{{ request('date_from') }}" class="packages-input">
+                        </div>
+                        <div class="packages-field">
+                            <label class="packages-label">Hasta</label>
+                            <input type="date" name="date_to" value="{{ request('date_to') }}" class="packages-input">
+                        </div>
+                    </div>
                 </div>
                 <div class="packages-filters-actions">
                     <button type="submit" class="packages-btn packages-btn-primary">Aplicar filtros</button>
@@ -137,6 +147,7 @@
                         <th>Tracking</th>
                         <th>Fecha ingreso</th>
                         <th>Nombre (etiqueta)</th>
+                        <th>Descripción</th>
                         <th>Agencia</th>
                         <th>Servicio</th>
                         <th>Peso</th>
@@ -159,6 +170,9 @@
                         </td>
                         <td>
                             <span class="packages-name" title="{{ $package->label_name }}">{{ $package->label_name ? Str::limit($package->label_name, 35) : '—' }}</span>
+                        </td>
+                        <td>
+                            <span class="packages-description" title="{{ $package->description ?? '' }}">{{ $package->description ? Str::limit($package->description, 45) : '—' }}</span>
                         </td>
                         <td>
                             <span class="packages-agency" title="{{ $package->agency?->name ?? '' }}">{{ $package->agency?->name ?? '—' }}</span>
@@ -202,7 +216,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="packages-empty">
+                        <td colspan="10" class="packages-empty">
                             <p class="packages-empty-text">No hay paquetes con los filtros actuales.</p>
                             <a href="{{ route('packages.index', ['clear_filters' => 1]) }}" class="packages-btn packages-btn-secondary">Ver todos</a>
                         </td>

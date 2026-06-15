@@ -14,6 +14,7 @@ class Delivery extends Model
         'delivered_to',
         'retirer_id_number',
         'retirer_phone',
+        'invoice_number',
         'delivery_type',
         'notes',
     ];

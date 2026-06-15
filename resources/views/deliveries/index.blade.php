@@ -123,7 +123,6 @@
                         <th>Fecha</th>
                         <th>Paquetes</th>
                         <th>Retirado por</th>
-                        <th>Tipo</th>
                         <th>Agencia</th>
                         <th class="delivery-th-actions">Opciones</th>
                     </tr>
@@ -131,7 +130,7 @@
                 <tbody>
                     @forelse($deliveryNotes as $note)
                     @php
-                        $firstDelivery = $note->deliveries->first();
+                        $firstDelivery = $note->firstDelivery;
                         $agencyName = $note->agency?->name ?? $firstDelivery?->preregistration?->agency?->name ?? '—';
                     @endphp
                     <tr>
@@ -139,13 +138,6 @@
                         <td class="delivery-muted">{{ $firstDelivery ? $firstDelivery->delivered_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') : ($note->created_at ? $note->created_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') : '—') }}</td>
                         <td class="delivery-num">{{ $note->deliveries_count }}</td>
                         <td class="delivery-name-cell" title="{{ $firstDelivery?->delivered_to }}">{{ $firstDelivery?->delivered_to ?? '—' }}</td>
-                        <td>
-                            @if($firstDelivery)
-                            <span class="delivery-badge delivery-badge-{{ strtolower($firstDelivery->delivery_type ?? '') }}">{{ $firstDelivery->delivery_type == 'PICKUP' ? 'Retiro' : 'Entrega' }}</span>
-                            @else
-                            —
-                            @endif
-                        </td>
                         <td class="delivery-muted delivery-name-cell" title="{{ $agencyName }}">{{ Str::limit($agencyName, 20) }}</td>
                         <td class="delivery-actions">
                             <a href="{{ route('deliveries.print-report', ['delivery_note_id' => $note->id]) }}" target="_blank" class="delivery-btn delivery-btn-sm delivery-btn-outline-primary" title="Ver / imprimir nota">Ver</a>
@@ -153,7 +145,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="delivery-empty">
+                        <td colspan="6" class="delivery-empty">
                             <p class="delivery-empty-text">{{ $selectedAgency ? 'No hay notas de entrega para esta agencia.' : 'No hay notas de entrega.' }}</p>
                         </td>
                     </tr>

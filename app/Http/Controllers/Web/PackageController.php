@@ -21,7 +21,7 @@ class PackageController extends Controller
             return redirect()->route('packages.index');
         }
 
-        $filterKeys = ['search', 'service_type', 'intake_type', 'status', 'agency_id'];
+        $filterKeys = ['search', 'service_type', 'intake_type', 'status', 'agency_id', 'date_from', 'date_to'];
         $hasParams = $request->hasAny($filterKeys);
         if (! $hasParams && session()->has('packages_index_filters')) {
             return redirect()->route('packages.index', session('packages_index_filters'));
@@ -30,7 +30,7 @@ class PackageController extends Controller
             session(['packages_index_filters' => $request->only($filterKeys)]);
         }
 
-        $query = Preregistration::query();
+        $query = Preregistration::with('agency');
 
         if (auth()->user() && auth()->user()->isAgencyUser()) {
             $query->where('agency_id', auth()->user()->agency_id);
@@ -57,6 +57,12 @@ class PackageController extends Controller
             if ($request->filled('agency_id') && (int) $request->agency_id > 0) {
                 $query->where('agency_id', (int) $request->agency_id);
             }
+        }
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
         }
 
         $packages = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
@@ -88,6 +94,12 @@ class PackageController extends Controller
             if ($request->filled('agency_id') && (int) $request->agency_id > 0) {
                 $statsQuery->where('agency_id', (int) $request->agency_id);
             }
+        }
+        if ($request->filled('date_from')) {
+            $statsQuery->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $statsQuery->whereDate('created_at', '<=', $request->date_to);
         }
         $statsTotal = $statsQuery->count();
         $statsAir = (clone $statsQuery)->where('service_type', 'AIR')->count();

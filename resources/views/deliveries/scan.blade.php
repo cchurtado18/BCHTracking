@@ -38,29 +38,26 @@
                         <input type="text" name="delivered_to" id="delivered_to" value="{{ old('delivered_to') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm @error('delivered_to') border-red-500 @enderror" required autofocus placeholder="Nombre completo">
                         @error('delivered_to')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                     </div>
+                    <div>
+                        <label for="invoice_number" class="block text-sm font-medium text-gray-700">Nº factura *</label>
+                        <input type="text" name="invoice_number" id="invoice_number" value="{{ old('invoice_number') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm @error('invoice_number') border-red-500 @enderror" required placeholder="Ej. 17751">
+                        @error('invoice_number')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                    </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label for="retirer_id_number" class="block text-sm font-medium text-gray-700">Cédula *</label>
-                            <input type="text" name="retirer_id_number" id="retirer_id_number" value="{{ old('retirer_id_number') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm @error('retirer_id_number') border-red-500 @enderror" required placeholder="Nº cédula">
+                            <label for="retirer_id_number" class="block text-sm font-medium text-gray-700">Cédula (opcional)</label>
+                            <input type="text" name="retirer_id_number" id="retirer_id_number" value="{{ old('retirer_id_number') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm @error('retirer_id_number') border-red-500 @enderror" placeholder="Nº cédula">
                             @error('retirer_id_number')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                         </div>
                         <div>
-                            <label for="retirer_phone" class="block text-sm font-medium text-gray-700">Teléfono *</label>
-                            <input type="text" name="retirer_phone" id="retirer_phone" value="{{ old('retirer_phone') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm @error('retirer_phone') border-red-500 @enderror" required placeholder="Nº telefónico">
+                            <label for="retirer_phone" class="block text-sm font-medium text-gray-700">Teléfono (opcional)</label>
+                            <input type="text" name="retirer_phone" id="retirer_phone" value="{{ old('retirer_phone') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm @error('retirer_phone') border-red-500 @enderror" placeholder="Nº telefónico">
                             @error('retirer_phone')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                         </div>
                     </div>
-                    <div>
-                        <label for="delivery_type" class="block text-sm font-medium text-gray-700">Tipo de entrega</label>
-                        <select name="delivery_type" id="delivery_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                            <option value="PICKUP" {{ old('delivery_type', 'PICKUP') == 'PICKUP' ? 'selected' : '' }}>Retiro en almacén</option>
-                            <option value="DELIVERY" {{ old('delivery_type') == 'DELIVERY' ? 'selected' : '' }}>Entrega a domicilio</option>
-                        </select>
-                        @error('delivery_type')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                    </div>
                 </div>
                 <div class="mt-6 flex justify-end">
-                    <button type="submit" class="bg-teal-600 text-white px-4 py-2 rounded-md hover:bg-teal-700 font-medium">
+                    <button type="submit" id="btn-scan-retirer-submit" class="bg-teal-600 text-white px-4 py-2 rounded-md hover:bg-teal-700 font-medium disabled:opacity-60 disabled:cursor-not-allowed">
                         Guardar y escanear
                     </button>
                 </div>
@@ -71,11 +68,15 @@
             <div>
                 <span class="font-semibold">Quien retira:</span> {{ $scanRetirerSession['delivered_to'] ?? '—' }}
                 <span class="text-emerald-600 mx-1">·</span>
-                <span class="font-semibold">Cédula:</span> {{ $scanRetirerSession['retirer_id_number'] ?? '—' }}
+                <span class="font-semibold">Nº factura:</span> {{ $scanRetirerSession['invoice_number'] ?? '—' }}
+                @if(filled($scanRetirerSession['retirer_id_number'] ?? null))
                 <span class="text-emerald-600 mx-1">·</span>
-                <span class="font-semibold">Tel.:</span> {{ $scanRetirerSession['retirer_phone'] ?? '—' }}
+                <span class="font-semibold">Cédula:</span> {{ $scanRetirerSession['retirer_id_number'] }}
+                @endif
+                @if(filled($scanRetirerSession['retirer_phone'] ?? null))
                 <span class="text-emerald-600 mx-1">·</span>
-                <span class="font-semibold">Tipo:</span> {{ ($scanRetirerSession['delivery_type'] ?? 'PICKUP') === 'DELIVERY' ? 'Entrega a domicilio' : 'Retiro en almacén' }}
+                <span class="font-semibold">Tel.:</span> {{ $scanRetirerSession['retirer_phone'] }}
+                @endif
             </div>
             <form action="{{ route('deliveries.scan-clear-retirer-session') }}" method="POST" class="shrink-0">
                 @csrf
@@ -90,7 +91,7 @@
                 <input type="hidden" name="delivered_to" value="{{ $scanRetirerSession['delivered_to'] ?? '' }}">
                 <input type="hidden" name="retirer_id_number" value="{{ $scanRetirerSession['retirer_id_number'] ?? '' }}">
                 <input type="hidden" name="retirer_phone" value="{{ $scanRetirerSession['retirer_phone'] ?? '' }}">
-                <input type="hidden" name="delivery_type" value="{{ $scanRetirerSession['delivery_type'] ?? 'PICKUP' }}">
+                <input type="hidden" name="invoice_number" value="{{ $scanRetirerSession['invoice_number'] ?? '' }}">
 
                 <div class="space-y-6">
                     <div>
@@ -123,7 +124,7 @@
                 </div>
 
                 <div class="mt-6 flex justify-end space-x-3">
-                    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
+                    <button type="submit" id="btn-standalone-scan-submit" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed">
                         Registrar entrega
                     </button>
                 </div>
@@ -133,33 +134,60 @@
     </div>
 </div>
 
-@if($scanRetirerSessionActive)
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Anti doble-submit en el formulario del retirante (paso 1)
+    var retirerBtn = document.getElementById('btn-scan-retirer-submit');
+    if (retirerBtn && retirerBtn.form) {
+        retirerBtn.form.addEventListener('submit', function() {
+            retirerBtn.disabled = true;
+            retirerBtn.textContent = 'Guardando…';
+        });
+    }
+
     var form = document.getElementById('delivery-standalone-scan-form');
     var input = document.getElementById('warehouse_code');
+    var scanBtn = document.getElementById('btn-standalone-scan-submit');
     if (!form || !input) return;
+
     if (document.getElementById('delivery-scan-error')) {
         input.value = '';
+        input.removeAttribute('readonly');
     }
     input.focus();
+
     function digits(v) { return (v || '').replace(/\D/g, ''); }
+
+    var submitting = false;
+    function submitOnce() {
+        if (submitting) return;
+        submitting = true;
+        if (scanBtn) { scanBtn.disabled = true; scanBtn.textContent = 'Registrando…'; }
+        input.setAttribute('readonly', 'readonly');
+        form.submit();
+    }
+
     input.addEventListener('input', function() {
         var d = digits(this.value);
         if (d.length > 6) d = d.slice(0, 6);
         this.value = d;
-        if (d.length === 6) form.submit();
+        if (d.length === 6) submitOnce();
     });
     input.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
             var d = digits(this.value);
-            if (d.length === 6) form.submit();
+            if (d.length === 6) submitOnce();
         }
+    });
+
+    form.addEventListener('submit', function() {
+        if (submitting) return;
+        submitting = true;
+        if (scanBtn) { scanBtn.disabled = true; scanBtn.textContent = 'Registrando…'; }
     });
 });
 </script>
 @endpush
-@endif
 @endsection

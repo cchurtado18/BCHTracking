@@ -7,7 +7,9 @@ use App\Models\Agency;
 use App\Models\Delivery;
 use App\Models\DeliveryNote;
 use App\Models\Preregistration;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DeliveryController extends Controller
 {
@@ -15,9 +17,75 @@ class DeliveryController extends Controller
 
     private const SESSION_SCAN_RETIRER = 'delivery_scan_retirer';
 
-    private function batchRetirerSignature(int $agencyId, ?string $serviceType): string
+    /**
+     * Aborta con 403 si el usuario actual es de subagencia y no tiene acceso
+     * a la agencia indicada (ni como agencia propia ni como subagencia hija).
+     */
+    private function ensureUserCanAccessAgency(?Agency $agency): void
     {
-        return hash('sha256', json_encode(['agency_id' => $agencyId, 'service_type' => $serviceType ?? '']));
+        $user = auth()->user();
+        if (! $user || ! $agency) {
+            return;
+        }
+        if (! $user->isAgencyUser()) {
+            return;
+        }
+        $userAgencyId = (int) $user->agency_id;
+        $allowed = (int) $agency->id === $userAgencyId
+            || (int) ($agency->parent_agency_id ?? 0) === $userAgencyId;
+        abort_unless($allowed, 403, 'No tiene permiso para esta agencia.');
+    }
+
+    /**
+     * IDs de agencias que el usuario actual puede manipular.
+     * Devuelve null si es central (acceso total).
+     */
+    private function userAllowedAgencyIds(): ?array
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->isAgencyUser()) {
+            return null;
+        }
+        $ids = [(int) $user->agency_id];
+        $ids = array_merge($ids, Agency::where('parent_agency_id', $user->agency_id)->pluck('id')->all());
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * Crea una DeliveryNote con código único, reintentando si hay colisión
+     * de unique en el código (race condition con dos requests simultáneos).
+     */
+    private function createDeliveryNoteForAgency(?Agency $agency): DeliveryNote
+    {
+        $maxAttempts = 3;
+        $lastException = null;
+        for ($i = 0; $i < $maxAttempts; $i++) {
+            try {
+                return DB::transaction(function () use ($agency) {
+                    return DeliveryNote::create([
+                        'code' => DeliveryNote::generateCode(),
+                        'agency_id' => $agency?->id,
+                    ]);
+                });
+            } catch (QueryException $e) {
+                $lastException = $e;
+                $msg = strtolower($e->getMessage());
+                if (! str_contains($msg, 'unique') && ! str_contains($msg, 'duplicate')) {
+                    throw $e;
+                }
+            }
+        }
+        throw $lastException;
+    }
+
+    private function batchRetirerSignature(int $agencyId, ?string $serviceType, int $deliveryNoteId): string
+    {
+        return hash('sha256', json_encode([
+            'agency_id' => $agencyId,
+            'service_type' => $serviceType ?? '',
+            'delivery_note_id' => $deliveryNoteId,
+        ]));
     }
 
     private function batchRetirerSessionMatches(?array $session, DeliveryNote $deliveryNote, int $agencyId, ?string $serviceType): bool
@@ -27,7 +95,7 @@ class DeliveryController extends Controller
         }
 
         return (int) ($session['delivery_note_id'] ?? 0) === (int) $deliveryNote->id
-            && ($session['signature'] ?? '') === $this->batchRetirerSignature($agencyId, $serviceType);
+            && ($session['signature'] ?? '') === $this->batchRetirerSignature($agencyId, $serviceType, (int) $deliveryNote->id);
     }
 
     private function mergeBatchRetirerFromSession(Request $request): void
@@ -65,8 +133,8 @@ class DeliveryController extends Controller
         if (! $request->filled('retirer_phone')) {
             $merge['retirer_phone'] = $session['retirer_phone'] ?? '';
         }
-        if (! $request->filled('delivery_type')) {
-            $merge['delivery_type'] = $session['delivery_type'] ?? 'PICKUP';
+        if (! $request->filled('invoice_number')) {
+            $merge['invoice_number'] = $session['invoice_number'] ?? '';
         }
 
         if ($merge !== []) {
@@ -95,8 +163,8 @@ class DeliveryController extends Controller
         if (! $request->filled('retirer_phone')) {
             $merge['retirer_phone'] = $session['retirer_phone'] ?? '';
         }
-        if (! $request->filled('delivery_type')) {
-            $merge['delivery_type'] = $session['delivery_type'] ?? 'PICKUP';
+        if (! $request->filled('invoice_number')) {
+            $merge['invoice_number'] = $session['invoice_number'] ?? '';
         }
 
         if ($merge !== []) {
@@ -121,11 +189,11 @@ class DeliveryController extends Controller
 
         session([self::SESSION_BATCH_RETIRER => [
             'delivery_note_id' => (int) $request->delivery_note_id,
-            'signature' => $this->batchRetirerSignature($agencyId, $serviceType),
+            'signature' => $this->batchRetirerSignature($agencyId, $serviceType, (int) $request->delivery_note_id),
             'delivered_to' => $request->delivered_to,
             'retirer_id_number' => $request->retirer_id_number,
             'retirer_phone' => $request->retirer_phone,
-            'delivery_type' => $request->delivery_type,
+            'invoice_number' => $request->invoice_number,
         ]]);
     }
 
@@ -139,12 +207,18 @@ class DeliveryController extends Controller
             'delivered_to' => $request->delivered_to,
             'retirer_id_number' => $request->retirer_id_number,
             'retirer_phone' => $request->retirer_phone,
-            'delivery_type' => $request->delivery_type,
+            'invoice_number' => $request->invoice_number,
         ]]);
     }
 
     public function index(Request $request)
     {
+        $user = auth()->user();
+        // Usuario de subagencia: forzar su propia agencia (ignorar overrides).
+        if ($user && $user->isAgencyUser()) {
+            $request->merge(['agency_id' => (int) $user->agency_id]);
+        }
+
         if ($request->has('clear_agency')) {
             session()->forget(['deliveries_index_agency_id', 'deliveries_index_service_type']);
 
@@ -153,6 +227,12 @@ class DeliveryController extends Controller
 
         $agencyId = $request->filled('agency_id') ? (int) $request->agency_id : null;
         $serviceType = $request->filled('service_type') && in_array($request->service_type, ['AIR', 'SEA'], true) ? $request->service_type : null;
+
+        // Si se eligió agencia sin filtro explícito de servicio, limpiar el filtro persistido
+        if ($request->filled('agency_id') && ! $request->filled('service_type')) {
+            session()->forget('deliveries_index_service_type');
+        }
+
         if ($agencyId > 0) {
             session(['deliveries_index_agency_id' => $agencyId]);
             if ($serviceType !== null) {
@@ -167,16 +247,27 @@ class DeliveryController extends Controller
             return redirect()->route('deliveries.index', $params);
         }
 
-        // Lista única de agencias para el selector: principales + subagencias (con indicador)
-        $mainAgencies = Agency::mainAgencies()->where('is_active', true)->orderBy('name')->get();
-        $subAgencies = Agency::where('is_main', false)->where('is_active', true)->with('parent')->orderBy('name')->get();
-        $agenciesForSelect = collect()
-            ->merge($mainAgencies->map(fn ($a) => (object) ['id' => $a->id, 'name' => $a->name.' (Agencia principal)', 'is_main' => true]))
-            ->merge($subAgencies->map(fn ($a) => (object) ['id' => $a->id, 'name' => $a->name.($a->parent ? ' — '.$a->parent->name : ''), 'is_main' => false]))
-            ->sortBy('name')
-            ->values();
+        // Selector de agencias: si el usuario es de subagencia, solo la suya
+        if ($user && $user->isAgencyUser()) {
+            $ownAgency = Agency::find($user->agency_id);
+            $agenciesForSelect = collect();
+            if ($ownAgency) {
+                $agenciesForSelect->push((object) ['id' => $ownAgency->id, 'name' => $ownAgency->name, 'is_main' => $ownAgency->is_main]);
+            }
+        } else {
+            $mainAgencies = Agency::mainAgencies()->where('is_active', true)->orderBy('name')->get();
+            $subAgencies = Agency::where('is_main', false)->where('is_active', true)->with('parent')->orderBy('name')->get();
+            $agenciesForSelect = collect()
+                ->merge($mainAgencies->map(fn ($a) => (object) ['id' => $a->id, 'name' => $a->name.' (Agencia principal)', 'is_main' => true]))
+                ->merge($subAgencies->map(fn ($a) => (object) ['id' => $a->id, 'name' => $a->name.($a->parent ? ' — '.$a->parent->name : ''), 'is_main' => false]))
+                ->sortBy('name')
+                ->values();
+        }
 
         $selectedAgency = $agencyId > 0 ? Agency::find($agencyId) : null;
+        if ($selectedAgency) {
+            $this->ensureUserCanAccessAgency($selectedAgency);
+        }
 
         // Paquetes listos para retiro: solo si hay agencia seleccionada
         $availablePackages = collect();
@@ -207,7 +298,7 @@ class DeliveryController extends Controller
             $availableTotal = $availablePackages->count();
         }
 
-        // Entregas realizadas (notas): filtro opcional por agencia seleccionada
+        // Notas de entrega: solo notas con al menos 1 entrega registrada (excluye huérfanas).
         $deliveryFilter = function ($q) use ($selectedAgency) {
             if ($selectedAgency) {
                 if ($selectedAgency->is_main) {
@@ -222,27 +313,14 @@ class DeliveryController extends Controller
 
         $notesQuery = DeliveryNote::query()
             ->withCount(['deliveries' => $deliveryFilter])
-            ->with(['agency', 'deliveries' => function ($q) use ($deliveryFilter) {
-                $deliveryFilter($q);
-                $q->orderBy('delivered_at')->limit(1)->with('preregistration.agency');
-            }])
-            ->when($selectedAgency, fn ($q) => $q->whereHas('deliveries', $deliveryFilter))
-            ->orderByDesc(\DB::raw('(SELECT MAX(delivered_at) FROM deliveries WHERE deliveries.delivery_note_id = delivery_notes.id)'));
+            ->with(['agency', 'firstDelivery.preregistration.agency'])
+            ->whereHas('deliveries', $deliveryFilter)
+            ->orderByDesc(DB::raw('(SELECT MAX(delivered_at) FROM deliveries WHERE deliveries.delivery_note_id = delivery_notes.id)'));
 
         $deliveryNotes = $notesQuery->paginate(15)->withQueryString();
 
-        $deliveriesSinNota = Delivery::with('preregistration.agency.parent')
-            ->whereNull('delivery_note_id')
-            ->when($selectedAgency, function ($q) use ($deliveryFilter) {
-                $deliveryFilter($q);
-            })
-            ->orderBy('delivered_at', 'desc')
-            ->paginate(15, ['*'], 'sin_nota_page')
-            ->withQueryString();
-
         return view('deliveries.index', compact(
             'deliveryNotes',
-            'deliveriesSinNota',
             'agenciesForSelect',
             'selectedAgency',
             'agencyId',
@@ -256,7 +334,7 @@ class DeliveryController extends Controller
 
     /**
      * Reporte de entrega: lista de paquetes a entregar a la agencia y escaneo.
-     * Acepta agency_id (puede ser agencia principal o subagencia) o main_agency_id/agency_id por compatibilidad.
+     * Acepta agency_id o main_agency_id por compatibilidad.
      */
     public function batch(Request $request)
     {
@@ -264,14 +342,19 @@ class DeliveryController extends Controller
         $mainAgencyId = $request->filled('main_agency_id') ? (int) $request->main_agency_id : null;
 
         if ($agencyId > 0) {
-            $agency = Agency::find($agencyId);
+            $agency = Agency::where('is_active', true)->find($agencyId);
             if (! $agency) {
-                return redirect()->route('deliveries.index')->with('error', 'Agencia no encontrada.');
+                return redirect()->route('deliveries.index')->with('error', 'Agencia no encontrada o desactivada.');
             }
+            $this->ensureUserCanAccessAgency($agency);
             $mainAgencyId = $agency->is_main ? $agency->id : null;
             $subAgencyId = $agency->is_main ? null : $agency->id;
         } elseif ($mainAgencyId > 0) {
-            $agency = Agency::find($mainAgencyId);
+            $agency = Agency::where('is_active', true)->find($mainAgencyId);
+            if (! $agency) {
+                return redirect()->route('deliveries.index')->with('error', 'Agencia no encontrada o desactivada.');
+            }
+            $this->ensureUserCanAccessAgency($agency);
             $subAgencyId = null;
         } else {
             return redirect()->route('deliveries.index')->with('error', 'Seleccione una agencia para generar el reporte de entrega.');
@@ -296,25 +379,29 @@ class DeliveryController extends Controller
         $availablePackages = $availableQuery->orderBy('warehouse_code')
             ->orderByRaw('COALESCE(bulto_index, 999) ASC')
             ->get();
-        $agencyName = $agency ? $agency->name : 'Agencia';
+        $agencyName = $agency->name;
         $filterParams = array_filter(['agency_id' => $agency->id, 'service_type' => $serviceType]);
 
+        // LAZY CREATE: solo cargar la nota si llega delivery_note_id en la URL.
+        // Si no llega, mostramos la vista en "paso 1" (sin nota); la nota se crea
+        // cuando el operador guarde los datos del retirante en storeBatchRetirerSession.
+        $deliveryNote = null;
         if ($request->filled('delivery_note_id')) {
             $deliveryNote = DeliveryNote::find((int) $request->delivery_note_id);
             if (! $deliveryNote) {
                 return redirect()->route('deliveries.batch', $filterParams)->with('error', 'Nota de entrega no encontrada.');
             }
-        } else {
-            $deliveryNote = DeliveryNote::create([
-                'code' => DeliveryNote::generateCode(),
-                'agency_id' => $agency?->id,
-            ]);
-
-            return redirect()->route('deliveries.batch', array_merge($filterParams, ['delivery_note_id' => $deliveryNote->id]));
+            if ((int) $deliveryNote->agency_id !== (int) $agency->id) {
+                return redirect()->route('deliveries.batch', $filterParams)->with('error', 'La nota de entrega no corresponde a esta agencia.');
+            }
         }
 
-        $batchRetirerSession = session(self::SESSION_BATCH_RETIRER);
-        $retirerSessionActive = $this->batchRetirerSessionMatches($batchRetirerSession, $deliveryNote, (int) $agency->id, $serviceType);
+        $retirerSessionActive = false;
+        $batchRetirerSession = null;
+        if ($deliveryNote) {
+            $batchRetirerSession = session(self::SESSION_BATCH_RETIRER);
+            $retirerSessionActive = $this->batchRetirerSessionMatches($batchRetirerSession, $deliveryNote, (int) $agency->id, $serviceType);
+        }
 
         return view('deliveries.batch', compact(
             'availablePackages',
@@ -330,33 +417,48 @@ class DeliveryController extends Controller
     public function storeBatchRetirerSession(Request $request)
     {
         $validated = $request->validate([
-            'delivery_note_id' => 'required|exists:delivery_notes,id',
+            'delivery_note_id' => 'nullable|exists:delivery_notes,id',
             'agency_id' => 'required|exists:agencies,id',
             'service_type' => 'nullable|in:AIR,SEA',
             'delivered_to' => 'required|string|max:255',
-            'retirer_id_number' => 'required|string|max:50',
-            'retirer_phone' => 'required|string|max:50',
-            'delivery_type' => 'required|in:PICKUP,DELIVERY',
+            'retirer_id_number' => 'nullable|string|max:50',
+            'retirer_phone' => 'nullable|string|max:50',
+            'invoice_number' => 'required|string|max:50',
         ], [
             'delivered_to.required' => 'El nombre de quien retira es obligatorio.',
-            'retirer_id_number.required' => 'El número de cédula de quien retira es obligatorio.',
-            'retirer_phone.required' => 'El número telefónico de quien retira es obligatorio.',
+            'invoice_number.required' => 'El número de factura es obligatorio.',
         ]);
 
+        $agency = Agency::find((int) $validated['agency_id']);
+        $this->ensureUserCanAccessAgency($agency);
         $serviceType = $validated['service_type'] ?? null;
+
+        // Lazy-create: si no llega delivery_note_id, generamos la nota ahora.
+        if (! empty($validated['delivery_note_id'])) {
+            $deliveryNote = DeliveryNote::find((int) $validated['delivery_note_id']);
+            if (! $deliveryNote) {
+                return back()->withInput()->with('error', 'Nota de entrega no encontrada.');
+            }
+            if ((int) $deliveryNote->agency_id !== (int) $validated['agency_id']) {
+                return back()->withInput()->with('error', 'La nota de entrega no corresponde a esta agencia.');
+            }
+        } else {
+            $deliveryNote = $this->createDeliveryNoteForAgency($agency);
+        }
+
         session([self::SESSION_BATCH_RETIRER => [
-            'delivery_note_id' => (int) $validated['delivery_note_id'],
-            'signature' => $this->batchRetirerSignature((int) $validated['agency_id'], $serviceType),
+            'delivery_note_id' => (int) $deliveryNote->id,
+            'signature' => $this->batchRetirerSignature((int) $validated['agency_id'], $serviceType, (int) $deliveryNote->id),
             'delivered_to' => $validated['delivered_to'],
-            'retirer_id_number' => $validated['retirer_id_number'],
-            'retirer_phone' => $validated['retirer_phone'],
-            'delivery_type' => $validated['delivery_type'],
+            'retirer_id_number' => $validated['retirer_id_number'] ?? '',
+            'retirer_phone' => $validated['retirer_phone'] ?? '',
+            'invoice_number' => $validated['invoice_number'],
         ]]);
 
         $redirectParams = array_filter([
             'agency_id' => (int) $validated['agency_id'],
             'service_type' => $serviceType,
-            'delivery_note_id' => (int) $validated['delivery_note_id'],
+            'delivery_note_id' => (int) $deliveryNote->id,
         ]);
 
         return redirect()->route('deliveries.batch', $redirectParams)
@@ -365,18 +467,25 @@ class DeliveryController extends Controller
 
     public function clearBatchRetirerSession(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'delivery_note_id' => 'required|exists:delivery_notes,id',
             'agency_id' => 'required|exists:agencies,id',
             'service_type' => 'nullable|in:AIR,SEA',
         ]);
 
+        $deliveryNote = DeliveryNote::find((int) $validated['delivery_note_id']);
+        if ($deliveryNote && (int) $deliveryNote->agency_id !== (int) $validated['agency_id']) {
+            return back()->with('error', 'La nota de entrega no corresponde a esta agencia.');
+        }
+        $agency = Agency::find((int) $validated['agency_id']);
+        $this->ensureUserCanAccessAgency($agency);
+
         session()->forget(self::SESSION_BATCH_RETIRER);
 
         $redirectParams = array_filter([
-            'agency_id' => (int) $request->agency_id,
+            'agency_id' => (int) $validated['agency_id'],
             'service_type' => $request->filled('service_type') ? $request->service_type : null,
-            'delivery_note_id' => (int) $request->delivery_note_id,
+            'delivery_note_id' => (int) $validated['delivery_note_id'],
         ]);
 
         return redirect()->route('deliveries.batch', $redirectParams)
@@ -402,27 +511,36 @@ class DeliveryController extends Controller
 
         if ($request->filled('delivery_note_id')) {
             $deliveryNote = DeliveryNote::with('agency.parent')->findOrFail((int) $request->delivery_note_id);
+            $this->ensureUserCanAccessAgency($deliveryNote->agency);
             $deliveries = Delivery::with('preregistration.agency', 'preregistration.agencyClient', 'deliveryNote')
                 ->where('delivery_note_id', $deliveryNote->id)
                 ->orderBy('delivered_at')
                 ->get();
             $agency = $deliveryNote->agency;
             $agencyName = $agency ? $agency->name : 'Agencia';
-            $date = $deliveries->first()?->delivered_at?->toDateString() ?? $date;
+            $date = $deliveries->first()?->delivered_at?->toDateString()
+                ?? $deliveryNote->created_at?->toDateString()
+                ?? $date;
             $deliveryNotesInReport = collect([$deliveryNote]);
         } else {
+            if ($request->filled('agency_id')) {
+                $agency = Agency::with('parent')->find((int) $request->agency_id);
+            } else {
+                $mid = (int) $request->main_agency_id;
+                $agency = Agency::with('parent')->find($mid);
+            }
+            $this->ensureUserCanAccessAgency($agency);
+
             $query = Delivery::with('preregistration.agency', 'preregistration.agencyClient', 'deliveryNote')
                 ->whereDate('delivered_at', $date);
 
             if ($request->filled('agency_id')) {
                 $query->whereHas('preregistration', fn ($q) => $q->where('agency_id', (int) $request->agency_id));
-                $agency = Agency::with('parent')->find((int) $request->agency_id);
             } else {
                 $mid = (int) $request->main_agency_id;
                 $query->whereHas('preregistration', function ($q) use ($mid) {
                     $q->whereHas('agency', fn ($q2) => $q2->where('id', $mid)->orWhere('parent_agency_id', $mid));
                 });
-                $agency = Agency::with('parent')->find($mid);
             }
 
             $deliveries = $query->orderBy('delivered_at')->get();
@@ -440,7 +558,7 @@ class DeliveryController extends Controller
         $retiradoTelefono = $first && $deliveries->pluck('delivered_to')->unique()->count() === 1 && $deliveries->pluck('retirer_phone')->unique()->count() === 1
             ? $first->retirer_phone : null;
 
-        // Encomienda familiar (CH LOGISTICS): usar diseño "Nota de cobro" igual al de la factura CH Logistics
+        // CH Logistics: usar diseño "Nota de cobro"
         if ($agency && $agency->isChLogistics()) {
             $firstPrereg = $first?->preregistration;
             $clientName = $firstPrereg?->agencyClient?->full_name ?? $firstPrereg?->label_name ?? $retiradoPor ?? '—';
@@ -451,7 +569,8 @@ class DeliveryController extends Controller
 
             return view('deliveries.print-report-nota-cobro', compact(
                 'deliveries', 'agencyName', 'agency', 'date', 'deliveryNote',
-                'clientName', 'clientPhone', 'clientAddress', 'deliveryAddress', 'deliveryPhone'
+                'clientName', 'clientPhone', 'clientAddress', 'deliveryAddress', 'deliveryPhone',
+                'retiradoPor', 'retiradoCedula', 'retiradoTelefono'
             ));
         }
 
@@ -473,20 +592,19 @@ class DeliveryController extends Controller
     {
         $validated = $request->validate([
             'delivered_to' => 'required|string|max:255',
-            'retirer_id_number' => 'required|string|max:50',
-            'retirer_phone' => 'required|string|max:50',
-            'delivery_type' => 'required|in:PICKUP,DELIVERY',
+            'retirer_id_number' => 'nullable|string|max:50',
+            'retirer_phone' => 'nullable|string|max:50',
+            'invoice_number' => 'required|string|max:50',
         ], [
             'delivered_to.required' => 'El nombre de quien retira es obligatorio.',
-            'retirer_id_number.required' => 'El número de cédula de quien retira es obligatorio.',
-            'retirer_phone.required' => 'El número telefónico de quien retira es obligatorio.',
+            'invoice_number.required' => 'El número de factura es obligatorio.',
         ]);
 
         session([self::SESSION_SCAN_RETIRER => [
             'delivered_to' => $validated['delivered_to'],
-            'retirer_id_number' => $validated['retirer_id_number'],
-            'retirer_phone' => $validated['retirer_phone'],
-            'delivery_type' => $validated['delivery_type'],
+            'retirer_id_number' => $validated['retirer_id_number'] ?? '',
+            'retirer_phone' => $validated['retirer_phone'] ?? '',
+            'invoice_number' => $validated['invoice_number'],
         ]]);
 
         return redirect()->route('deliveries.scan')
@@ -510,82 +628,124 @@ class DeliveryController extends Controller
             'warehouse_code' => 'required|string|size:6|regex:/^\d{6}$/',
             'bulto_index' => 'nullable|integer|min:1|max:255',
             'delivered_to' => 'required|string|max:255',
-            'retirer_id_number' => 'required|string|max:50',
-            'retirer_phone' => 'required|string|max:50',
-            'delivery_type' => 'required|in:PICKUP,DELIVERY',
+            'retirer_id_number' => 'nullable|string|max:50',
+            'retirer_phone' => 'nullable|string|max:50',
+            'invoice_number' => 'required|string|max:50',
             'notes' => 'nullable|string|max:500',
         ], [
             'delivered_to.required' => 'El nombre de quien retira es obligatorio.',
-            'retirer_id_number.required' => 'El número de cédula de quien retira es obligatorio.',
-            'retirer_phone.required' => 'El número telefónico de quien retira es obligatorio.',
+            'invoice_number.required' => 'El número de factura es obligatorio.',
         ]);
 
-        // Varios bultos pueden compartir el mismo warehouse_code (ej. 1/11, 2/11…). Identificar por bulto_index.
-        $candidates = Preregistration::where('warehouse_code', $request->warehouse_code)
-            ->where('status', 'READY')
-            ->whereDoesntHave('delivery')
-            ->orderByRaw('COALESCE(bulto_index, 999) ASC')
-            ->get();
-
-        if ($candidates->isEmpty()) {
-            $any = Preregistration::where('warehouse_code', $request->warehouse_code)->first();
-            if (! $any) {
-                return back()->with('error', 'Código de almacén no encontrado.')->withInput();
-            }
-            if ($any->status !== 'READY') {
-                return back()->with('error', 'El paquete no está listo para entrega (debe estar READY).')->withInput();
-            }
-            if ($any->delivery) {
-                return back()->with('error', 'El paquete ya fue entregado.')->withInput();
-            }
-
-            return back()->with('error', 'No hay paquetes pendientes con ese código.')->withInput();
-        }
-
-        if ($candidates->count() > 1) {
-            $bultoIndex = $request->filled('bulto_index') ? (int) $request->bulto_index : null;
-            if ($bultoIndex === null) {
-                return back()->with('error', 'Varios bultos con este código. Indique cuál entregó (ej. 1/11, 2/11…).')->withInput();
-            }
-            $preregistration = $candidates->firstWhere('bulto_index', $bultoIndex);
-            if (! $preregistration) {
-                return back()->with('error', 'Bulto '.$bultoIndex.'/'.($candidates->first()->bultos_total ?? '?').' no encontrado o ya entregado.')->withInput();
-            }
-        } else {
-            $preregistration = $candidates->first();
-        }
-
+        // Calcular agencias permitidas: combinación de la del batch + la del usuario (intersección)
+        $userAllowed = $this->userAllowedAgencyIds();
+        $batchAllowed = null;
         if ($request->boolean('return_to_batch')) {
-            $allowedAgencyIds = null;
             if ($request->filled('agency_id')) {
-                $allowedAgencyIds = [(int) $request->agency_id];
+                $batchAllowed = [(int) $request->agency_id];
             } elseif ($request->filled('main_agency_id')) {
                 $mainId = (int) $request->main_agency_id;
-                $allowedAgencyIds = Agency::where('id', $mainId)->orWhere('parent_agency_id', $mainId)->pluck('id')->all();
-            }
-            if ($allowedAgencyIds !== null && ! in_array((int) $preregistration->agency_id, $allowedAgencyIds, true)) {
-                return back()->with('error', 'Este paquete no corresponde a esta entrega. Solo se aceptan paquetes de la lista.')->withInput();
+                $batchAllowed = Agency::where('id', $mainId)->orWhere('parent_agency_id', $mainId)->pluck('id')->all();
             }
         }
-
-        $deliveryData = [
-            'preregistration_id' => $preregistration->id,
-            'delivered_at' => now(),
-            'delivered_to' => $request->delivered_to,
-            'retirer_id_number' => $request->retirer_id_number,
-            'retirer_phone' => $request->retirer_phone,
-            'delivery_type' => $request->delivery_type,
-            'notes' => $request->notes,
-        ];
-        if ($request->filled('delivery_note_id')) {
-            $note = DeliveryNote::find((int) $request->delivery_note_id);
-            if ($note) {
-                $deliveryData['delivery_note_id'] = $note->id;
-            }
+        $allowedAgencyIds = null;
+        if ($userAllowed !== null && $batchAllowed !== null) {
+            $allowedAgencyIds = array_values(array_intersect($userAllowed, $batchAllowed));
+        } elseif ($userAllowed !== null) {
+            $allowedAgencyIds = $userAllowed;
+        } elseif ($batchAllowed !== null) {
+            $allowedAgencyIds = $batchAllowed;
         }
-        $delivery = Delivery::create($deliveryData);
 
-        $preregistration->update(['status' => 'DELIVERED']);
+        try {
+            $result = DB::transaction(function () use ($request, $allowedAgencyIds) {
+                $candidates = Preregistration::where('warehouse_code', $request->warehouse_code)
+                    ->where('status', 'READY')
+                    ->whereDoesntHave('delivery')
+                    ->orderByRaw('COALESCE(bulto_index, 999) ASC')
+                    ->lockForUpdate()
+                    ->get();
+
+                if ($candidates->isEmpty()) {
+                    $any = Preregistration::where('warehouse_code', $request->warehouse_code)->first();
+                    if (! $any) {
+                        return ['error' => 'Código de almacén no encontrado.'];
+                    }
+                    if ($any->status !== 'READY') {
+                        return ['error' => 'El paquete no está listo para entrega (debe estar READY).'];
+                    }
+                    if ($any->delivery) {
+                        return ['error' => 'El paquete ya fue entregado.'];
+                    }
+
+                    return ['error' => 'No hay paquetes pendientes con ese código.'];
+                }
+
+                if ($candidates->count() > 1) {
+                    $bultoIndex = $request->filled('bulto_index') ? (int) $request->bulto_index : null;
+                    if ($bultoIndex === null) {
+                        return ['error' => 'Varios bultos con este código. Indique cuál entregó (ej. 1/11, 2/11…).'];
+                    }
+                    $preregistration = $candidates->firstWhere('bulto_index', $bultoIndex);
+                    if (! $preregistration) {
+                        return ['error' => 'Bulto '.$bultoIndex.'/'.($candidates->first()->bultos_total ?? '?').' no encontrado o ya entregado.'];
+                    }
+                } else {
+                    $preregistration = $candidates->first();
+                }
+
+                // Restricción de agencia (incondicional): el usuario solo puede entregar paquetes
+                // de su agencia (si es de subagencia) y/o de la agencia del batch.
+                if ($allowedAgencyIds !== null && ! in_array((int) $preregistration->agency_id, $allowedAgencyIds, true)) {
+                    return ['error' => 'Este paquete no corresponde a esta entrega. Solo se aceptan paquetes de la agencia indicada.'];
+                }
+
+                $deliveryData = [
+                    'preregistration_id' => $preregistration->id,
+                    'delivered_at' => now(),
+                    'delivered_to' => $request->delivered_to,
+                    'retirer_id_number' => $request->filled('retirer_id_number') ? $request->retirer_id_number : null,
+                    'retirer_phone' => $request->filled('retirer_phone') ? $request->retirer_phone : null,
+                    'invoice_number' => $request->invoice_number,
+                    'delivery_type' => 'PICKUP',
+                    'notes' => $request->notes,
+                ];
+
+                // Si la nota fue indicada, validamos que la agencia de la nota coincida con la del paquete
+                // (o que sea su agencia principal). Si no coincide, no se enlaza pero la entrega se hace.
+                if ($request->filled('delivery_note_id')) {
+                    $note = DeliveryNote::find((int) $request->delivery_note_id);
+                    if ($note) {
+                        $noteAgencyId = (int) $note->agency_id;
+                        $pkgAgencyId = (int) $preregistration->agency_id;
+                        $pkgParentId = (int) ($preregistration->agency?->parent_agency_id ?? 0);
+                        if ($noteAgencyId === $pkgAgencyId || $noteAgencyId === $pkgParentId) {
+                            $deliveryData['delivery_note_id'] = $note->id;
+                        }
+                    }
+                }
+
+                $delivery = Delivery::create($deliveryData);
+                $preregistration->update(['status' => 'DELIVERED']);
+
+                return ['delivery' => $delivery, 'preregistration' => $preregistration];
+            });
+        } catch (QueryException $e) {
+            $msg = strtolower($e->getMessage());
+            if (str_contains($msg, 'unique') || str_contains($msg, 'duplicate')) {
+                return back()->with('error', 'Este paquete ya fue entregado.')->withInput();
+            }
+            throw $e;
+        }
+
+        if (isset($result['error'])) {
+            return back()->with('error', $result['error'])->withInput();
+        }
+
+        /** @var Delivery $delivery */
+        $delivery = $result['delivery'];
+        /** @var Preregistration $preregistration */
+        $preregistration = $result['preregistration'];
 
         $this->persistBatchRetirerSession($request);
         $this->persistScanRetirerSession($request);
@@ -610,7 +770,8 @@ class DeliveryController extends Controller
 
     public function show(string $id)
     {
-        $delivery = Delivery::with('preregistration.agency')->findOrFail($id);
+        $delivery = Delivery::with(['preregistration.agency', 'preregistration.agencyClient', 'deliveryNote'])->findOrFail($id);
+        $this->ensureUserCanAccessAgency($delivery->preregistration?->agency);
 
         return view('deliveries.show', compact('delivery'));
     }
