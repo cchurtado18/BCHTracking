@@ -22,12 +22,25 @@
             if (! $p) return 0;
             return (float) ($p->verified_weight_lbs ?? $p->intake_weight_lbs ?? 0);
         });
+        // Pies cúbicos: sumamos sólo los paquetes que tienen dimensión registrada.
+        // Cuando ninguno la tiene (típico courier aéreo), $hasCft queda en false y mostramos "—".
+        $cft = 0.0;
+        $hasCft = false;
+        foreach ($group as $d) {
+            $cf = optional($d->preregistration)->cubic_feet;
+            if ($cf !== null) {
+                $hasCft = true;
+                $cft += (float) $cf;
+            }
+        }
         return [
-            'code'   => optional($first)->warehouse_code ?? '—',
-            'first'  => $first,
-            'peso'   => $peso,
-            'piezas' => $group->count(),
-            'cant'   => 1,
+            'code'    => optional($first)->warehouse_code ?? '—',
+            'first'   => $first,
+            'peso'    => $peso,
+            'piezas'  => $group->count(),
+            'cant'    => 1,
+            'cft'     => $cft,
+            'has_cft' => $hasCft,
         ];
     };
 
@@ -37,12 +50,18 @@
     $totalAirCant   = $linesAir->sum('cant');
     $totalAirPeso   = $linesAir->sum('peso');
     $totalAirPiezas = $linesAir->sum('piezas');
+    $totalAirCft    = $linesAir->sum('cft');
+    $totalAirHasCft = $linesAir->contains(fn($l) => $l['has_cft'] === true);
     $totalSeaCant   = $linesSea->sum('cant');
     $totalSeaPeso   = $linesSea->sum('peso');
     $totalSeaPiezas = $linesSea->sum('piezas');
+    $totalSeaCft    = $linesSea->sum('cft');
+    $totalSeaHasCft = $linesSea->contains(fn($l) => $l['has_cft'] === true);
     $grandCant   = $totalAirCant + $totalSeaCant;
     $grandPeso   = $totalAirPeso + $totalSeaPeso;
     $grandPiezas = $totalAirPiezas + $totalSeaPiezas;
+    $grandCft    = $totalAirCft + $totalSeaCft;
+    $grandHasCft = $totalAirHasCft || $totalSeaHasCft;
 
     $docNumber = $deliveryNote
         ? $deliveryNote->code
@@ -218,7 +237,7 @@
                     <th class="col-w-cant num">CANT</th>
                     <th class="col-w-peso num">PESO(LBS)</th>
                     <th class="col-w-piezas num">PIEZAS</th>
-                    <th class="col-w-total num">TOTAL</th>
+                    <th class="col-w-total num">PIES³</th>
                 </tr>
             </thead>
             <tbody>
@@ -236,7 +255,7 @@
                     <td class="num">{{ $line['cant'] }}</td>
                     <td class="num">{{ number_format($line['peso'], 2) }}</td>
                     <td class="num">{{ number_format($line['piezas'], 2) }}</td>
-                    <td class="num">&nbsp;</td>
+                    <td class="num">{{ $line['has_cft'] ? number_format($line['cft'], 2) : '—' }}</td>
                 </tr>
                 @endforeach
                 <tr class="group-total">
@@ -244,7 +263,7 @@
                     <td class="num">{{ $totalAirCant }}</td>
                     <td class="num">{{ number_format($totalAirPeso, 2) }}</td>
                     <td class="num">{{ number_format($totalAirPiezas, 2) }}</td>
-                    <td class="num">&nbsp;</td>
+                    <td class="num">{{ $totalAirHasCft ? number_format($totalAirCft, 2) : '—' }}</td>
                 </tr>
                 @endif
 
@@ -262,7 +281,7 @@
                     <td class="num">{{ $line['cant'] }}</td>
                     <td class="num">{{ number_format($line['peso'], 2) }}</td>
                     <td class="num">{{ number_format($line['piezas'], 2) }}</td>
-                    <td class="num">&nbsp;</td>
+                    <td class="num">{{ $line['has_cft'] ? number_format($line['cft'], 2) : '—' }}</td>
                 </tr>
                 @endforeach
                 <tr class="group-total">
@@ -270,7 +289,7 @@
                     <td class="num">{{ $totalSeaCant }}</td>
                     <td class="num">{{ number_format($totalSeaPeso, 2) }}</td>
                     <td class="num">{{ number_format($totalSeaPiezas, 2) }}</td>
-                    <td class="num">&nbsp;</td>
+                    <td class="num">{{ $totalSeaHasCft ? number_format($totalSeaCft, 2) : '—' }}</td>
                 </tr>
                 @endif
 
@@ -283,7 +302,7 @@
                     <td class="num">{{ $grandCant }}</td>
                     <td class="num">{{ number_format($grandPeso, 2) }}</td>
                     <td class="num">{{ number_format($grandPiezas, 2) }}</td>
-                    <td class="num">&nbsp;</td>
+                    <td class="num">{{ $grandHasCft ? number_format($grandCft, 2) : '—' }}</td>
                 </tr>
             </tbody>
         </table>
