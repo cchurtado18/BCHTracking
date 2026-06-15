@@ -7,6 +7,7 @@
     $deliveryNote = $deliveryNote ?? null;
     $retirerSessionActive = $retirerSessionActive ?? false;
     $batchRetirerSession = is_array($batchRetirerSession ?? null) ? $batchRetirerSession : [];
+    $deliveredCount = $deliveredCount ?? 0;
     $printReportParams = $deliveryNote
         ? array_merge($filterParams, ['date' => now()->toDateString(), 'delivery_note_id' => $deliveryNote->id])
         : array_merge($filterParams, ['date' => now()->toDateString()]);
@@ -142,6 +143,20 @@
                 </form>
             </div>
 
+            @if($deliveredCount > 0)
+            <div class="delivery-close-note-banner">
+                <div class="delivery-close-note-text">
+                    <strong>{{ $deliveredCount }}</strong> {{ $deliveredCount === 1 ? 'paquete entregado' : 'paquetes entregados' }} en esta nota.
+                    @if(! $availablePackages->isEmpty())
+                    Quedan {{ $availablePackages->count() }} {{ $availablePackages->count() === 1 ? 'pendiente' : 'pendientes' }} para esta agencia: podés cerrar la nota ahora solo con los entregados o seguir escaneando.
+                    @else
+                    Ya no hay más paquetes pendientes para esta agencia.
+                    @endif
+                </div>
+                <a href="{{ route('deliveries.print-report', $printReportParams) }}" target="_blank" class="delivery-btn delivery-btn-primary delivery-btn-close-note">Cerrar nota e imprimir</a>
+            </div>
+            @endif
+
             <div class="delivery-scan-box">
                 <h3 class="delivery-scan-title">2. Escanear paquetes</h3>
                 <form action="{{ route('deliveries.process-scan') }}" method="POST" class="delivery-scan-form" id="delivery-batch-scan-form">
@@ -177,7 +192,6 @@
                     <a href="{{ route('deliveries.print-report', $printReportParams) }}" target="_blank" class="delivery-link">Imprimir nota de entrega ({{ $deliveryNote->code }})</a>
                 </p>
             </div>
-            @endif
             @endif
         </div>
     </div>
@@ -238,6 +252,26 @@
     background: #fff; color: #047857; border: 1px solid #6ee7b7; font-size: 0.8125rem; padding: 0.4rem 0.75rem;
 }
 .delivery-btn-ghost:hover { background: #f0fdf4; }
+.delivery-close-note-banner {
+    margin-top: 1rem;
+    background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+    border: 2px solid #2563eb;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.85rem;
+    color: #1e3a8a;
+    font-size: 0.9375rem;
+    line-height: 1.4;
+}
+.delivery-close-note-text { flex: 1 1 280px; min-width: 0; }
+.delivery-close-note-text strong { color: #1e3a8a; }
+.delivery-btn-close-note { background: #2563eb; border-color: #2563eb; color: #fff; font-weight: 600; padding: 0.55rem 1.1rem; white-space: nowrap; }
+.delivery-btn-close-note:hover { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+
 .delivery-scan-box { background: linear-gradient(180deg, #f0fdf4 0%, #ecfdf5 100%); border: 2px solid #059669; border-radius: 0.75rem; padding: 1.25rem; margin-top: 1rem; }
 .delivery-scan-title { margin: 0 0 1rem; font-size: 1rem; font-weight: 600; color: #047857; }
 .delivery-scan-form { margin-bottom: 0.75rem; }

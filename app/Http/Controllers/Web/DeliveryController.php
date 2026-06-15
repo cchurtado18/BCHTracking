@@ -398,9 +398,11 @@ class DeliveryController extends Controller
 
         $retirerSessionActive = false;
         $batchRetirerSession = null;
+        $deliveredCount = 0;
         if ($deliveryNote) {
             $batchRetirerSession = session(self::SESSION_BATCH_RETIRER);
             $retirerSessionActive = $this->batchRetirerSessionMatches($batchRetirerSession, $deliveryNote, (int) $agency->id, $serviceType);
+            $deliveredCount = $deliveryNote->deliveries()->count();
         }
 
         return view('deliveries.batch', compact(
@@ -410,7 +412,8 @@ class DeliveryController extends Controller
             'filterParams',
             'deliveryNote',
             'retirerSessionActive',
-            'batchRetirerSession'
+            'batchRetirerSession',
+            'deliveredCount'
         ));
     }
 
