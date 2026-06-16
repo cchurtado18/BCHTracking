@@ -311,7 +311,7 @@
         <div class="doc-spacer"></div>
 
         <div class="footer-block">
-            <div class="ref-note">REF: Entrega de paquetes@if(filled($ocNumber)) OC #{{ $ocNumber }}@endif</div>
+            <div class="ref-note">REF: Entrega de paquetes{{ filled($ocNumber) ? ' OC #' . $ocNumber : '' }}</div>
 
             <div class="retirer-block">
                 <div class="retirer-row"><span class="retirer-label">Nombre:</span><span class="retirer-value">{{ $retiradoPor ?? '' }}</span></div>
