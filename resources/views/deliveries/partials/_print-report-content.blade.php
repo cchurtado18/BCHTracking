@@ -71,7 +71,7 @@
     // Todos los deliveries de una misma nota comparten la misma factura.
     $firstDelivery = $deliveries->first();
     $invoiceNumber = $firstDelivery?->invoice_number;
-    $ocNumber = $invoiceNumber ?: ($deliveryNote ? $deliveryNote->id : '—');
+    $ocNumber = filled($invoiceNumber) ? $invoiceNumber : '';
     $printDateLong = \Carbon\Carbon::now()->locale('es')->isoFormat('D [de] MMMM [de] YYYY');
     $printDateFooter = \Carbon\Carbon::now()->format('d/m/Y H:i');
     $documentDate = \Carbon\Carbon::parse($date)->format('d/m/Y');
@@ -311,7 +311,7 @@
         <div class="doc-spacer"></div>
 
         <div class="footer-block">
-            <div class="ref-note">REF: Entrega de paquetes OC #{{ $ocNumber }}</div>
+            <div class="ref-note">REF: Entrega de paquetes@if(filled($ocNumber)) OC #{{ $ocNumber }}@endif</div>
 
             <div class="retirer-block">
                 <div class="retirer-row"><span class="retirer-label">Nombre:</span><span class="retirer-value">{{ $retiradoPor ?? '' }}</span></div>

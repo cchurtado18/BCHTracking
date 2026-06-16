@@ -426,10 +426,9 @@ class DeliveryController extends Controller
             'delivered_to' => 'required|string|max:255',
             'retirer_id_number' => 'nullable|string|max:50',
             'retirer_phone' => 'nullable|string|max:50',
-            'invoice_number' => 'required|string|max:50',
+            'invoice_number' => 'nullable|string|max:50',
         ], [
             'delivered_to.required' => 'El nombre de quien retira es obligatorio.',
-            'invoice_number.required' => 'El número de factura es obligatorio.',
         ]);
 
         $agency = Agency::find((int) $validated['agency_id']);
@@ -455,7 +454,7 @@ class DeliveryController extends Controller
             'delivered_to' => $validated['delivered_to'],
             'retirer_id_number' => $validated['retirer_id_number'] ?? '',
             'retirer_phone' => $validated['retirer_phone'] ?? '',
-            'invoice_number' => $validated['invoice_number'],
+            'invoice_number' => $validated['invoice_number'] ?? '',
         ]]);
 
         $redirectParams = array_filter([
@@ -597,17 +596,16 @@ class DeliveryController extends Controller
             'delivered_to' => 'required|string|max:255',
             'retirer_id_number' => 'nullable|string|max:50',
             'retirer_phone' => 'nullable|string|max:50',
-            'invoice_number' => 'required|string|max:50',
+            'invoice_number' => 'nullable|string|max:50',
         ], [
             'delivered_to.required' => 'El nombre de quien retira es obligatorio.',
-            'invoice_number.required' => 'El número de factura es obligatorio.',
         ]);
 
         session([self::SESSION_SCAN_RETIRER => [
             'delivered_to' => $validated['delivered_to'],
             'retirer_id_number' => $validated['retirer_id_number'] ?? '',
             'retirer_phone' => $validated['retirer_phone'] ?? '',
-            'invoice_number' => $validated['invoice_number'],
+            'invoice_number' => $validated['invoice_number'] ?? '',
         ]]);
 
         return redirect()->route('deliveries.scan')
@@ -633,11 +631,10 @@ class DeliveryController extends Controller
             'delivered_to' => 'required|string|max:255',
             'retirer_id_number' => 'nullable|string|max:50',
             'retirer_phone' => 'nullable|string|max:50',
-            'invoice_number' => 'required|string|max:50',
+            'invoice_number' => 'nullable|string|max:50',
             'notes' => 'nullable|string|max:500',
         ], [
             'delivered_to.required' => 'El nombre de quien retira es obligatorio.',
-            'invoice_number.required' => 'El número de factura es obligatorio.',
         ]);
 
         // Calcular agencias permitidas: combinación de la del batch + la del usuario (intersección)
@@ -709,7 +706,7 @@ class DeliveryController extends Controller
                     'delivered_to' => $request->delivered_to,
                     'retirer_id_number' => $request->filled('retirer_id_number') ? $request->retirer_id_number : null,
                     'retirer_phone' => $request->filled('retirer_phone') ? $request->retirer_phone : null,
-                    'invoice_number' => $request->invoice_number,
+                    'invoice_number' => $request->filled('invoice_number') ? $request->invoice_number : null,
                     'delivery_type' => 'PICKUP',
                     'notes' => $request->notes,
                 ];

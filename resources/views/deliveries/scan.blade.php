@@ -39,8 +39,8 @@
                         @error('delivered_to')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                     </div>
                     <div>
-                        <label for="invoice_number" class="block text-sm font-medium text-gray-700">Nº factura *</label>
-                        <input type="text" name="invoice_number" id="invoice_number" value="{{ old('invoice_number') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm @error('invoice_number') border-red-500 @enderror" required placeholder="Ej. 17751">
+                        <label for="invoice_number" class="block text-sm font-medium text-gray-700">Nº factura (opcional)</label>
+                        <input type="text" name="invoice_number" id="invoice_number" value="{{ old('invoice_number') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm @error('invoice_number') border-red-500 @enderror" placeholder="Ej. 17751">
                         @error('invoice_number')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -67,8 +67,10 @@
         <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-emerald-900">
             <div>
                 <span class="font-semibold">Quien retira:</span> {{ $scanRetirerSession['delivered_to'] ?? '—' }}
+                @if(filled($scanRetirerSession['invoice_number'] ?? null))
                 <span class="text-emerald-600 mx-1">·</span>
-                <span class="font-semibold">Nº factura:</span> {{ $scanRetirerSession['invoice_number'] ?? '—' }}
+                <span class="font-semibold">Nº factura:</span> {{ $scanRetirerSession['invoice_number'] }}
+                @endif
                 @if(filled($scanRetirerSession['retirer_id_number'] ?? null))
                 <span class="text-emerald-600 mx-1">·</span>
                 <span class="font-semibold">Cédula:</span> {{ $scanRetirerSession['retirer_id_number'] }}

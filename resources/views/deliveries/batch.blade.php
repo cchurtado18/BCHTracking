@@ -97,8 +97,8 @@
                             @error('delivered_to')<span class="delivery-field-error">{{ $message }}</span>@enderror
                         </div>
                         <div class="delivery-field">
-                            <label for="retirer_invoice_number" class="delivery-label">Nº factura *</label>
-                            <input type="text" name="invoice_number" id="retirer_invoice_number" value="{{ old('invoice_number') }}" class="delivery-input @error('invoice_number') delivery-input-invalid @enderror" placeholder="Ej. 17751" required>
+                            <label for="retirer_invoice_number" class="delivery-label">Nº factura (opcional)</label>
+                            <input type="text" name="invoice_number" id="retirer_invoice_number" value="{{ old('invoice_number') }}" class="delivery-input @error('invoice_number') delivery-input-invalid @enderror" placeholder="Ej. 17751">
                             @error('invoice_number')<span class="delivery-field-error">{{ $message }}</span>@enderror
                         </div>
                         <div class="delivery-field">
@@ -121,8 +121,10 @@
             <div class="delivery-retirer-banner">
                 <div class="delivery-retirer-banner-text">
                     <strong>Quien retira:</strong> {{ $batchRetirerSession['delivered_to'] ?? '—' }}
+                    @if(filled($batchRetirerSession['invoice_number'] ?? null))
                     <span class="delivery-retirer-banner-sep">·</span>
-                    <strong>Nº factura:</strong> {{ $batchRetirerSession['invoice_number'] ?? '—' }}
+                    <strong>Nº factura:</strong> {{ $batchRetirerSession['invoice_number'] }}
+                    @endif
                     @if(filled($batchRetirerSession['retirer_id_number'] ?? null))
                     <span class="delivery-retirer-banner-sep">·</span>
                     <strong>Cédula:</strong> {{ $batchRetirerSession['retirer_id_number'] }}
