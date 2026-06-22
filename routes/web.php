@@ -27,8 +27,10 @@ require __DIR__.'/auth.php';
 Route::middleware(['auth'])->group(function () {
     // Dashboard y reporte: administrador o usuario de agencia (usuario regular central no tiene acceso)
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/reporte-paquetes/solicitar', [DashboardController::class, 'reporteSolicitar'])->name('reporte.solicitar');
-    Route::get('/reporte-paquetes', [DashboardController::class, 'reportePaquetes'])->name('reporte.paquetes');
+    Route::middleware('central')->group(function () {
+        Route::get('/reporte-paquetes/solicitar', [DashboardController::class, 'reporteSolicitar'])->name('reporte.solicitar');
+        Route::get('/reporte-paquetes', [DashboardController::class, 'reportePaquetes'])->name('reporte.paquetes');
+    });
 
     // Solo administrador: agencias, auditoría, usuarios
     Route::middleware('admin')->group(function () {
@@ -54,43 +56,46 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('users', UserController::class)->except(['show']);
     });
 
-    // Usuario regular y administrador: preregistros, consolidaciones, paquetes, entregas
-    Route::resource('preregistrations', PreregistrationController::class);
-    Route::get('preregistrations/courier/quick', [PreregistrationController::class, 'quickCourier'])->name('preregistrations.quick-courier');
-    Route::post('preregistrations/courier/quick', [PreregistrationController::class, 'storeQuickCourier'])->name('preregistrations.store-quick-courier');
-    Route::get('preregistrations/{id}/label', [PreregistrationController::class, 'label'])->name('preregistrations.label');
-    Route::get('preregistrations-dropoff-labels', [PreregistrationController::class, 'dropoffLabels'])->name('preregistrations.dropoff-labels');
-    Route::post('preregistrations/{id}/photos', [PreregistrationController::class, 'uploadPhoto'])->name('preregistrations.upload-photo');
-    Route::post('preregistrations/{id}/photos/{photo}/move', [PreregistrationController::class, 'movePhoto'])->name('preregistrations.photos.move');
+    // Usuario central: preregistros, consolidaciones, comprobantes recepción, escaneo NIC
+    Route::middleware('central')->group(function () {
+        Route::resource('preregistrations', PreregistrationController::class);
+        Route::get('preregistrations/courier/quick', [PreregistrationController::class, 'quickCourier'])->name('preregistrations.quick-courier');
+        Route::post('preregistrations/courier/quick', [PreregistrationController::class, 'storeQuickCourier'])->name('preregistrations.store-quick-courier');
+        Route::get('preregistrations/{id}/label', [PreregistrationController::class, 'label'])->name('preregistrations.label');
+        Route::get('preregistrations-dropoff-labels', [PreregistrationController::class, 'dropoffLabels'])->name('preregistrations.dropoff-labels');
+        Route::post('preregistrations/{id}/photos', [PreregistrationController::class, 'uploadPhoto'])->name('preregistrations.upload-photo');
+        Route::post('preregistrations/{id}/photos/{photo}/move', [PreregistrationController::class, 'movePhoto'])->name('preregistrations.photos.move');
 
-    Route::post('preregistrations/{preregistration}/create-single-consolidation', [ConsolidationController::class, 'createSingleFromPreregistration'])->name('preregistrations.create-single-consolidation');
-    Route::post('preregistrations/{preregistration}/quick-receipt', [ReceiptNoteController::class, 'quickFromPreregistration'])->name('preregistrations.quick-receipt');
+        Route::post('preregistrations/{preregistration}/create-single-consolidation', [ConsolidationController::class, 'createSingleFromPreregistration'])->name('preregistrations.create-single-consolidation');
+        Route::post('preregistrations/{preregistration}/quick-receipt', [ReceiptNoteController::class, 'quickFromPreregistration'])->name('preregistrations.quick-receipt');
 
-    Route::prefix('receipt-notes')->name('receipt-notes.')->group(function () {
-        Route::get('/', [ReceiptNoteController::class, 'index'])->name('index');
-        Route::get('/batch', [ReceiptNoteController::class, 'batch'])->name('batch');
-        Route::post('/', [ReceiptNoteController::class, 'store'])->name('store');
-        Route::post('/{id}/items', [ReceiptNoteController::class, 'addItem'])->name('add-item');
-        Route::delete('/{id}/items/{preregistration}', [ReceiptNoteController::class, 'removeItem'])->name('remove-item');
-        Route::get('/{id}/print', [ReceiptNoteController::class, 'printReport'])->name('print');
-        Route::delete('/{id}', [ReceiptNoteController::class, 'destroy'])->name('destroy');
+        Route::prefix('receipt-notes')->name('receipt-notes.')->group(function () {
+            Route::get('/', [ReceiptNoteController::class, 'index'])->name('index');
+            Route::get('/batch', [ReceiptNoteController::class, 'batch'])->name('batch');
+            Route::post('/', [ReceiptNoteController::class, 'store'])->name('store');
+            Route::post('/{id}/items', [ReceiptNoteController::class, 'addItem'])->name('add-item');
+            Route::delete('/{id}/items/{preregistration}', [ReceiptNoteController::class, 'removeItem'])->name('remove-item');
+            Route::get('/{id}/print', [ReceiptNoteController::class, 'printReport'])->name('print');
+            Route::delete('/{id}', [ReceiptNoteController::class, 'destroy'])->name('destroy');
+        });
+        Route::get('consolidations/create/select', [ConsolidationController::class, 'createSelect'])->name('consolidations.create-select');
+        Route::get('consolidations/create/scan', [ConsolidationController::class, 'createScan'])->name('consolidations.create-scan');
+        Route::post('consolidations/store-scan', [ConsolidationController::class, 'storeScan'])->name('consolidations.store-scan');
+        Route::resource('consolidations', ConsolidationController::class);
+        Route::get('consolidations/{id}/label', [ConsolidationController::class, 'label'])->name('consolidations.label');
+        Route::post('consolidations/{id}/add-item', [ConsolidationController::class, 'addItem'])->name('consolidations.add-item');
+        Route::post('consolidations/{id}/scan-item', [ConsolidationController::class, 'addItemByScan'])->name('consolidations.scan-item');
+        Route::delete('consolidations/{id}/items/{item}', [ConsolidationController::class, 'removeItem'])->name('consolidations.items.destroy');
+        Route::post('consolidations/{id}/send', [ConsolidationController::class, 'send'])->name('consolidations.send');
+
+        Route::prefix('nic-consolidations')->name('nic-consolidations.')->group(function () {
+            Route::get('/', [NicConsolidationController::class, 'index'])->name('index');
+            Route::get('/{id}', [NicConsolidationController::class, 'show'])->name('show');
+            Route::post('/{id}/scan', [NicConsolidationController::class, 'scan'])->name('scan');
+        });
     });
-    Route::get('consolidations/create/select', [ConsolidationController::class, 'createSelect'])->name('consolidations.create-select');
-    Route::get('consolidations/create/scan', [ConsolidationController::class, 'createScan'])->name('consolidations.create-scan');
-    Route::post('consolidations/store-scan', [ConsolidationController::class, 'storeScan'])->name('consolidations.store-scan');
-    Route::resource('consolidations', ConsolidationController::class);
-    Route::get('consolidations/{id}/label', [ConsolidationController::class, 'label'])->name('consolidations.label');
-    Route::post('consolidations/{id}/add-item', [ConsolidationController::class, 'addItem'])->name('consolidations.add-item');
-    Route::post('consolidations/{id}/scan-item', [ConsolidationController::class, 'addItemByScan'])->name('consolidations.scan-item');
-    Route::delete('consolidations/{id}/items/{item}', [ConsolidationController::class, 'removeItem'])->name('consolidations.items.destroy');
-    Route::post('consolidations/{id}/send', [ConsolidationController::class, 'send'])->name('consolidations.send');
 
-    Route::prefix('nic-consolidations')->name('nic-consolidations.')->group(function () {
-        Route::get('/', [NicConsolidationController::class, 'index'])->name('index');
-        Route::get('/{id}', [NicConsolidationController::class, 'show'])->name('show');
-        Route::post('/{id}/scan', [NicConsolidationController::class, 'scan'])->name('scan');
-    });
-
+    // Paquetes y entregas: central y subagencias (con filtro por agencia en controlador)
     Route::prefix('packages')->name('packages.')->group(function () {
         Route::get('/', [PackageController::class, 'index'])->name('index');
         Route::get('/{id}', [PackageController::class, 'show'])->name('show');

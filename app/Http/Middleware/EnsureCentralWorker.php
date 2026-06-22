@@ -17,7 +17,7 @@ class EnsureCentralWorker
     {
         $user = $request->user();
         if (! $user) {
-            abort(403, 'No autorizado.');
+            return redirect()->guest(route('login'));
         }
         if ($user->isAgencyUser()) {
             abort(403, 'El fichaje no está disponible para usuarios de subagencia.');

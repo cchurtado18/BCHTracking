@@ -61,6 +61,45 @@ class User extends Authenticatable
     }
 
     /**
+     * IDs de agencias que este usuario puede consultar o modificar.
+     * Null = acceso total (usuario central).
+     */
+    public function allowedAgencyIds(): ?array
+    {
+        if (! $this->isAgencyUser()) {
+            return null;
+        }
+
+        $ids = [(int) $this->agency_id];
+        $agency = $this->relationLoaded('agency') ? $this->agency : Agency::find($this->agency_id);
+
+        if ($agency?->is_main) {
+            $ids = array_merge(
+                $ids,
+                Agency::where('parent_agency_id', $agency->id)->pluck('id')->all()
+            );
+        }
+
+        return array_values(array_unique(array_map('intval', $ids)));
+    }
+
+    public function canAccessAgencyId(?int $agencyId): bool
+    {
+        if ($agencyId === null || $agencyId <= 0) {
+            return ! $this->isAgencyUser();
+        }
+
+        $allowed = $this->allowedAgencyIds();
+
+        return $allowed === null || in_array((int) $agencyId, $allowed, true);
+    }
+
+    public function canAccessAgency(?Agency $agency): bool
+    {
+        return $this->canAccessAgencyId($agency ? (int) $agency->id : null);
+    }
+
+    /**
      * The attributes that should be hidden for serialization.
      *
      * @var list<string>

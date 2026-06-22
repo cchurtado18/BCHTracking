@@ -16,7 +16,7 @@ class EnsureUserIsAdmin
     public function handle(Request $request, Closure $next): Response
     {
         if (! $request->user()) {
-            abort(403, 'No autorizado.');
+            return redirect()->guest(route('login'));
         }
         if (! $request->user()->is_admin) {
             return redirect()->route('packages.index');

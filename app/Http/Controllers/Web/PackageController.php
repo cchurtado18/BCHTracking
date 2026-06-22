@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AuthorizesAgencyAccess;
 use App\Models\Agency;
 use App\Models\Preregistration;
 use App\Services\PackageProcessingService;
@@ -11,7 +12,19 @@ use Illuminate\Validation\Rule;
 
 class PackageController extends Controller
 {
+    use AuthorizesAgencyAccess;
+
     public function __construct(protected PackageProcessingService $packageService) {}
+
+    private function scopePackagesForCurrentUser($query)
+    {
+        $allowed = $this->userAllowedAgencyIds();
+        if ($allowed !== null) {
+            $query->whereIn('agency_id', $allowed);
+        }
+
+        return $query;
+    }
 
     public function index(Request $request)
     {
@@ -31,10 +44,7 @@ class PackageController extends Controller
         }
 
         $query = Preregistration::with('agency');
-
-        if (auth()->user() && auth()->user()->isAgencyUser()) {
-            $query->where('agency_id', auth()->user()->agency_id);
-        }
+        $this->scopePackagesForCurrentUser($query);
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -70,9 +80,7 @@ class PackageController extends Controller
 
         // Estadísticas con los mismos filtros (para la vista principal)
         $statsQuery = Preregistration::query();
-        if (auth()->user() && auth()->user()->isAgencyUser()) {
-            $statsQuery->where('agency_id', auth()->user()->agency_id);
-        }
+        $this->scopePackagesForCurrentUser($statsQuery);
         if ($request->filled('status')) {
             $statsQuery->where('status', $request->status);
         }
@@ -113,9 +121,7 @@ class PackageController extends Controller
     public function show(string $id)
     {
         $package = Preregistration::with(['photos', 'agency', 'consolidationItem.consolidation', 'delivery'])->findOrFail($id);
-        if (auth()->user() && auth()->user()->isAgencyUser() && (int) $package->agency_id !== (int) auth()->user()->agency_id) {
-            abort(403, 'No tiene permiso para ver este paquete.');
-        }
+        $this->ensureUserCanAccessPreregistration($package);
         $package->photos->each(fn ($p) => $p->url = asset('storage/'.$p->path));
 
         return view('packages.show', compact('package'));
@@ -124,9 +130,7 @@ class PackageController extends Controller
     public function showProcess(string $id)
     {
         $package = Preregistration::with('agency')->findOrFail($id);
-        if (auth()->user() && auth()->user()->isAgencyUser() && (int) $package->agency_id !== (int) auth()->user()->agency_id) {
-            abort(403, 'No tiene permiso para procesar este paquete.');
-        }
+        $this->ensureUserCanAccessPreregistration($package);
         if ($package->status !== 'IN_WAREHOUSE_NIC') {
             return redirect()->route('packages.show', $package->id)
                 ->with('error', 'Solo se pueden procesar paquetes en almacén Nicaragua.');
@@ -139,6 +143,7 @@ class PackageController extends Controller
     public function process(Request $request, string $id)
     {
         $package = Preregistration::findOrFail($id);
+        $this->ensureUserCanAccessPreregistration($package);
         $request->validate([
             'agency_id' => [
                 Rule::requiredIf(fn () => $package->agency_id === null),
@@ -174,9 +179,7 @@ class PackageController extends Controller
     public function reprintLabel(string $id)
     {
         $package = Preregistration::findOrFail($id);
-        if (auth()->user() && auth()->user()->isAgencyUser() && (int) $package->agency_id !== (int) auth()->user()->agency_id) {
-            abort(403, 'No tiene permiso para reimprimir la etiqueta de este paquete.');
-        }
+        $this->ensureUserCanAccessPreregistration($package);
         try {
             $this->packageService->reprintLabel($package);
 

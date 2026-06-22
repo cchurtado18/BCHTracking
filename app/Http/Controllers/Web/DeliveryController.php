@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AuthorizesAgencyAccess;
 use App\Models\Agency;
 use App\Models\Delivery;
 use App\Models\DeliveryNote;
@@ -13,44 +14,15 @@ use Illuminate\Support\Facades\DB;
 
 class DeliveryController extends Controller
 {
+    use AuthorizesAgencyAccess;
+
     private const SESSION_BATCH_RETIRER = 'delivery_batch_retirer';
 
     private const SESSION_SCAN_RETIRER = 'delivery_scan_retirer';
 
-    private function ensureUserCanAccessAgency(?Agency $agency): void
-    {
-        $user = auth()->user();
-        if (! $user || ! $agency) {
-            return;
-        }
-        if (! $user->isAgencyUser()) {
-            return;
-        }
-        $userAgencyId = (int) $user->agency_id;
-        $allowed = (int) $agency->id === $userAgencyId
-            || (int) ($agency->parent_agency_id ?? 0) === $userAgencyId;
-        abort_unless($allowed, 403, 'No tiene permiso para esta agencia.');
-    }
-
     private function ensureAdmin(): void
     {
         abort_unless(auth()->user()?->is_admin, 403, 'Solo administradores pueden realizar esta acción.');
-    }
-
-    /**
-     * IDs de agencias que el usuario actual puede manipular.
-     * Devuelve null si es central (acceso total).
-     */
-    private function userAllowedAgencyIds(): ?array
-    {
-        $user = auth()->user();
-        if (! $user || ! $user->isAgencyUser()) {
-            return null;
-        }
-        $ids = [(int) $user->agency_id];
-        $ids = array_merge($ids, Agency::where('parent_agency_id', $user->agency_id)->pluck('id')->all());
-
-        return array_values(array_unique($ids));
     }
 
     /**
