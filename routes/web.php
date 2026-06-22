@@ -109,6 +109,11 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/scan/retirer-session', [DeliveryController::class, 'storeScanRetirerSession'])->name('scan-retirer-session');
         Route::post('/scan/clear-retirer-session', [DeliveryController::class, 'clearScanRetirerSession'])->name('scan-clear-retirer-session');
         Route::post('/scan', [DeliveryController::class, 'processScan'])->name('process-scan');
+        Route::middleware('admin')->prefix('notes')->name('notes.')->group(function () {
+            Route::get('/{deliveryNote}', [DeliveryController::class, 'editNote'])->name('edit');
+            Route::put('/{deliveryNote}', [DeliveryController::class, 'updateNote'])->name('update');
+            Route::delete('/{deliveryNote}/deliveries/{delivery}', [DeliveryController::class, 'removeFromNote'])->name('remove-delivery');
+        });
         Route::get('/{id}', [DeliveryController::class, 'show'])->name('show');
     });
 

@@ -141,6 +141,9 @@
                         <td class="delivery-muted delivery-name-cell" title="{{ $agencyName }}">{{ Str::limit($agencyName, 20) }}</td>
                         <td class="delivery-actions">
                             <a href="{{ route('deliveries.print-report', ['delivery_note_id' => $note->id]) }}" target="_blank" class="delivery-btn delivery-btn-sm delivery-btn-outline-primary" title="Ver / imprimir nota">Ver</a>
+                            @if(auth()->user()?->is_admin)
+                            <a href="{{ route('deliveries.notes.edit', $note) }}" class="delivery-btn delivery-btn-sm delivery-btn-secondary" title="Editar nota (admin)">Editar</a>
+                            @endif
                         </td>
                     </tr>
                     @empty
@@ -232,7 +235,7 @@
 .delivery-tracking-cell { max-width: 120px; }
 .delivery-num { font-weight: 500; color: #374151; }
 .delivery-th-actions { text-align: right; }
-.delivery-actions { text-align: right; white-space: nowrap; }
+.delivery-actions { text-align: right; white-space: nowrap; display: inline-flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; }
 .delivery-badge { display: inline-block; padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem; }
 .delivery-badge-pickup { background: #dbeafe; color: #1d4ed8; }
 .delivery-badge-delivery { background: #d1fae5; color: #047857; }

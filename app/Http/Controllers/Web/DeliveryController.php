@@ -17,10 +17,6 @@ class DeliveryController extends Controller
 
     private const SESSION_SCAN_RETIRER = 'delivery_scan_retirer';
 
-    /**
-     * Aborta con 403 si el usuario actual es de subagencia y no tiene acceso
-     * a la agencia indicada (ni como agencia propia ni como subagencia hija).
-     */
     private function ensureUserCanAccessAgency(?Agency $agency): void
     {
         $user = auth()->user();
@@ -34,6 +30,11 @@ class DeliveryController extends Controller
         $allowed = (int) $agency->id === $userAgencyId
             || (int) ($agency->parent_agency_id ?? 0) === $userAgencyId;
         abort_unless($allowed, 403, 'No tiene permiso para esta agencia.');
+    }
+
+    private function ensureAdmin(): void
+    {
+        abort_unless(auth()->user()?->is_admin, 403, 'Solo administradores pueden realizar esta acción.');
     }
 
     /**
@@ -774,5 +775,80 @@ class DeliveryController extends Controller
         $this->ensureUserCanAccessAgency($delivery->preregistration?->agency);
 
         return view('deliveries.show', compact('delivery'));
+    }
+
+    /**
+     * Admin: editar nota de entrega y quitar paquetes escaneados por error.
+     */
+    public function editNote(DeliveryNote $deliveryNote)
+    {
+        $this->ensureAdmin();
+
+        $deliveryNote->load([
+            'agency',
+            'deliveries' => fn ($q) => $q->with('preregistration.agency')->orderBy('delivered_at'),
+        ]);
+
+        $firstDelivery = $deliveryNote->deliveries->first();
+
+        return view('deliveries.edit-note', compact('deliveryNote', 'firstDelivery'));
+    }
+
+    public function updateNote(Request $request, DeliveryNote $deliveryNote)
+    {
+        $this->ensureAdmin();
+
+        $validated = $request->validate([
+            'delivered_to' => 'required|string|max:255',
+            'retirer_id_number' => 'nullable|string|max:50',
+            'retirer_phone' => 'nullable|string|max:50',
+            'invoice_number' => 'nullable|string|max:50',
+        ], [
+            'delivered_to.required' => 'El nombre de quien retira es obligatorio.',
+        ]);
+
+        $count = $deliveryNote->deliveries()->update([
+            'delivered_to' => $validated['delivered_to'],
+            'retirer_id_number' => $validated['retirer_id_number'] ?: null,
+            'retirer_phone' => $validated['retirer_phone'] ?: null,
+            'invoice_number' => filled($validated['invoice_number'] ?? null) ? $validated['invoice_number'] : null,
+        ]);
+
+        return redirect()->route('deliveries.notes.edit', $deliveryNote)
+            ->with('success', "Nota actualizada ({$count} " . ($count === 1 ? 'entrega' : 'entregas') . ').');
+    }
+
+    public function removeFromNote(DeliveryNote $deliveryNote, Delivery $delivery)
+    {
+        $this->ensureAdmin();
+
+        if ((int) $delivery->delivery_note_id !== (int) $deliveryNote->id) {
+            return back()->with('error', 'Este paquete no pertenece a la nota indicada.');
+        }
+
+        $label = $delivery->preregistration?->warehouse_code
+            ?? $delivery->preregistration?->label_name
+            ?? '#'.$delivery->id;
+
+        DB::transaction(function () use ($delivery, $deliveryNote) {
+            $pre = Preregistration::lockForUpdate()->find($delivery->preregistration_id);
+            $delivery->delete();
+
+            if ($pre && $pre->status === 'DELIVERED') {
+                $pre->update(['status' => 'READY']);
+            }
+
+            if ($deliveryNote->deliveries()->count() === 0) {
+                $deliveryNote->delete();
+            }
+        });
+
+        if (! DeliveryNote::whereKey($deliveryNote->id)->exists()) {
+            return redirect()->route('deliveries.index', session('deliveries_index_filters', []))
+                ->with('success', "Paquete {$label} quitado. La nota quedó vacía y fue eliminada.");
+        }
+
+        return redirect()->route('deliveries.notes.edit', $deliveryNote)
+            ->with('success', "Paquete {$label} quitado de la nota. El paquete volvió a estado «Listo para retiro».");
     }
 }
