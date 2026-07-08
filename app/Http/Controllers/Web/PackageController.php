@@ -34,13 +34,30 @@ class PackageController extends Controller
             return redirect()->route('packages.index');
         }
 
+        // Guardar filtros + página para que "Volver" restaure exactamente el listado.
         $filterKeys = ['search', 'service_type', 'intake_type', 'status', 'agency_id', 'date_from', 'date_to'];
-        $hasParams = $request->hasAny($filterKeys);
-        if (! $hasParams && session()->has('packages_index_filters')) {
+        $hasFilterParams = $request->hasAny($filterKeys);
+        $hasPage = $request->has('page');
+
+        if (! $hasFilterParams && ! $hasPage && session()->has('packages_index_filters')) {
             return redirect()->route('packages.index', session('packages_index_filters'));
         }
-        if ($hasParams) {
-            session(['packages_index_filters' => $request->only($filterKeys)]);
+
+        if ($hasFilterParams || $hasPage) {
+            // Si solo cambia la página, conservar filtros ya guardados.
+            $stored = $hasFilterParams
+                ? $request->only($filterKeys)
+                : array_intersect_key(session('packages_index_filters', []), array_flip($filterKeys));
+
+            // Solo conservar página > 1. Un nuevo filtro (sin page) vuelve a la página 1.
+            if ($hasPage && (int) $request->input('page') > 1) {
+                $stored['page'] = (int) $request->input('page');
+            }
+
+            session(['packages_index_filters' => array_filter(
+                $stored,
+                fn ($value) => $value !== null && $value !== ''
+            )]);
         }
 
         $query = Preregistration::with('agency');

@@ -135,7 +135,7 @@
                     @endphp
                     <tr>
                         <td><span class="delivery-code">{{ $note->code }}</span></td>
-                        <td class="delivery-muted">{{ $firstDelivery ? $firstDelivery->delivered_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') : ($note->created_at ? $note->created_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') : '—') }}</td>
+                        <td class="delivery-muted">{{ $firstDelivery?->delivered_at?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') ?? ($note->created_at ? $note->created_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') : '—') }}</td>
                         <td class="delivery-num">{{ $note->deliveries_count }}</td>
                         <td class="delivery-name-cell" title="{{ $firstDelivery?->delivered_to }}">{{ $firstDelivery?->delivered_to ?? '—' }}</td>
                         <td class="delivery-muted delivery-name-cell" title="{{ $agencyName }}">{{ Str::limit($agencyName, 20) }}</td>

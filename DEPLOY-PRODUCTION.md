@@ -55,12 +55,30 @@ No uses `APP_DEBUG=true` en producción (expone errores y rutas).
 
 ### 4. Caché y optimización
 
-Después del deploy:
+Después del deploy, **siempre limpiar cachés antes de recompilar** (obligatorio si agregaste rutas, vistas o config):
 
 ```bash
+php artisan route:clear
+php artisan view:clear
+php artisan config:clear
+
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
+```
+
+Si omites `route:clear` tras agregar rutas nuevas, Laravel puede seguir usando `bootstrap/cache/routes-v7.php` antiguo y provocar error 500 (p. ej. `RouteNotFoundException` en `/deliveries`).
+
+Reiniciar PHP-FPM para limpiar OPcache (ajusta la versión de PHP):
+
+```bash
+systemctl restart php8.4-fpm
+```
+
+Atajo (ejecuta todo lo anterior desde la raíz del proyecto):
+
+```bash
+./scripts/post-deploy-cache.sh
 ```
 
 Si usas traducciones: `php artisan event:cache` (cuando aplique).
