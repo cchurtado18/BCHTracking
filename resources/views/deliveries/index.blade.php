@@ -2,6 +2,93 @@
 
 @section('title', 'Entregas')
 
+@push('styles')
+<style>
+.delivery-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
+
+.delivery-hero {
+    background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%);
+    border-radius: 1rem; padding: 1.75rem 1.5rem; margin-bottom: 1.5rem;
+    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25);
+}
+.delivery-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
+.delivery-hero-title { margin: 0; font-size: 1.75rem; font-weight: 700; color: #fff; letter-spacing: -0.02em; }
+.delivery-hero-subtitle { margin: 0.35rem 0 0; font-size: 0.9375rem; color: rgba(255,255,255,0.9); max-width: 52ch; }
+
+.delivery-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 1.5rem; overflow: hidden; }
+.delivery-card-header { padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb; background: #fafafa; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+.delivery-card-title { margin: 0; font-size: 0.9375rem; font-weight: 600; color: #374151; }
+.delivery-card-body { padding: 1.25rem; }
+.delivery-card-footer { padding: 0.75rem 1.25rem; border-top: 1px solid #e5e7eb; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; font-size: 0.875rem; color: #6b7280; }
+.delivery-card-badge { font-size: 0.8125rem; color: #6b7280; }
+
+.delivery-agency-form { margin: 0; }
+.delivery-agency-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem; }
+.delivery-agency-row .delivery-label { flex: 0 0 auto; margin-bottom: 0; font-size: 0.875rem; font-weight: 600; color: #374151; }
+.delivery-select-agency { min-width: 280px; max-width: 100%; }
+@media (max-width: 639px) { .delivery-select-agency { min-width: 100%; } }
+
+.delivery-label { display: block; font-size: 0.75rem; font-weight: 600; color: #6b7280; margin-bottom: 0.35rem; }
+.delivery-input, .delivery-select { display: block; width: 100%; padding: 0.5rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.5rem; background: #fff; color: #111827; }
+.delivery-input:focus, .delivery-select:focus { outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15); }
+.delivery-filters-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+
+.delivery-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; }
+.delivery-btn-primary { background: #0d9488; color: #fff; border-color: #0d9488; }
+.delivery-btn-primary:hover { background: #0f766e; border-color: #0f766e; color: #fff; }
+.delivery-btn-secondary { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
+.delivery-btn-secondary:hover { background: #e5e7eb; color: #111827; }
+.delivery-btn-outline-primary { background: #fff; color: #0d9488; border-color: #0d9488; }
+.delivery-btn-outline-primary:hover { background: #ccfbf1; color: #0f766e; }
+.delivery-btn-sm { padding: 0.35rem 0.65rem; font-size: 0.8125rem; }
+
+.delivery-empty-state { text-align: center; padding: 2.5rem 1.5rem; }
+.delivery-empty-state-prompt { padding: 2rem 1rem; }
+.delivery-empty-state-title { margin: 0 0 0.5rem; font-size: 1.125rem; font-weight: 600; color: #374151; }
+.delivery-empty-state-text { margin: 0; font-size: 0.9375rem; color: #6b7280; max-width: 42ch; margin-left: auto; margin-right: auto; }
+
+.delivery-service-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin-bottom: 1rem; }
+.delivery-service-filter-label { font-size: 0.875rem; font-weight: 600; color: #374151; }
+.delivery-service-filter-link { display: inline-block; padding: 0.4rem 0.75rem; font-size: 0.875rem; border-radius: 0.5rem; border: 1px solid #d1d5db; background: #fff; color: #374151; text-decoration: none; }
+.delivery-service-filter-link:hover { background: #f3f4f6; border-color: #0d9488; color: #0d9488; }
+.delivery-service-filter-link.active { background: #0d9488; border-color: #0d9488; color: #fff; }
+.delivery-service-filter-link.active:hover { background: #0f766e; border-color: #0f766e; color: #fff; }
+
+.delivery-table-header { background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%); }
+.delivery-table-header .delivery-card-title { color: #fff; }
+.delivery-table-header .delivery-card-badge { color: rgba(255,255,255,0.9); }
+.delivery-hint { font-size: 0.875rem; color: #6b7280; margin: 0 0 1rem; }
+.delivery-muted { color: #6b7280; font-size: 0.875rem; }
+.delivery-table-wrap { overflow-x: auto; }
+.delivery-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.delivery-table thead tr { background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%); }
+.delivery-table th { text-align: left; padding: 0.75rem 1rem; font-weight: 600; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.2); white-space: nowrap; }
+.delivery-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
+.delivery-table tbody tr:hover { background: #f9fafb; }
+.delivery-code { font-family: ui-monospace, monospace; font-weight: 600; color: #111827; }
+.delivery-name-cell { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.delivery-tracking-cell { max-width: 120px; }
+.delivery-num { font-weight: 500; color: #374151; }
+.delivery-th-actions { text-align: right; }
+.delivery-actions { text-align: right; white-space: nowrap; display: inline-flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; }
+.delivery-badge { display: inline-block; padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem; }
+.delivery-badge-pickup { background: #dbeafe; color: #1d4ed8; }
+.delivery-badge-delivery { background: #d1fae5; color: #047857; }
+.delivery-badge-air { background: #dbeafe; color: #1d4ed8; }
+.delivery-badge-sea { background: #d1fae5; color: #047857; }
+.delivery-empty { text-align: center; padding: 3rem 1rem !important; }
+.delivery-empty-text { margin: 0; color: #6b7280; }
+.delivery-pagination-info { font-weight: 500; }
+.delivery-pagination-links { display: flex; align-items: center; }
+.delivery-pagination-links nav { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+.delivery-pagination-links a, .delivery-pagination-links span { display: inline-block; padding: 0.35rem 0.65rem; font-size: 0.8125rem; border-radius: 0.375rem; border: 1px solid #e5e7eb; background: #fff; color: #374151; text-decoration: none; }
+.delivery-pagination-links a:hover { background: #f3f4f6; color: #0d9488; }
+.delivery-pagination-links .disabled span { background: #f9fafb; color: #9ca3af; }
+.delivery-pagination-links .active span { background: #0d9488; color: #fff; border-color: #0d9488; }
+</style>
+@endpush
+
+
 @section('content')
 <div class="delivery-page">
     {{-- Hero --}}
@@ -167,90 +254,6 @@
     </div>
 
 </div>
-
-<style>
-.delivery-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
-
-.delivery-hero {
-    background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%);
-    border-radius: 1rem; padding: 1.75rem 1.5rem; margin-bottom: 1.5rem;
-    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25);
-}
-.delivery-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-.delivery-hero-title { margin: 0; font-size: 1.75rem; font-weight: 700; color: #fff; letter-spacing: -0.02em; }
-.delivery-hero-subtitle { margin: 0.35rem 0 0; font-size: 0.9375rem; color: rgba(255,255,255,0.9); max-width: 52ch; }
-
-.delivery-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 1.5rem; overflow: hidden; }
-.delivery-card-header { padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb; background: #fafafa; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
-.delivery-card-title { margin: 0; font-size: 0.9375rem; font-weight: 600; color: #374151; }
-.delivery-card-body { padding: 1.25rem; }
-.delivery-card-footer { padding: 0.75rem 1.25rem; border-top: 1px solid #e5e7eb; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; font-size: 0.875rem; color: #6b7280; }
-.delivery-card-badge { font-size: 0.8125rem; color: #6b7280; }
-
-.delivery-agency-form { margin: 0; }
-.delivery-agency-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem; }
-.delivery-agency-row .delivery-label { flex: 0 0 auto; margin-bottom: 0; font-size: 0.875rem; font-weight: 600; color: #374151; }
-.delivery-select-agency { min-width: 280px; max-width: 100%; }
-@media (max-width: 639px) { .delivery-select-agency { min-width: 100%; } }
-
-.delivery-label { display: block; font-size: 0.75rem; font-weight: 600; color: #6b7280; margin-bottom: 0.35rem; }
-.delivery-input, .delivery-select { display: block; width: 100%; padding: 0.5rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.5rem; background: #fff; color: #111827; }
-.delivery-input:focus, .delivery-select:focus { outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15); }
-.delivery-filters-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
-
-.delivery-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; }
-.delivery-btn-primary { background: #0d9488; color: #fff; border-color: #0d9488; }
-.delivery-btn-primary:hover { background: #0f766e; border-color: #0f766e; color: #fff; }
-.delivery-btn-secondary { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
-.delivery-btn-secondary:hover { background: #e5e7eb; color: #111827; }
-.delivery-btn-outline-primary { background: #fff; color: #0d9488; border-color: #0d9488; }
-.delivery-btn-outline-primary:hover { background: #ccfbf1; color: #0f766e; }
-.delivery-btn-sm { padding: 0.35rem 0.65rem; font-size: 0.8125rem; }
-
-.delivery-empty-state { text-align: center; padding: 2.5rem 1.5rem; }
-.delivery-empty-state-prompt { padding: 2rem 1rem; }
-.delivery-empty-state-title { margin: 0 0 0.5rem; font-size: 1.125rem; font-weight: 600; color: #374151; }
-.delivery-empty-state-text { margin: 0; font-size: 0.9375rem; color: #6b7280; max-width: 42ch; margin-left: auto; margin-right: auto; }
-
-.delivery-service-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin-bottom: 1rem; }
-.delivery-service-filter-label { font-size: 0.875rem; font-weight: 600; color: #374151; }
-.delivery-service-filter-link { display: inline-block; padding: 0.4rem 0.75rem; font-size: 0.875rem; border-radius: 0.5rem; border: 1px solid #d1d5db; background: #fff; color: #374151; text-decoration: none; }
-.delivery-service-filter-link:hover { background: #f3f4f6; border-color: #0d9488; color: #0d9488; }
-.delivery-service-filter-link.active { background: #0d9488; border-color: #0d9488; color: #fff; }
-.delivery-service-filter-link.active:hover { background: #0f766e; border-color: #0f766e; color: #fff; }
-
-.delivery-table-header { background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%); }
-.delivery-table-header .delivery-card-title { color: #fff; }
-.delivery-table-header .delivery-card-badge { color: rgba(255,255,255,0.9); }
-.delivery-hint { font-size: 0.875rem; color: #6b7280; margin: 0 0 1rem; }
-.delivery-muted { color: #6b7280; font-size: 0.875rem; }
-.delivery-table-wrap { overflow-x: auto; }
-.delivery-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-.delivery-table thead tr { background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%); }
-.delivery-table th { text-align: left; padding: 0.75rem 1rem; font-weight: 600; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.2); white-space: nowrap; }
-.delivery-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
-.delivery-table tbody tr:hover { background: #f9fafb; }
-.delivery-code { font-family: ui-monospace, monospace; font-weight: 600; color: #111827; }
-.delivery-name-cell { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.delivery-tracking-cell { max-width: 120px; }
-.delivery-num { font-weight: 500; color: #374151; }
-.delivery-th-actions { text-align: right; }
-.delivery-actions { text-align: right; white-space: nowrap; display: inline-flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; }
-.delivery-badge { display: inline-block; padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem; }
-.delivery-badge-pickup { background: #dbeafe; color: #1d4ed8; }
-.delivery-badge-delivery { background: #d1fae5; color: #047857; }
-.delivery-badge-air { background: #dbeafe; color: #1d4ed8; }
-.delivery-badge-sea { background: #d1fae5; color: #047857; }
-.delivery-empty { text-align: center; padding: 3rem 1rem !important; }
-.delivery-empty-text { margin: 0; color: #6b7280; }
-.delivery-pagination-info { font-weight: 500; }
-.delivery-pagination-links { display: flex; align-items: center; }
-.delivery-pagination-links nav { display: flex; gap: 0.25rem; flex-wrap: wrap; }
-.delivery-pagination-links a, .delivery-pagination-links span { display: inline-block; padding: 0.35rem 0.65rem; font-size: 0.8125rem; border-radius: 0.375rem; border: 1px solid #e5e7eb; background: #fff; color: #374151; text-decoration: none; }
-.delivery-pagination-links a:hover { background: #f3f4f6; color: #0d9488; }
-.delivery-pagination-links .disabled span { background: #f9fafb; color: #9ca3af; }
-.delivery-pagination-links .active span { background: #0d9488; color: #fff; border-color: #0d9488; }
-</style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var form = document.getElementById('deliveryAgencyForm');

@@ -2,248 +2,7 @@
 
 @section('title', 'Preregistros')
 
-@section('content')
-@php
-    $preregsDisplayTz = config('app.display_timezone') ?: 'America/New_York';
-@endphp
-<div class="preregs-page">
-    {{-- Hero --}}
-    <header class="preregs-hero">
-        <div class="preregs-hero-inner">
-            <div class="preregs-hero-text">
-                <h1 class="preregs-hero-title">Preregistros</h1>
-                <p class="preregs-hero-subtitle">Lista de preregistros en Miami. Crea nuevos, filtra por servicio, ingreso o estado.</p>
-            </div>
-            <div class="preregs-hero-actions">
-                <a href="{{ route('preregistrations.quick-courier') }}" class="preregs-hero-btn preregs-hero-btn-secondary">
-                    Captura rápida Courier
-                </a>
-                <a href="{{ route('preregistrations.create') }}" class="preregs-hero-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
-                    Nuevo preregistro
-                </a>
-            </div>
-        </div>
-    </header>
-
-    {{-- Tarjetas de resumen --}}
-    <div class="preregs-stats">
-        <div class="preregs-stat-card preregs-stat-total">
-            <span class="preregs-stat-icon" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.5 12 13 3 8.5M12 13v8M4.2 7.8 12 3l7.8 4.8A2 2 0 0 1 21 9.5v8.9a2 2 0 0 1-1 1.73l-7 4.02a2 2 0 0 1-2 0l-7-4.02a2 2 0 0 1-1-1.73V9.5a2 2 0 0 1 1.2-1.7Z"/></svg>
-            </span>
-            <span class="preregs-stat-label">Total</span>
-            <span class="preregs-stat-value">{{ number_format($statsTotal ?? 0) }}</span>
-        </div>
-        <div class="preregs-stat-card preregs-stat-air">
-            <span class="preregs-stat-icon" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m3 14 8-3 3-8 2 2-2 7 7 2 2 2-8 1-2 4-2-2 1-4-7-1Z"/></svg>
-            </span>
-            <span class="preregs-stat-label">Aéreo</span>
-            <span class="preregs-stat-value">{{ number_format($statsAir ?? 0) }}</span>
-        </div>
-        <div class="preregs-stat-card preregs-stat-sea">
-            <span class="preregs-stat-icon" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2 18s2.5 3 5 3 4-2 5-2 2.5 2 5 2 5-3 5-3M4 16V9h14v7M8 9l1.5-3h3L14 9"/></svg>
-            </span>
-            <span class="preregs-stat-label">Marítimo</span>
-            <span class="preregs-stat-value">{{ number_format($statsSea ?? 0) }}</span>
-        </div>
-        <div class="preregs-stat-card preregs-stat-received">
-            <span class="preregs-stat-icon" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 22s7-5.8 7-12a7 7 0 1 0-14 0c0 6.2 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg>
-            </span>
-            <span class="preregs-stat-label">Recibido Miami</span>
-            <span class="preregs-stat-value">{{ number_format($statsReceived ?? 0) }}</span>
-        </div>
-        <div class="preregs-stat-card preregs-stat-ready">
-            <span class="preregs-stat-icon" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4 10-10"/></svg>
-            </span>
-            <span class="preregs-stat-label">Listos</span>
-            <span class="preregs-stat-value">{{ number_format($statsReady ?? 0) }}</span>
-        </div>
-    </div>
-
-    {{-- Filtros --}}
-    <div class="preregs-card preregs-filters-card">
-        <div class="preregs-card-header">
-            <h2 class="preregs-card-title">Filtros</h2>
-        </div>
-        <div class="preregs-card-body">
-            <form method="GET" action="{{ route('preregistrations.index') }}" class="preregs-filters-form">
-                <div class="preregs-filters-grid">
-                    <div class="preregs-field preregs-field-search">
-                        <label class="preregs-label">Buscar</label>
-                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Tracking, código, nombre" class="preregs-input">
-                    </div>
-                    <div class="preregs-field">
-                        <label class="preregs-label">Servicio</label>
-                        <select name="service_type" class="preregs-select">
-                            <option value="">Todos</option>
-                            <option value="AIR" {{ request('service_type') == 'AIR' ? 'selected' : '' }}>Aéreo</option>
-                            <option value="SEA" {{ request('service_type') == 'SEA' ? 'selected' : '' }}>Marítimo</option>
-                        </select>
-                    </div>
-                    <div class="preregs-field">
-                        <label class="preregs-label">Ingreso</label>
-                        <select name="intake_type" class="preregs-select">
-                            <option value="">Todos</option>
-                            <option value="COURIER" {{ request('intake_type') == 'COURIER' ? 'selected' : '' }}>Courier</option>
-                            <option value="DROP_OFF" {{ request('intake_type') == 'DROP_OFF' ? 'selected' : '' }}>Drop Off</option>
-                        </select>
-                    </div>
-                    <div class="preregs-field">
-                        <label class="preregs-label">Estado</label>
-                        <select name="status" class="preregs-select">
-                            <option value="">Todos</option>
-                            <option value="PHOTO_PENDING" {{ request('status') == 'PHOTO_PENDING' ? 'selected' : '' }}>Pendiente por completar</option>
-                            <option value="RECEIVED_MIAMI" {{ request('status') == 'RECEIVED_MIAMI' ? 'selected' : '' }}>Recibido Miami</option>
-                            <option value="IN_TRANSIT" {{ request('status') == 'IN_TRANSIT' ? 'selected' : '' }}>En tránsito</option>
-                            <option value="IN_WAREHOUSE_NIC" {{ request('status') == 'IN_WAREHOUSE_NIC' ? 'selected' : '' }}>En almacén NIC</option>
-                            <option value="READY" {{ request('status') == 'READY' ? 'selected' : '' }}>Listo para retiro</option>
-                            <option value="DELIVERED" {{ request('status') == 'DELIVERED' ? 'selected' : '' }}>Entregado</option>
-                            <option value="CANCELLED" {{ request('status') == 'CANCELLED' ? 'selected' : '' }}>Inactivo</option>
-                        </select>
-                    </div>
-                    <div class="preregs-field">
-                        <label class="preregs-label">Desde</label>
-                        <input type="date" name="date_from" value="{{ request('date_from') }}" class="preregs-input">
-                    </div>
-                    <div class="preregs-field">
-                        <label class="preregs-label">Hasta</label>
-                        <input type="date" name="date_to" value="{{ request('date_to') }}" class="preregs-input">
-                    </div>
-                </div>
-                <div class="preregs-filters-actions">
-                    <button type="submit" class="preregs-btn preregs-btn-primary">Aplicar filtros</button>
-                    <a href="{{ route('preregistrations.index', ['clear_filters' => 1]) }}" class="preregs-btn preregs-btn-ghost">Limpiar</a>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    {{-- Tabla de preregistros --}}
-    <div class="preregs-card preregs-table-card">
-        <div class="preregs-card-header preregs-table-header">
-            <h2 class="preregs-card-title">Listado de preregistros</h2>
-            <span class="preregs-card-badge">{{ $preregistrations->total() }} {{ $preregistrations->total() === 1 ? 'registro' : 'registros' }}</span>
-        </div>
-        <div class="preregs-table-wrap">
-            <table class="preregs-table">
-                <thead>
-                    <tr>
-                        <th>Código almacén</th>
-                        <th>Tracking</th>
-                        <th>Fecha ingreso</th>
-                        <th>Nombre (etiqueta)</th>
-                        <th>Agencia</th>
-                        <th>Servicio</th>
-                        <th>Peso</th>
-                        <th>Estado</th>
-                        <th>Foto</th>
-                        <th class="preregs-th-actions"><span class="preregs-sr-only">Acciones</span></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($preregistrations as $preregistration)
-                    <tr class="preregs-clickable-row" data-href="{{ route('preregistrations.show', $preregistration->id) }}">
-                        <td>
-                            <span class="preregs-code" title="{{ $preregistration->warehouse_code ?? 'Sin código' }}">{{ $preregistration->warehouse_code ?? '—' }}</span>
-                        </td>
-                        <td>
-                            @php $trk = trim((string) ($preregistration->tracking_external ?? '')); @endphp
-                            <span class="preregs-tracking" title="{{ $trk !== '' ? $trk : 'Sin tracking' }}">{{ $trk !== '' ? Str::limit($trk, 28) : '—' }}</span>
-                        </td>
-                        <td>
-                            <span class="preregs-date">{{ $preregistration->created_at ? $preregistration->created_at->timezone($preregsDisplayTz)->format('d/m/Y H:i') : '—' }}</span>
-                        </td>
-                        <td>
-                            <span class="preregs-name" title="{{ $preregistration->label_name }}">{{ $preregistration->label_name ? Str::limit($preregistration->label_name, 35) : '—' }}</span>
-                        </td>
-                        <td>
-                            @if($preregistration->agency)
-                            <span class="preregs-agency" title="{{ $preregistration->agency->name }}">{{ $preregistration->agency->code ? $preregistration->agency->code . ' - ' : '' }}{{ Str::limit($preregistration->agency->name, 22) }}</span>
-                            @else
-                            <span class="preregs-agency">—</span>
-                            @endif
-                        </td>
-                        <td>
-                            <span class="preregs-badge preregs-badge-{{ strtolower($preregistration->service_type ?? '') }}">
-                                {{ $preregistration->service_type == 'AIR' ? 'Aéreo' : ($preregistration->service_type == 'SEA' ? 'Marítimo' : ($preregistration->service_type ?? '—')) }}
-                            </span>
-                        </td>
-                        <td class="preregs-weight">{{ number_format($preregistration->intake_weight_lbs ?? 0, 2) }} <span class="preregs-uom">lbs</span></td>
-                        <td>
-                            @php
-                                $statusLabels = [
-                                    'PHOTO_PENDING' => ['Pendiente datos', 'status-pending'],
-                                    'RECEIVED_MIAMI' => ['Recibido Miami', 'status-info'],
-                                    'IN_TRANSIT' => ['En tránsito', 'status-warning'],
-                                    'IN_WAREHOUSE_NIC' => ['En almacén NIC', 'status-primary'],
-                                    'READY' => ['Listo retiro', 'status-success'],
-                                    'DELIVERED' => ['Entregado', 'status-delivered'],
-                                    'CANCELLED' => ['Inactivo', 'status-danger'],
-                                ];
-                                $sl = $statusLabels[$preregistration->status ?? ''] ?? [$preregistration->status ?? '—', 'status-default'];
-                            @endphp
-                            <span class="preregs-badge preregs-status {{ $sl[1] }}">{{ $sl[0] }}</span>
-                        </td>
-                        <td>
-                            @if($preregistration->photos->count() > 0)
-                            <span class="preregs-photo-yes" title="Tiene foto">✓</span>
-                            @else
-                            <span class="preregs-photo-no">—</span>
-                            @endif
-                        </td>
-                        <td class="preregs-actions">
-                            <div class="preregs-action-group" role="group" aria-label="Acciones">
-                                <a href="{{ route('preregistrations.show', $preregistration->id) }}" class="preregs-icon-btn preregs-icon-btn--view" title="Ver detalle" aria-label="Ver detalle">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                                </a>
-                                @if($preregistration->warehouse_code)
-                                <a href="{{ route('preregistrations.label', $preregistration->id) }}" target="_blank" class="preregs-icon-btn preregs-icon-btn--accent" title="Etiqueta" aria-label="Abrir etiqueta">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
-                                </a>
-                                @endif
-                                <a href="{{ route('preregistrations.edit', $preregistration->id) }}" class="preregs-icon-btn preregs-icon-btn--edit" title="Editar" aria-label="Editar">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                </a>
-                                @if(in_array($preregistration->status, ['RECEIVED_MIAMI', 'CANCELLED']))
-                                <form action="{{ route('preregistrations.destroy', $preregistration->id) }}" method="POST" class="preregs-form-inline" onsubmit="return confirm('¿Eliminar este preregistro?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="preregs-icon-btn preregs-icon-btn--danger" title="Eliminar" aria-label="Eliminar">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                    </button>
-                                </form>
-                                @endif
-                            </div>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="10" class="preregs-empty">
-                            <p class="preregs-empty-text">No hay preregistros con los filtros actuales.</p>
-                            <a href="{{ route('preregistrations.create') }}" class="preregs-btn preregs-btn-primary">Crear preregistro</a>
-                            <a href="{{ route('preregistrations.index', ['clear_filters' => 1]) }}" class="preregs-btn preregs-btn-secondary">Ver todos</a>
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-        @if($preregistrations->hasPages())
-        <div class="preregs-card-footer">
-            <span class="preregs-pagination-info">
-                {{ $preregistrations->firstItem() }} – {{ $preregistrations->lastItem() }} de {{ $preregistrations->total() }}
-            </span>
-            <div class="preregs-pagination-links">{{ $preregistrations->links() }}</div>
-        </div>
-        @endif
-    </div>
-</div>
-
+@push('styles')
 <style>
 .preregs-page { padding: 1.25rem 0 2rem; max-width: 96rem; margin: 0 auto; width: 100%; }
 
@@ -523,6 +282,250 @@
 .preregs-pagination-links .disabled span { background: #f8fafc; color: #94a3b8; }
 .preregs-pagination-links .active span { background: #0d9488; color: #fff; border-color: #0d9488; }
 </style>
+@endpush
+
+
+@section('content')
+@php
+    $preregsDisplayTz = config('app.display_timezone') ?: 'America/New_York';
+@endphp
+<div class="preregs-page">
+    {{-- Hero --}}
+    <header class="preregs-hero">
+        <div class="preregs-hero-inner">
+            <div class="preregs-hero-text">
+                <h1 class="preregs-hero-title">Preregistros</h1>
+                <p class="preregs-hero-subtitle">Lista de preregistros en Miami. Crea nuevos, filtra por servicio, ingreso o estado.</p>
+            </div>
+            <div class="preregs-hero-actions">
+                <a href="{{ route('preregistrations.quick-courier') }}" class="preregs-hero-btn preregs-hero-btn-secondary">
+                    Captura rápida Courier
+                </a>
+                <a href="{{ route('preregistrations.create') }}" class="preregs-hero-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+                    Nuevo preregistro
+                </a>
+            </div>
+        </div>
+    </header>
+
+    {{-- Tarjetas de resumen --}}
+    <div class="preregs-stats">
+        <div class="preregs-stat-card preregs-stat-total">
+            <span class="preregs-stat-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.5 12 13 3 8.5M12 13v8M4.2 7.8 12 3l7.8 4.8A2 2 0 0 1 21 9.5v8.9a2 2 0 0 1-1 1.73l-7 4.02a2 2 0 0 1-2 0l-7-4.02a2 2 0 0 1-1-1.73V9.5a2 2 0 0 1 1.2-1.7Z"/></svg>
+            </span>
+            <span class="preregs-stat-label">Total</span>
+            <span class="preregs-stat-value">{{ number_format($statsTotal ?? 0) }}</span>
+        </div>
+        <div class="preregs-stat-card preregs-stat-air">
+            <span class="preregs-stat-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m3 14 8-3 3-8 2 2-2 7 7 2 2 2-8 1-2 4-2-2 1-4-7-1Z"/></svg>
+            </span>
+            <span class="preregs-stat-label">Aéreo</span>
+            <span class="preregs-stat-value">{{ number_format($statsAir ?? 0) }}</span>
+        </div>
+        <div class="preregs-stat-card preregs-stat-sea">
+            <span class="preregs-stat-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2 18s2.5 3 5 3 4-2 5-2 2.5 2 5 2 5-3 5-3M4 16V9h14v7M8 9l1.5-3h3L14 9"/></svg>
+            </span>
+            <span class="preregs-stat-label">Marítimo</span>
+            <span class="preregs-stat-value">{{ number_format($statsSea ?? 0) }}</span>
+        </div>
+        <div class="preregs-stat-card preregs-stat-received">
+            <span class="preregs-stat-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 22s7-5.8 7-12a7 7 0 1 0-14 0c0 6.2 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+            </span>
+            <span class="preregs-stat-label">Recibido Miami</span>
+            <span class="preregs-stat-value">{{ number_format($statsReceived ?? 0) }}</span>
+        </div>
+        <div class="preregs-stat-card preregs-stat-ready">
+            <span class="preregs-stat-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4 10-10"/></svg>
+            </span>
+            <span class="preregs-stat-label">Listos</span>
+            <span class="preregs-stat-value">{{ number_format($statsReady ?? 0) }}</span>
+        </div>
+    </div>
+
+    {{-- Filtros --}}
+    <div class="preregs-card preregs-filters-card">
+        <div class="preregs-card-header">
+            <h2 class="preregs-card-title">Filtros</h2>
+        </div>
+        <div class="preregs-card-body">
+            <form method="GET" action="{{ route('preregistrations.index') }}" class="preregs-filters-form">
+                <div class="preregs-filters-grid">
+                    <div class="preregs-field preregs-field-search">
+                        <label class="preregs-label">Buscar</label>
+                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Tracking, código, nombre" class="preregs-input">
+                    </div>
+                    <div class="preregs-field">
+                        <label class="preregs-label">Servicio</label>
+                        <select name="service_type" class="preregs-select">
+                            <option value="">Todos</option>
+                            <option value="AIR" {{ request('service_type') == 'AIR' ? 'selected' : '' }}>Aéreo</option>
+                            <option value="SEA" {{ request('service_type') == 'SEA' ? 'selected' : '' }}>Marítimo</option>
+                        </select>
+                    </div>
+                    <div class="preregs-field">
+                        <label class="preregs-label">Ingreso</label>
+                        <select name="intake_type" class="preregs-select">
+                            <option value="">Todos</option>
+                            <option value="COURIER" {{ request('intake_type') == 'COURIER' ? 'selected' : '' }}>Courier</option>
+                            <option value="DROP_OFF" {{ request('intake_type') == 'DROP_OFF' ? 'selected' : '' }}>Drop Off</option>
+                        </select>
+                    </div>
+                    <div class="preregs-field">
+                        <label class="preregs-label">Estado</label>
+                        <select name="status" class="preregs-select">
+                            <option value="">Todos</option>
+                            <option value="PHOTO_PENDING" {{ request('status') == 'PHOTO_PENDING' ? 'selected' : '' }}>Pendiente por completar</option>
+                            <option value="RECEIVED_MIAMI" {{ request('status') == 'RECEIVED_MIAMI' ? 'selected' : '' }}>Recibido Miami</option>
+                            <option value="IN_TRANSIT" {{ request('status') == 'IN_TRANSIT' ? 'selected' : '' }}>En tránsito</option>
+                            <option value="IN_WAREHOUSE_NIC" {{ request('status') == 'IN_WAREHOUSE_NIC' ? 'selected' : '' }}>En almacén NIC</option>
+                            <option value="READY" {{ request('status') == 'READY' ? 'selected' : '' }}>Listo para retiro</option>
+                            <option value="DELIVERED" {{ request('status') == 'DELIVERED' ? 'selected' : '' }}>Entregado</option>
+                            <option value="CANCELLED" {{ request('status') == 'CANCELLED' ? 'selected' : '' }}>Inactivo</option>
+                        </select>
+                    </div>
+                    <div class="preregs-field">
+                        <label class="preregs-label">Desde</label>
+                        <input type="date" name="date_from" value="{{ request('date_from') }}" class="preregs-input">
+                    </div>
+                    <div class="preregs-field">
+                        <label class="preregs-label">Hasta</label>
+                        <input type="date" name="date_to" value="{{ request('date_to') }}" class="preregs-input">
+                    </div>
+                </div>
+                <div class="preregs-filters-actions">
+                    <button type="submit" class="preregs-btn preregs-btn-primary">Aplicar filtros</button>
+                    <a href="{{ route('preregistrations.index', ['clear_filters' => 1]) }}" class="preregs-btn preregs-btn-ghost">Limpiar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- Tabla de preregistros --}}
+    <div class="preregs-card preregs-table-card">
+        <div class="preregs-card-header preregs-table-header">
+            <h2 class="preregs-card-title">Listado de preregistros</h2>
+            <span class="preregs-card-badge">{{ $preregistrations->total() }} {{ $preregistrations->total() === 1 ? 'registro' : 'registros' }}</span>
+        </div>
+        <div class="preregs-table-wrap">
+            <table class="preregs-table">
+                <thead>
+                    <tr>
+                        <th>Código almacén</th>
+                        <th>Tracking</th>
+                        <th>Fecha ingreso</th>
+                        <th>Nombre (etiqueta)</th>
+                        <th>Agencia</th>
+                        <th>Servicio</th>
+                        <th>Peso</th>
+                        <th>Estado</th>
+                        <th>Foto</th>
+                        <th class="preregs-th-actions"><span class="preregs-sr-only">Acciones</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($preregistrations as $preregistration)
+                    <tr class="preregs-clickable-row" data-href="{{ route('preregistrations.show', $preregistration->id) }}">
+                        <td>
+                            <span class="preregs-code" title="{{ $preregistration->warehouse_code ?? 'Sin código' }}">{{ $preregistration->warehouse_code ?? '—' }}</span>
+                        </td>
+                        <td>
+                            @php $trk = trim((string) ($preregistration->tracking_external ?? '')); @endphp
+                            <span class="preregs-tracking" title="{{ $trk !== '' ? $trk : 'Sin tracking' }}">{{ $trk !== '' ? Str::limit($trk, 28) : '—' }}</span>
+                        </td>
+                        <td>
+                            <span class="preregs-date">{{ $preregistration->created_at ? $preregistration->created_at->timezone($preregsDisplayTz)->format('d/m/Y H:i') : '—' }}</span>
+                        </td>
+                        <td>
+                            <span class="preregs-name" title="{{ $preregistration->label_name }}">{{ $preregistration->label_name ? Str::limit($preregistration->label_name, 35) : '—' }}</span>
+                        </td>
+                        <td>
+                            @if($preregistration->agency)
+                            <span class="preregs-agency" title="{{ $preregistration->agency->name }}">{{ $preregistration->agency->code ? $preregistration->agency->code . ' - ' : '' }}{{ Str::limit($preregistration->agency->name, 22) }}</span>
+                            @else
+                            <span class="preregs-agency">—</span>
+                            @endif
+                        </td>
+                        <td>
+                            <span class="preregs-badge preregs-badge-{{ strtolower($preregistration->service_type ?? '') }}">
+                                {{ $preregistration->service_type == 'AIR' ? 'Aéreo' : ($preregistration->service_type == 'SEA' ? 'Marítimo' : ($preregistration->service_type ?? '—')) }}
+                            </span>
+                        </td>
+                        <td class="preregs-weight">{{ number_format($preregistration->intake_weight_lbs ?? 0, 2) }} <span class="preregs-uom">lbs</span></td>
+                        <td>
+                            @php
+                                $statusLabels = [
+                                    'PHOTO_PENDING' => ['Pendiente datos', 'status-pending'],
+                                    'RECEIVED_MIAMI' => ['Recibido Miami', 'status-info'],
+                                    'IN_TRANSIT' => ['En tránsito', 'status-warning'],
+                                    'IN_WAREHOUSE_NIC' => ['En almacén NIC', 'status-primary'],
+                                    'READY' => ['Listo retiro', 'status-success'],
+                                    'DELIVERED' => ['Entregado', 'status-delivered'],
+                                    'CANCELLED' => ['Inactivo', 'status-danger'],
+                                ];
+                                $sl = $statusLabels[$preregistration->status ?? ''] ?? [$preregistration->status ?? '—', 'status-default'];
+                            @endphp
+                            <span class="preregs-badge preregs-status {{ $sl[1] }}">{{ $sl[0] }}</span>
+                        </td>
+                        <td>
+                            @if($preregistration->photos->count() > 0)
+                            <span class="preregs-photo-yes" title="Tiene foto">✓</span>
+                            @else
+                            <span class="preregs-photo-no">—</span>
+                            @endif
+                        </td>
+                        <td class="preregs-actions">
+                            <div class="preregs-action-group" role="group" aria-label="Acciones">
+                                <a href="{{ route('preregistrations.show', $preregistration->id) }}" class="preregs-icon-btn preregs-icon-btn--view" title="Ver detalle" aria-label="Ver detalle">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                </a>
+                                @if($preregistration->warehouse_code)
+                                <a href="{{ route('preregistrations.label', $preregistration->id) }}" target="_blank" class="preregs-icon-btn preregs-icon-btn--accent" title="Etiqueta" aria-label="Abrir etiqueta">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+                                </a>
+                                @endif
+                                <a href="{{ route('preregistrations.edit', $preregistration->id) }}" class="preregs-icon-btn preregs-icon-btn--edit" title="Editar" aria-label="Editar">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                </a>
+                                @if(in_array($preregistration->status, ['RECEIVED_MIAMI', 'CANCELLED']))
+                                <form action="{{ route('preregistrations.destroy', $preregistration->id) }}" method="POST" class="preregs-form-inline" onsubmit="return confirm('¿Eliminar este preregistro?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="preregs-icon-btn preregs-icon-btn--danger" title="Eliminar" aria-label="Eliminar">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    </button>
+                                </form>
+                                @endif
+                            </div>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="10" class="preregs-empty">
+                            <p class="preregs-empty-text">No hay preregistros con los filtros actuales.</p>
+                            <a href="{{ route('preregistrations.create') }}" class="preregs-btn preregs-btn-primary">Crear preregistro</a>
+                            <a href="{{ route('preregistrations.index', ['clear_filters' => 1]) }}" class="preregs-btn preregs-btn-secondary">Ver todos</a>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        @if($preregistrations->hasPages())
+        <div class="preregs-card-footer">
+            <span class="preregs-pagination-info">
+                {{ $preregistrations->firstItem() }} – {{ $preregistrations->lastItem() }} de {{ $preregistrations->total() }}
+            </span>
+            <div class="preregs-pagination-links">{{ $preregistrations->links() }}</div>
+        </div>
+        @endif
+    </div>
+</div>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.preregs-clickable-row').forEach(function (row) {

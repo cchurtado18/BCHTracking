@@ -211,6 +211,8 @@
             .app-main { margin-left: 0; padding: 1rem; }
         }
     </style>
+    {{-- Estilos de módulo (paquetes, preregistros, etc.): en head para evitar FOUC --}}
+    @stack('styles')
 </head>
 <body class="bg-gray-50" style="background: var(--app-bg-base);">
     <header class="mobile-header" aria-hidden="true">

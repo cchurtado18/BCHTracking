@@ -2,6 +2,10 @@
 
 @section('title', 'Paquetes')
 
+@push('styles')
+@include('partials.packages-module-styles')
+@endpush
+
 @section('content')
 @php
     $packagesDisplayTz = config('app.display_timezone') ?: 'America/New_York';
@@ -235,8 +239,6 @@
         @endif
     </div>
 </div>
-
-@include('partials.packages-module-styles')
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {

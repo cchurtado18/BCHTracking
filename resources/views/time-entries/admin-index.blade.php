@@ -2,6 +2,10 @@
 
 @section('title', 'Fichaje del equipo')
 
+@push('styles')
+@include('partials.packages-module-styles')
+@endpush
+
 @section('content')
 @php
     $tz = $displayTz ?? config('app.display_timezone', 'America/New_York');
@@ -117,5 +121,4 @@
     </div>
 </div>
 
-@include('partials.packages-module-styles')
 @endsection
