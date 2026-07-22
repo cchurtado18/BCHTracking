@@ -6,12 +6,13 @@
 @php
     $scanRetirerSessionActive = $scanRetirerSessionActive ?? false;
     $scanRetirerSession = is_array($scanRetirerSession ?? null) ? $scanRetirerSession : [];
+    $scannedDeliveries = $scannedDeliveries ?? collect();
 @endphp
 <div class="py-6">
     <div class="mb-6 flex justify-between items-center">
         <div>
             <h1 class="text-3xl font-bold text-gray-900">Escanear entrega</h1>
-            <p class="mt-2 text-sm text-gray-600">Indique una sola vez quién retira; luego escanee solo el código warehouse de cada paquete.</p>
+            <p class="mt-2 text-sm text-gray-600">Indique una sola vez quién retira; luego escanee warehouse (6 dígitos) o tracking de cada paquete.</p>
         </div>
         <a href="{{ route('deliveries.index') }}" class="text-gray-600 hover:text-gray-900">
             ← Volver
@@ -25,7 +26,7 @@
     <div id="delivery-scan-error" class="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-800 border border-red-200">{{ session('error') }}</div>
     @endif
 
-    <div class="max-w-2xl space-y-6">
+    <div class="max-w-3xl space-y-6">
         @if(!$scanRetirerSessionActive)
         <div class="bg-amber-50 border border-amber-200 shadow rounded-lg p-6">
             <h2 class="text-lg font-semibold text-amber-900 mb-2">1. Datos de quien retira (una sola vez)</h2>
@@ -87,7 +88,7 @@
         </div>
 
         <div class="bg-white shadow rounded-lg p-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">2. Escanear código warehouse</h2>
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">2. Escanear warehouse o tracking</h2>
             <form action="{{ route('deliveries.process-scan') }}" method="POST" id="delivery-standalone-scan-form">
                 @csrf
                 <input type="hidden" name="delivered_to" value="{{ $scanRetirerSession['delivered_to'] ?? '' }}">
@@ -97,23 +98,21 @@
 
                 <div class="space-y-6">
                     <div>
-                        <label for="warehouse_code" class="block text-sm font-medium text-gray-700">Warehouse (6 dígitos) *</label>
+                        <label for="scan_code" class="block text-sm font-medium text-gray-700">Warehouse o tracking *</label>
                         <input
                             type="text"
-                            name="warehouse_code"
-                            id="warehouse_code"
-                            value="{{ old('warehouse_code') }}"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-center text-2xl font-mono tracking-widest"
+                            name="code"
+                            id="scan_code"
+                            value="{{ old('code', old('warehouse_code')) }}"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-center text-xl font-mono tracking-wide"
                             required
-                            maxlength="6"
-                            pattern="\d{6}"
-                            placeholder="123456"
+                            maxlength="100"
+                            placeholder="Escanee aquí"
                             autofocus
-                            inputmode="numeric"
                             autocomplete="off"
                         >
-                        <p class="mt-1 text-sm text-gray-500">Con 6 dígitos se envía automáticamente (un bulto por código).</p>
-                        @error('warehouse_code')
+                        <p class="mt-1 text-sm text-gray-500">Use la pistola: warehouse o tracking se registran solos al terminar de leer el código.</p>
+                        @error('code')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
@@ -132,6 +131,33 @@
                 </div>
             </form>
         </div>
+
+        @if($scannedDeliveries->isNotEmpty())
+        <div class="bg-white shadow rounded-lg overflow-hidden border-2 border-teal-600">
+            <div class="px-4 py-3 bg-teal-700 text-white flex items-center justify-between gap-2">
+                <h2 class="text-base font-semibold">Escaneados hoy</h2>
+                <span class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-full bg-white/20 font-bold">{{ $scannedDeliveries->count() }}</span>
+            </div>
+            <ol class="divide-y divide-gray-100 max-h-96 overflow-y-auto m-0 p-0 list-none">
+                @foreach($scannedDeliveries as $i => $delivery)
+                    @php $pkg = $delivery->preregistration; @endphp
+                    <li class="px-4 py-3 flex items-center gap-3 {{ $i === 0 ? 'bg-emerald-50' : '' }}">
+                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold {{ $i === 0 ? 'bg-teal-600 text-white' : 'bg-teal-100 text-teal-800' }}">{{ $scannedDeliveries->count() - $i }}</span>
+                        <div class="min-w-0 flex-1">
+                            <div class="font-semibold text-gray-900 truncate">{{ $pkg?->label_name ?: 'Sin nombre' }}</div>
+                            <div class="mt-0.5 flex flex-wrap gap-x-3 gap-y-1 text-xs font-mono text-gray-600">
+                                <span>{{ $pkg?->warehouse_code ?? '—' }}</span>
+                                @if($pkg?->tracking_external)
+                                <span title="{{ $pkg->tracking_external }}">{{ Str::limit($pkg->tracking_external, 24) }}</span>
+                                @endif
+                            </div>
+                        </div>
+                        <span class="text-xs text-gray-500 tabular-nums whitespace-nowrap">{{ $delivery->delivered_at?->timezone(config('app.display_timezone'))->format('H:i:s') ?? '—' }}</span>
+                    </li>
+                @endforeach
+            </ol>
+        </div>
+        @endif
         @endif
     </div>
 </div>
@@ -139,7 +165,6 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Anti doble-submit en el formulario del retirante (paso 1)
     var retirerBtn = document.getElementById('btn-scan-retirer-submit');
     if (retirerBtn && retirerBtn.form) {
         retirerBtn.form.addEventListener('submit', function() {
@@ -149,7 +174,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     var form = document.getElementById('delivery-standalone-scan-form');
-    var input = document.getElementById('warehouse_code');
+    var input = document.getElementById('scan_code');
     var scanBtn = document.getElementById('btn-standalone-scan-submit');
     if (!form || !input) return;
 
@@ -159,34 +184,62 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     input.focus();
 
-    function digits(v) { return (v || '').replace(/\D/g, ''); }
-
+    var DEBOUNCE_MS = 180;
+    var debounceTimer = null;
     var submitting = false;
+
+    function normalizeCode(val) {
+        return (val || '').trim().toUpperCase();
+    }
+
     function submitOnce() {
-        if (submitting) return;
+        if (submitting || !normalizeCode(input.value)) return;
         submitting = true;
+        clearTimeout(debounceTimer);
         if (scanBtn) { scanBtn.disabled = true; scanBtn.textContent = 'Registrando…'; }
+        input.value = normalizeCode(input.value);
         input.setAttribute('readonly', 'readonly');
         form.submit();
     }
 
+    function scheduleAutoSubmit(expectedCode) {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(function() {
+            if (normalizeCode(input.value) !== expectedCode) return;
+            submitOnce();
+        }, DEBOUNCE_MS);
+    }
+
     input.addEventListener('input', function() {
-        var d = digits(this.value);
-        if (d.length > 6) d = d.slice(0, 6);
-        this.value = d;
-        if (d.length === 6) submitOnce();
+        var raw = (this.value || '').trim();
+        if (/^\d{0,6}$/.test(raw)) {
+            this.value = raw.replace(/\D/g, '').slice(0, 6);
+            if (this.value.length === 6) scheduleAutoSubmit(normalizeCode(this.value));
+            else clearTimeout(debounceTimer);
+            return;
+        }
+        var code = normalizeCode(this.value);
+        if (code.length >= 4) scheduleAutoSubmit(code);
+        else clearTimeout(debounceTimer);
     });
+
     input.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
-            var d = digits(this.value);
-            if (d.length === 6) submitOnce();
+            clearTimeout(debounceTimer);
+            if (normalizeCode(this.value)) submitOnce();
         }
     });
 
-    form.addEventListener('submit', function() {
+    form.addEventListener('submit', function(e) {
         if (submitting) return;
+        if (!normalizeCode(input.value)) {
+            e.preventDefault();
+            return;
+        }
         submitting = true;
+        clearTimeout(debounceTimer);
+        input.value = normalizeCode(input.value);
         if (scanBtn) { scanBtn.disabled = true; scanBtn.textContent = 'Registrando…'; }
     });
 });

@@ -372,10 +372,16 @@ class DeliveryController extends Controller
         $retirerSessionActive = false;
         $batchRetirerSession = null;
         $deliveredCount = 0;
+        $scannedDeliveries = collect();
         if ($deliveryNote) {
             $batchRetirerSession = session(self::SESSION_BATCH_RETIRER);
             $retirerSessionActive = $this->batchRetirerSessionMatches($batchRetirerSession, $deliveryNote, (int) $agency->id, $serviceType);
-            $deliveredCount = $deliveryNote->deliveries()->count();
+            $scannedDeliveries = $deliveryNote->deliveries()
+                ->with('preregistration')
+                ->orderByDesc('delivered_at')
+                ->orderByDesc('id')
+                ->get();
+            $deliveredCount = $scannedDeliveries->count();
         }
 
         return view('deliveries.batch', compact(
@@ -386,7 +392,8 @@ class DeliveryController extends Controller
             'deliveryNote',
             'retirerSessionActive',
             'batchRetirerSession',
-            'deliveredCount'
+            'deliveredCount',
+            'scannedDeliveries'
         ));
     }
 
@@ -556,11 +563,21 @@ class DeliveryController extends Controller
     {
         $scanRetirerSession = session(self::SESSION_SCAN_RETIRER);
         $scanRetirerSessionActive = is_array($scanRetirerSession)
-            && filled($scanRetirerSession['delivered_to'] ?? null)
-            && filled($scanRetirerSession['retirer_id_number'] ?? null)
-            && filled($scanRetirerSession['retirer_phone'] ?? null);
+            && filled($scanRetirerSession['delivered_to'] ?? null);
 
-        return view('deliveries.scan', compact('scanRetirerSession', 'scanRetirerSessionActive'));
+        $scannedDeliveries = collect();
+        if ($scanRetirerSessionActive) {
+            $scannedDeliveries = Delivery::with('preregistration')
+                ->where('delivered_to', $scanRetirerSession['delivered_to'])
+                ->whereDate('delivered_at', now()->toDateString())
+                ->whereNull('delivery_note_id')
+                ->orderByDesc('delivered_at')
+                ->orderByDesc('id')
+                ->limit(50)
+                ->get();
+        }
+
+        return view('deliveries.scan', compact('scanRetirerSession', 'scanRetirerSessionActive', 'scannedDeliveries'));
     }
 
     public function storeScanRetirerSession(Request $request)
@@ -582,7 +599,7 @@ class DeliveryController extends Controller
         ]]);
 
         return redirect()->route('deliveries.scan')
-            ->with('success', 'Datos de quien retira guardados. Ya puede escanear los códigos warehouse.');
+            ->with('success', 'Datos de quien retira guardados. Ya puede escanear warehouse o tracking.');
     }
 
     public function clearScanRetirerSession()
@@ -598,8 +615,13 @@ class DeliveryController extends Controller
         $this->mergeBatchRetirerFromSession($request);
         $this->mergeScanRetirerFromSession($request);
 
+        // Acepta "code" (nuevo) o "warehouse_code" (compatibilidad con formularios anteriores).
+        if (! $request->filled('code') && $request->filled('warehouse_code')) {
+            $request->merge(['code' => $request->input('warehouse_code')]);
+        }
+
         $request->validate([
-            'warehouse_code' => 'required|string|size:6|regex:/^\d{6}$/',
+            'code' => 'required|string|max:100',
             'bulto_index' => 'nullable|integer|min:1|max:255',
             'delivered_to' => 'required|string|max:255',
             'retirer_id_number' => 'nullable|string|max:50',
@@ -607,8 +629,12 @@ class DeliveryController extends Controller
             'invoice_number' => 'nullable|string|max:50',
             'notes' => 'nullable|string|max:500',
         ], [
+            'code.required' => 'Escanee el código warehouse o el tracking.',
             'delivered_to.required' => 'El nombre de quien retira es obligatorio.',
         ]);
+
+        $code = strtoupper(trim((string) $request->input('code')));
+        $isWarehouseCode = (bool) preg_match('/^\d{6}$/', $code);
 
         // Calcular agencias permitidas: combinación de la del batch + la del usuario (intersección)
         $userAllowed = $this->userAllowedAgencyIds();
@@ -631,8 +657,13 @@ class DeliveryController extends Controller
         }
 
         try {
-            $result = DB::transaction(function () use ($request, $allowedAgencyIds) {
-                $candidates = Preregistration::where('warehouse_code', $request->warehouse_code)
+            $result = DB::transaction(function () use ($request, $allowedAgencyIds, $code, $isWarehouseCode) {
+                $candidates = Preregistration::query()
+                    ->when(
+                        $isWarehouseCode,
+                        fn ($query) => $query->where('warehouse_code', $code),
+                        fn ($query) => $query->whereRaw('UPPER(tracking_external) = ?', [$code])
+                    )
                     ->where('status', 'READY')
                     ->whereDoesntHave('delivery')
                     ->orderByRaw('COALESCE(bulto_index, 999) ASC')
@@ -640,9 +671,17 @@ class DeliveryController extends Controller
                     ->get();
 
                 if ($candidates->isEmpty()) {
-                    $any = Preregistration::where('warehouse_code', $request->warehouse_code)->first();
+                    $any = Preregistration::query()
+                        ->when(
+                            $isWarehouseCode,
+                            fn ($query) => $query->where('warehouse_code', $code),
+                            fn ($query) => $query->whereRaw('UPPER(tracking_external) = ?', [$code])
+                        )
+                        ->first();
                     if (! $any) {
-                        return ['error' => 'Código de almacén no encontrado.'];
+                        return ['error' => $isWarehouseCode
+                            ? 'Código de almacén no encontrado.'
+                            : 'Tracking no encontrado.'];
                     }
                     if ($any->status !== 'READY') {
                         return ['error' => 'El paquete no está listo para entrega (debe estar READY).'];
@@ -737,8 +776,8 @@ class DeliveryController extends Controller
                 ->with('success', 'Entrega registrada: '.$preregistration->label_name);
         }
 
-        return redirect()->route('deliveries.show', $delivery->id)
-            ->with('success', 'Entrega registrada: '.$preregistration->label_name);
+        return redirect()->route('deliveries.scan')
+            ->with('success', 'Entrega registrada: '.$preregistration->label_name.' ('.($preregistration->warehouse_code ?: $preregistration->tracking_external).')');
     }
 
     public function show(string $id)

@@ -176,6 +176,7 @@
         @endif
 
         <a href="{{ route('consolidations.show', $consolidation->id) }}">← Volver al saco</a>
+        <a href="{{ route('consolidations.report', $consolidation->id) }}" target="_blank">Reporte detallado</a>
     </div>
 
     <div class="label-sheet">

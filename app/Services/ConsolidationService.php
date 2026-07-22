@@ -76,21 +76,44 @@ class ConsolidationService
      */
     public function getReport(Consolidation $consolidation): array
     {
-        $items = $consolidation->items()->with('preregistration')->get();
+        $items = $consolidation->relationLoaded('items')
+            ? $consolidation->items
+            : $consolidation->items()->with('preregistration')->get();
 
         $linkedItems = $items->whereNotNull('preregistration_id');
         $unmatchedItems = $items->whereNull('preregistration_id');
 
         $totalItems = $items->count();
         $totalLbs = $linkedItems->sum(function ($item) {
-            return $item->preregistration->intake_weight_lbs ?? 0;
+            return $item->preregistration?->verified_weight_lbs
+                ?? $item->preregistration?->intake_weight_lbs
+                ?? 0;
         });
+        $totalCubicFeet = $linkedItems->sum(
+            fn ($item) => $item->preregistration?->cubic_feet ?? 0
+        );
+        $expectedPackages = $linkedItems
+            ->groupBy(function ($item) {
+                $package = $item->preregistration;
+
+                return $package?->warehouse_code
+                    ?: $package?->tracking_external
+                    ?: 'item-'.$item->id;
+            })
+            ->sum(function ($group) {
+                $declaredTotal = $group
+                    ->max(fn ($item) => (int) ($item->preregistration?->bultos_total ?? 0));
+
+                return max($declaredTotal, $group->count());
+            }) + $unmatchedItems->count();
         $scannedCount = $linkedItems->whereNotNull('scanned_at')->count();
         $missingCount = $linkedItems->count() - $scannedCount;
 
         return [
             'total_items' => $totalItems,
+            'expected_packages' => $expectedPackages,
             'total_lbs' => round($totalLbs, 2),
+            'total_cubic_feet' => round($totalCubicFeet, 2),
             'scanned_count' => $scannedCount,
             'missing_count' => $missingCount,
             'unmatched_count' => $unmatchedItems->count(),

@@ -236,6 +236,21 @@ class ConsolidationController extends Controller
         return view('consolidations.label', compact('consolidation', 'report'));
     }
 
+    /**
+     * Reporte imprimible y actualizado del contenido actual del saco.
+     */
+    public function report(string $id)
+    {
+        $consolidation = Consolidation::with([
+            'items' => fn ($query) => $query
+                ->with('preregistration.agency')
+                ->orderBy('id'),
+        ])->findOrFail($id);
+        $report = $this->consolidationService->getReport($consolidation);
+
+        return view('consolidations.report', compact('consolidation', 'report'));
+    }
+
     public function show(Request $request, string $id)
     {
         $consolidation = Consolidation::with(['items.preregistration'])->findOrFail($id);

@@ -83,6 +83,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('consolidations/store-scan', [ConsolidationController::class, 'storeScan'])->name('consolidations.store-scan');
         Route::resource('consolidations', ConsolidationController::class);
         Route::get('consolidations/{id}/label', [ConsolidationController::class, 'label'])->name('consolidations.label');
+        Route::get('consolidations/{id}/report', [ConsolidationController::class, 'report'])->name('consolidations.report');
         Route::post('consolidations/{id}/add-item', [ConsolidationController::class, 'addItem'])->name('consolidations.add-item');
         Route::post('consolidations/{id}/scan-item', [ConsolidationController::class, 'addItemByScan'])->name('consolidations.scan-item');
         Route::delete('consolidations/{id}/items/{item}', [ConsolidationController::class, 'removeItem'])->name('consolidations.items.destroy');

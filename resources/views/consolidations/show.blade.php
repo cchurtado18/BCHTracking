@@ -457,6 +457,7 @@
         </div>
         <div class="cons-show-toolbar">
             <a href="{{ route('consolidations.label', $consolidation->id) }}" target="_blank" class="cons-show-btn cons-show-btn--solid">Etiqueta del saco</a>
+            <a href="{{ route('consolidations.report', $consolidation->id) }}" target="_blank" class="cons-show-btn cons-show-btn--solid">Reporte detallado</a>
             @if($consolidation->status === 'OPEN')
                 <a href="{{ route('consolidations.edit', $consolidation->id) }}" class="cons-show-btn cons-show-btn--glass">Editar</a>
                 @if($consolidation->items->count() > 0)

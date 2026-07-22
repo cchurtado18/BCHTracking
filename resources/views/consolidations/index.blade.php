@@ -126,6 +126,7 @@
                         <td class="conso-date">{{ $consolidation->created_at->format('d/m/Y') }}</td>
                         <td class="conso-actions">
                             <a href="{{ route('consolidations.show', $consolidation->id) }}" class="conso-btn conso-btn-sm conso-btn-outline-primary">Ver</a>
+                            <a href="{{ route('consolidations.report', $consolidation->id) }}" target="_blank" class="conso-btn conso-btn-sm conso-btn-outline-primary">Reporte</a>
                             <a href="{{ route('consolidations.edit', $consolidation->id) }}" class="conso-btn conso-btn-sm conso-btn-secondary">Editar</a>
                             @if($consolidation->status === 'OPEN')
                             <form action="{{ route('consolidations.destroy', $consolidation->id) }}" method="POST" class="conso-form-inline" onsubmit="return confirm('¿Eliminar este saco? Se quitarán los items y los preregistros quedarán disponibles de nuevo.');">
