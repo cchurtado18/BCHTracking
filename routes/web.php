@@ -53,6 +53,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('admin/time-entries', [TimeEntryAdminController::class, 'index'])->name('time-entries.admin.index');
         Route::post('preregistrations/{id}/admin/reset-to-miami', [AdminPreregistrationResetController::class, 'resetToMiami'])
             ->name('preregistrations.admin.reset-to-miami');
+        Route::post('preregistrations/{id}/admin/intake-type', [AdminPreregistrationResetController::class, 'updateIntakeType'])
+            ->name('preregistrations.admin.intake-type');
         Route::resource('users', UserController::class)->except(['show']);
     });
 

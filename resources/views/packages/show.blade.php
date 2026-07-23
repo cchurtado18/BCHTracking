@@ -40,6 +40,7 @@
 
     <div class="packages-show-grid">
         <div class="packages-admin-reset-span">
+            @include('preregistrations.partials.admin-change-intake-type', ['preregistration' => $package, 'returnToPackage' => true])
             @include('preregistrations.partials.admin-reset-to-miami', ['preregistration' => $package, 'returnToPackage' => true])
         </div>
         {{-- Card Información --}}
@@ -242,7 +243,7 @@
 .packages-btn-sm { padding: 0.35rem 0.65rem; font-size: 0.8125rem; }
 .mb-3 { margin-bottom: 0.75rem; }
 .packages-show-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; min-width: 0; }
-.packages-admin-reset-span { grid-column: 1 / -1; min-width: 0; }
+.packages-admin-reset-span { grid-column: 1 / -1; min-width: 0; display: grid; gap: 0.75rem; }
 .packages-show-grid > .packages-card { min-width: 0; }
 .packages-show-grid > .packages-show-sidebar { min-width: 0; }
 @media (min-width: 992px) { .packages-show-grid { grid-template-columns: 1fr 1fr; } }

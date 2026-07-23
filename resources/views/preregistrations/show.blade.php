@@ -168,6 +168,7 @@
             </div>
         </div>
 
+        @include('preregistrations.partials.admin-change-intake-type', ['preregistration' => $preregistration])
         @include('preregistrations.partials.admin-reset-to-miami', ['preregistration' => $preregistration])
 
         <div class="preregs-card">
