@@ -139,6 +139,9 @@ class DeliveryController extends Controller
         if (! $request->filled('invoice_number')) {
             $merge['invoice_number'] = $session['invoice_number'] ?? '';
         }
+        if (! $request->filled('delivery_note_id') && ! empty($session['delivery_note_id'])) {
+            $merge['delivery_note_id'] = $session['delivery_note_id'];
+        }
 
         if ($merge !== []) {
             $request->merge($merge);
@@ -176,11 +179,17 @@ class DeliveryController extends Controller
             return;
         }
 
+        $existing = session(self::SESSION_SCAN_RETIRER);
+        $deliveryNoteId = $request->filled('delivery_note_id')
+            ? (int) $request->delivery_note_id
+            : (is_array($existing) ? ($existing['delivery_note_id'] ?? null) : null);
+
         session([self::SESSION_SCAN_RETIRER => [
             'delivered_to' => $request->delivered_to,
             'retirer_id_number' => $request->retirer_id_number,
             'retirer_phone' => $request->retirer_phone,
             'invoice_number' => $request->invoice_number,
+            'delivery_note_id' => $deliveryNoteId ?: null,
         ]]);
     }
 
@@ -290,7 +299,27 @@ class DeliveryController extends Controller
             ->whereHas('deliveries', $deliveryFilter)
             ->orderByDesc(DB::raw('(SELECT MAX(delivered_at) FROM deliveries WHERE deliveries.delivery_note_id = delivery_notes.id)'));
 
+        if ($request->filled('q')) {
+            $q = trim((string) $request->input('q'));
+            $notesQuery->where(function ($query) use ($q) {
+                $query->where('code', 'like', '%'.$q.'%')
+                    ->orWhereHas('agency', fn ($aq) => $aq->where('name', 'like', '%'.$q.'%')->orWhere('code', 'like', '%'.$q.'%'))
+                    ->orWhereHas('deliveries', function ($dq) use ($q) {
+                        $dq->where('delivered_to', 'like', '%'.$q.'%')
+                            ->orWhere('retirer_id_number', 'like', '%'.$q.'%')
+                            ->orWhere('retirer_phone', 'like', '%'.$q.'%')
+                            ->orWhere('invoice_number', 'like', '%'.$q.'%')
+                            ->orWhereHas('preregistration', function ($pq) use ($q) {
+                                $pq->where('warehouse_code', 'like', '%'.$q.'%')
+                                    ->orWhere('tracking_external', 'like', '%'.$q.'%')
+                                    ->orWhere('label_name', 'like', '%'.$q.'%');
+                            });
+                    });
+            });
+        }
+
         $deliveryNotes = $notesQuery->paginate(15)->withQueryString();
+        $searchQuery = $request->input('q');
 
         return view('deliveries.index', compact(
             'deliveryNotes',
@@ -301,7 +330,8 @@ class DeliveryController extends Controller
             'availablePackages',
             'availableTotal',
             'availableAir',
-            'availableSea'
+            'availableSea',
+            'searchQuery'
         ));
     }
 
@@ -565,19 +595,35 @@ class DeliveryController extends Controller
         $scanRetirerSessionActive = is_array($scanRetirerSession)
             && filled($scanRetirerSession['delivered_to'] ?? null);
 
+        $scanDeliveryNote = null;
         $scannedDeliveries = collect();
         if ($scanRetirerSessionActive) {
-            $scannedDeliveries = Delivery::with('preregistration')
-                ->where('delivered_to', $scanRetirerSession['delivered_to'])
-                ->whereDate('delivered_at', now()->toDateString())
-                ->whereNull('delivery_note_id')
-                ->orderByDesc('delivered_at')
-                ->orderByDesc('id')
-                ->limit(50)
-                ->get();
+            $noteId = (int) ($scanRetirerSession['delivery_note_id'] ?? 0);
+            if ($noteId > 0) {
+                $scanDeliveryNote = DeliveryNote::find($noteId);
+                $scannedDeliveries = Delivery::with('preregistration')
+                    ->where('delivery_note_id', $noteId)
+                    ->orderByDesc('delivered_at')
+                    ->orderByDesc('id')
+                    ->limit(50)
+                    ->get();
+            } else {
+                $scannedDeliveries = Delivery::with('preregistration')
+                    ->where('delivered_to', $scanRetirerSession['delivered_to'])
+                    ->whereDate('delivered_at', now()->toDateString())
+                    ->orderByDesc('delivered_at')
+                    ->orderByDesc('id')
+                    ->limit(50)
+                    ->get();
+            }
         }
 
-        return view('deliveries.scan', compact('scanRetirerSession', 'scanRetirerSessionActive', 'scannedDeliveries'));
+        return view('deliveries.scan', compact(
+            'scanRetirerSession',
+            'scanRetirerSessionActive',
+            'scannedDeliveries',
+            'scanDeliveryNote'
+        ));
     }
 
     public function storeScanRetirerSession(Request $request)
@@ -723,24 +769,35 @@ class DeliveryController extends Controller
                     'notes' => $request->notes,
                 ];
 
-                // Si la nota fue indicada, validamos que la agencia de la nota coincida con la del paquete
-                // (o que sea su agencia principal). Si no coincide, no se enlaza pero la entrega se hace.
+                // Toda entrega debe quedar vinculada a una nota de salida.
+                $preregistration->loadMissing('agency');
+                $pkgAgencyId = (int) $preregistration->agency_id;
+                $pkgParentId = (int) ($preregistration->agency?->parent_agency_id ?? 0);
+                $note = null;
+
                 if ($request->filled('delivery_note_id')) {
-                    $note = DeliveryNote::find((int) $request->delivery_note_id);
-                    if ($note) {
-                        $noteAgencyId = (int) $note->agency_id;
-                        $pkgAgencyId = (int) $preregistration->agency_id;
-                        $pkgParentId = (int) ($preregistration->agency?->parent_agency_id ?? 0);
-                        if ($noteAgencyId === $pkgAgencyId || $noteAgencyId === $pkgParentId) {
-                            $deliveryData['delivery_note_id'] = $note->id;
-                        }
+                    $note = DeliveryNote::lockForUpdate()->find((int) $request->delivery_note_id);
+                    if (! $note) {
+                        return ['error' => 'Nota de entrega no encontrada.'];
                     }
+                    $noteAgencyId = (int) $note->agency_id;
+                    if ($noteAgencyId !== $pkgAgencyId && $noteAgencyId !== $pkgParentId) {
+                        return ['error' => 'Este paquete no corresponde a la agencia de la nota de entrega.'];
+                    }
+                } else {
+                    $note = $this->createDeliveryNoteForAgency($preregistration->agency);
                 }
+
+                $deliveryData['delivery_note_id'] = $note->id;
 
                 $delivery = Delivery::create($deliveryData);
                 $preregistration->update(['status' => 'DELIVERED']);
 
-                return ['delivery' => $delivery, 'preregistration' => $preregistration];
+                return [
+                    'delivery' => $delivery,
+                    'preregistration' => $preregistration,
+                    'delivery_note_id' => $note->id,
+                ];
             });
         } catch (QueryException $e) {
             $msg = strtolower($e->getMessage());
@@ -758,6 +815,11 @@ class DeliveryController extends Controller
         $delivery = $result['delivery'];
         /** @var Preregistration $preregistration */
         $preregistration = $result['preregistration'];
+        $linkedNoteId = (int) ($result['delivery_note_id'] ?? $delivery->delivery_note_id);
+
+        if (! $request->boolean('return_to_batch') && $linkedNoteId > 0) {
+            $request->merge(['delivery_note_id' => $linkedNoteId]);
+        }
 
         $this->persistBatchRetirerSession($request);
         $this->persistScanRetirerSession($request);
@@ -766,7 +828,7 @@ class DeliveryController extends Controller
             $params = array_filter([
                 'main_agency_id' => $request->main_agency_id,
                 'agency_id' => $request->agency_id,
-                'delivery_note_id' => $request->delivery_note_id,
+                'delivery_note_id' => $request->delivery_note_id ?: $linkedNoteId,
                 'service_type' => $request->filled('service_type') && in_array($request->service_type, ['AIR', 'SEA'], true)
                     ? $request->service_type
                     : null,

@@ -137,7 +137,12 @@ class PackageController extends Controller
 
     public function show(string $id)
     {
-        $package = Preregistration::with(['photos', 'agency', 'consolidationItem.consolidation', 'delivery'])->findOrFail($id);
+        $package = Preregistration::with([
+            'photos',
+            'agency',
+            'consolidationItem.consolidation',
+            'delivery.deliveryNote',
+        ])->findOrFail($id);
         $this->ensureUserCanAccessPreregistration($package);
         $package->photos->each(fn ($p) => $p->url = asset('storage/'.$p->path));
 

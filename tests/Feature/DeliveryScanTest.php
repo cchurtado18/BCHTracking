@@ -16,9 +16,11 @@ class DeliveryScanTest extends TestCase
 
     private function createAgency(): Agency
     {
+        $suffix = (string) random_int(1000, 9999);
+
         return Agency::create([
-            'name' => 'Agencia Entrega',
-            'code' => 'E'.random_int(1000, 9999),
+            'name' => 'Agencia Entrega '.$suffix,
+            'code' => 'E'.$suffix,
             'phone' => '555-0100',
             'is_active' => true,
             'is_main' => false,
@@ -102,15 +104,49 @@ class DeliveryScanTest extends TestCase
         $this->assertTrue(
             Delivery::where('preregistration_id', $package->id)
                 ->where('delivered_to', 'Maria Receptor')
+                ->whereNotNull('delivery_note_id')
                 ->exists()
         );
+    }
+
+    public function test_standalone_scan_always_creates_delivery_note(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+        $agency = $this->createAgency();
+        $package = $this->createReadyPackage($agency, [
+            'warehouse_code' => '112233',
+            'tracking_external' => 'TRK-STANDALONE',
+        ]);
+
+        $this->actingAs($user)
+            ->withSession([
+                'delivery_scan_retirer' => [
+                    'delivered_to' => 'Ana Solo',
+                    'retirer_id_number' => '',
+                    'retirer_phone' => '',
+                    'invoice_number' => '',
+                ],
+            ])
+            ->post(route('deliveries.process-scan'), [
+                'code' => '112233',
+                'delivered_to' => 'Ana Solo',
+            ])
+            ->assertRedirect(route('deliveries.scan'));
+
+        $delivery = Delivery::where('preregistration_id', $package->id)->first();
+        $this->assertNotNull($delivery);
+        $this->assertNotNull($delivery->delivery_note_id);
+        $this->assertDatabaseHas('delivery_notes', [
+            'id' => $delivery->delivery_note_id,
+            'agency_id' => $agency->id,
+        ]);
     }
 
     public function test_batch_screen_lists_scanned_packages(): void
     {
         $user = User::factory()->create(['agency_id' => null]);
         $agency = $this->createAgency();
-        $pending = $this->createReadyPackage($agency, [
+        $this->createReadyPackage($agency, [
             'warehouse_code' => '111222',
             'tracking_external' => 'TRK-PENDING',
             'label_name' => 'Pendiente Visible',
@@ -162,5 +198,86 @@ class DeliveryScanTest extends TestCase
             ->assertSee('Ya Escaneado')
             ->assertSee('TRK-SCANNED')
             ->assertSee('Warehouse o tracking');
+    }
+
+    public function test_delivery_notes_index_can_search_by_code_and_warehouse(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+        $agency = $this->createAgency();
+        $package = $this->createReadyPackage($agency, [
+            'warehouse_code' => '998877',
+            'tracking_external' => 'TRK-SEARCH',
+            'label_name' => 'Cliente Buscable',
+            'status' => 'DELIVERED',
+        ]);
+        $note = DeliveryNote::create([
+            'code' => 'BCH-7777',
+            'agency_id' => $agency->id,
+        ]);
+        Delivery::create([
+            'delivery_note_id' => $note->id,
+            'preregistration_id' => $package->id,
+            'delivered_at' => now(),
+            'delivered_to' => 'Pedro Retira',
+            'delivery_type' => 'PICKUP',
+        ]);
+
+        $otherAgency = $this->createAgency();
+        $otherPackage = $this->createReadyPackage($otherAgency, [
+            'warehouse_code' => '110011',
+            'tracking_external' => 'TRK-OTHER',
+            'status' => 'DELIVERED',
+        ]);
+        $otherNote = DeliveryNote::create([
+            'code' => 'BCH-8888',
+            'agency_id' => $otherAgency->id,
+        ]);
+        Delivery::create([
+            'delivery_note_id' => $otherNote->id,
+            'preregistration_id' => $otherPackage->id,
+            'delivered_at' => now(),
+            'delivered_to' => 'Otro',
+            'delivery_type' => 'PICKUP',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('deliveries.index', ['q' => 'BCH-7777']))
+            ->assertOk()
+            ->assertSee('BCH-7777')
+            ->assertDontSee('BCH-8888');
+
+        $this->actingAs($user)
+            ->get(route('deliveries.index', ['q' => '998877']))
+            ->assertOk()
+            ->assertSee('BCH-7777')
+            ->assertDontSee('BCH-8888');
+    }
+
+    public function test_package_show_displays_linked_delivery_note(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+        $agency = $this->createAgency();
+        $package = $this->createReadyPackage($agency, [
+            'warehouse_code' => '667788',
+            'status' => 'DELIVERED',
+        ]);
+        $note = DeliveryNote::create([
+            'code' => 'BCH-5555',
+            'agency_id' => $agency->id,
+        ]);
+        Delivery::create([
+            'delivery_note_id' => $note->id,
+            'preregistration_id' => $package->id,
+            'delivered_at' => now(),
+            'delivered_to' => 'Luis Retira',
+            'delivery_type' => 'PICKUP',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('packages.show', $package->id))
+            ->assertOk()
+            ->assertSee('Nota de entrega')
+            ->assertSee('BCH-5555')
+            ->assertSee('Ver nota');
     }
 }

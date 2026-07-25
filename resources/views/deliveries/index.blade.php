@@ -85,6 +85,9 @@
 .delivery-pagination-links a:hover { background: #f3f4f6; color: #0d9488; }
 .delivery-pagination-links .disabled span { background: #f9fafb; color: #9ca3af; }
 .delivery-pagination-links .active span { background: #0d9488; color: #fff; border-color: #0d9488; }
+.delivery-notes-search-form { margin: 0; }
+.delivery-notes-search-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.65rem; }
+.delivery-notes-search-input { flex: 1 1 240px; min-width: 200px; max-width: 420px; }
 </style>
 @endpush
 
@@ -202,6 +205,24 @@
             <span class="delivery-card-badge">{{ $deliveryNotes->total() }} {{ $deliveryNotes->total() === 1 ? 'nota' : 'notas' }}</span>
             @endif
         </div>
+        <div class="delivery-card-body" style="padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
+            <form method="GET" action="{{ route('deliveries.index') }}" class="delivery-notes-search-form">
+                @if($agencyId)
+                <input type="hidden" name="agency_id" value="{{ $agencyId }}">
+                @endif
+                @if($serviceType)
+                <input type="hidden" name="service_type" value="{{ $serviceType }}">
+                @endif
+                <div class="delivery-notes-search-row">
+                    <label for="delivery_notes_q" class="delivery-label">Buscar nota</label>
+                    <input type="search" name="q" id="delivery_notes_q" value="{{ $searchQuery ?? '' }}" class="delivery-input delivery-notes-search-input" placeholder="Código BCH, warehouse, tracking, cliente o quien retira" autocomplete="off">
+                    <button type="submit" class="delivery-btn delivery-btn-primary">Buscar</button>
+                    @if(!empty($searchQuery))
+                    <a href="{{ route('deliveries.index', array_filter(['agency_id' => $agencyId, 'service_type' => $serviceType])) }}" class="delivery-btn delivery-btn-secondary">Limpiar</a>
+                    @endif
+                </div>
+            </form>
+        </div>
         <div class="delivery-table-wrap">
             <table class="delivery-table">
                 <thead>
@@ -236,7 +257,15 @@
                     @empty
                     <tr>
                         <td colspan="6" class="delivery-empty">
-                            <p class="delivery-empty-text">{{ $selectedAgency ? 'No hay notas de entrega para esta agencia.' : 'No hay notas de entrega.' }}</p>
+                            <p class="delivery-empty-text">
+                                @if(!empty($searchQuery))
+                                    No hay notas que coincidan con «{{ $searchQuery }}».
+                                @elseif($selectedAgency)
+                                    No hay notas de entrega para esta agencia.
+                                @else
+                                    No hay notas de entrega.
+                                @endif
+                            </p>
                         </td>
                     </tr>
                     @endforelse

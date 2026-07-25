@@ -196,8 +196,7 @@
                 <div>
                     <div class="h-company">BCH TRACKING</div>
                     <div class="h-address">
-                        Miami Warehouse · FL, USA<br>
-                        Tel: (305) 000-0000
+                        8307 NW 68TH ST · 33166 · MIA, FL
                     </div>
                 </div>
             </div>

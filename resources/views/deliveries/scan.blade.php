@@ -7,6 +7,7 @@
     $scanRetirerSessionActive = $scanRetirerSessionActive ?? false;
     $scanRetirerSession = is_array($scanRetirerSession ?? null) ? $scanRetirerSession : [];
     $scannedDeliveries = $scannedDeliveries ?? collect();
+    $scanDeliveryNote = $scanDeliveryNote ?? null;
 @endphp
 <div class="py-6">
     <div class="mb-6 flex justify-between items-center">
@@ -68,6 +69,10 @@
         <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-emerald-900">
             <div>
                 <span class="font-semibold">Quien retira:</span> {{ $scanRetirerSession['delivered_to'] ?? '—' }}
+                @if($scanDeliveryNote)
+                <span class="text-emerald-600 mx-1">·</span>
+                <span class="font-semibold">Nota:</span> <span class="font-mono">{{ $scanDeliveryNote->code }}</span>
+                @endif
                 @if(filled($scanRetirerSession['invoice_number'] ?? null))
                 <span class="text-emerald-600 mx-1">·</span>
                 <span class="font-semibold">Nº factura:</span> {{ $scanRetirerSession['invoice_number'] }}
@@ -81,10 +86,15 @@
                 <span class="font-semibold">Tel.:</span> {{ $scanRetirerSession['retirer_phone'] }}
                 @endif
             </div>
-            <form action="{{ route('deliveries.scan-clear-retirer-session') }}" method="POST" class="shrink-0">
-                @csrf
-                <button type="submit" class="text-sm font-medium text-emerald-800 underline hover:text-emerald-950">Cambiar persona que retira</button>
-            </form>
+            <div class="flex flex-wrap items-center gap-3 shrink-0">
+                @if($scanDeliveryNote)
+                <a href="{{ route('deliveries.print-report', ['delivery_note_id' => $scanDeliveryNote->id]) }}" target="_blank" class="text-sm font-medium text-teal-800 underline hover:text-teal-950">Imprimir nota</a>
+                @endif
+                <form action="{{ route('deliveries.scan-clear-retirer-session') }}" method="POST">
+                    @csrf
+                    <button type="submit" class="text-sm font-medium text-emerald-800 underline hover:text-emerald-950">Cambiar persona que retira</button>
+                </form>
+            </div>
         </div>
 
         <div class="bg-white shadow rounded-lg p-6">
@@ -95,6 +105,9 @@
                 <input type="hidden" name="retirer_id_number" value="{{ $scanRetirerSession['retirer_id_number'] ?? '' }}">
                 <input type="hidden" name="retirer_phone" value="{{ $scanRetirerSession['retirer_phone'] ?? '' }}">
                 <input type="hidden" name="invoice_number" value="{{ $scanRetirerSession['invoice_number'] ?? '' }}">
+                @if(!empty($scanRetirerSession['delivery_note_id']))
+                <input type="hidden" name="delivery_note_id" value="{{ $scanRetirerSession['delivery_note_id'] }}">
+                @endif
 
                 <div class="space-y-6">
                     <div>

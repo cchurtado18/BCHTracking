@@ -119,6 +119,28 @@
                         <dd class="packages-dd">{{ $package->ready_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</dd>
                     </div>
                     @endif
+                    @if($package->delivery)
+                    <div class="packages-dl-row">
+                        <dt class="packages-dt">Entrega</dt>
+                        <dd class="packages-dd">
+                            {{ $package->delivery->delivered_at?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') ?? '—' }}
+                            @if($package->delivery->delivered_to)
+                            <span class="packages-muted">· Retiró: {{ $package->delivery->delivered_to }}</span>
+                            @endif
+                        </dd>
+                    </div>
+                    <div class="packages-dl-row">
+                        <dt class="packages-dt">Nota de entrega</dt>
+                        <dd class="packages-dd">
+                            @if($package->delivery->deliveryNote)
+                            <span class="packages-code">{{ $package->delivery->deliveryNote->code }}</span>
+                            <a href="{{ route('deliveries.print-report', ['delivery_note_id' => $package->delivery->delivery_note_id]) }}" target="_blank" class="packages-link" style="margin-left:0.5rem;">Ver nota</a>
+                            @else
+                            <span class="packages-muted">Sin nota vinculada</span>
+                            @endif
+                        </dd>
+                    </div>
+                    @endif
                     @if($package->label_print_count > 0)
                     <div class="packages-dl-row">
                         <dt class="packages-dt">Impresiones</dt>
@@ -269,6 +291,8 @@
 .packages-dd { margin: 0; font-size: 0.9375rem; color: #111827; word-wrap: break-word; overflow-wrap: break-word; }
 .packages-code { font-family: ui-monospace, monospace; font-weight: 600; }
 .packages-muted { color: #6b7280; font-size: 0.875rem; margin: 0; }
+.packages-link { color: #0d9488; font-weight: 600; text-decoration: none; }
+.packages-link:hover { text-decoration: underline; }
 .packages-dd-success { color: #059669; font-weight: 500; }
 .packages-badge { display: inline-block; padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem; max-width: 100%; overflow-wrap: break-word; }
 .packages-badge-intake { background: #d1fae5; color: #047857; }
