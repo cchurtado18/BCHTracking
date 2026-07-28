@@ -15,13 +15,18 @@ class DashboardController extends Controller
         if (auth()->user() && ! auth()->user()->is_admin && ! auth()->user()->isAgencyUser()) {
             return redirect()->route('packages.index');
         }
+
+        $displayTz = config('app.display_timezone') ?: 'America/New_York';
+        $nowLocal = now($displayTz);
+        $today = $nowLocal->toDateString();
+        $yesterday = $nowLocal->copy()->subDay()->toDateString();
+
         // Leer parámetros GET (el formulario envía method="GET")
         $dateFromRaw = $request->input('date_from');
         $dateToRaw = $request->input('date_to');
         $agencyIdRaw = $request->input('agency_id');
         $serviceTypeRaw = $request->input('service_type');
 
-        $today = now()->toDateString();
         $dateFrom = $this->normalizeDate($dateFromRaw) ?? $today;
         $dateTo = $this->normalizeDate($dateToRaw) ?? $today;
 
@@ -31,6 +36,21 @@ class DashboardController extends Controller
         }
         if ($this->normalizeDate($dateToRaw) !== null && $this->normalizeDate($dateFromRaw) === null) {
             $dateFrom = $dateTo;
+        }
+
+        // Presets rápidos: Hoy / Semana / Mes (en zona operativa Miami)
+        $activePeriod = null;
+        $periodPreset = $request->input('period');
+        if (in_array($periodPreset, ['today', 'week', 'month'], true)) {
+            $activePeriod = $periodPreset;
+            $dateTo = $today;
+            $dateFrom = match ($periodPreset) {
+                'today' => $today,
+                'week' => $nowLocal->copy()->startOfWeek()->toDateString(),
+                'month' => $nowLocal->copy()->startOfMonth()->toDateString(),
+            };
+        } elseif ($this->normalizeDate($dateFromRaw) === null && $this->normalizeDate($dateToRaw) === null) {
+            $activePeriod = 'today';
         }
 
         // Asegurar que desde <= hasta
@@ -47,7 +67,12 @@ class DashboardController extends Controller
             || $this->normalizeDate($dateToRaw) !== null
             || $agencyId !== null
             || $serviceType !== null;
-        $periodLabel = $isFiltered ? "Del {$dateFrom} al {$dateTo}" : 'Hoy';
+        $periodLabel = match ($activePeriod) {
+            'today' => 'Hoy',
+            'week' => 'Esta semana',
+            'month' => 'Este mes',
+            default => "Del {$dateFrom} al {$dateTo}",
+        };
 
         $agenciesForFilter = Agency::where('is_active', true)->orderBy('name')->get();
         $selectedAgency = $agencyId ? Agency::find($agencyId) : null;
@@ -61,20 +86,41 @@ class DashboardController extends Controller
             $periodLabel .= ' · Marítimo';
         }
 
-        // Un solo día para las tarjetas de periodo (Paquetes, Lbs Aéreo, Lbs Marítimo): al pasar al siguiente día inicia desde 0
-        $periodDay = $dateFrom;
-        $periodQuerySingleDay = Preregistration::whereDate('created_at', $periodDay);
+        // Rango del periodo en UTC (días calendario de Miami)
+        [$periodStartUtc, $periodEndUtc] = $this->localDateRangeToUtc($dateFrom, $dateTo, $displayTz);
+
+        // Consulta base del periodo seleccionado
+        $periodQuery = Preregistration::whereBetween('created_at', [$periodStartUtc, $periodEndUtc]);
         if ($agencyId) {
-            $periodQuerySingleDay->where('agency_id', $agencyId);
+            $periodQuery->where('agency_id', $agencyId);
         }
         if ($serviceType) {
-            $periodQuerySingleDay->where('service_type', $serviceType);
+            $periodQuery->where('service_type', $serviceType);
         }
 
-        // Paquetes en el día (periodo = un solo día)
-        $packagesInPeriod = (clone $periodQuerySingleDay)->count();
+        // Paquetes en el periodo
+        $packagesInPeriod = (clone $periodQuery)->count();
 
-        // Lbs totales (sin filtro de fecha; si es usuario de agencia, solo de su agencia)
+        // Bultos recibidos hoy vs. ayer (día operativo Miami)
+        $dayCountQuery = function (string $day) use ($agencyId, $serviceType, $displayTz) {
+            [$startUtc, $endUtc] = $this->localDateRangeToUtc($day, $day, $displayTz);
+            $q = Preregistration::whereBetween('created_at', [$startUtc, $endUtc]);
+            if ($agencyId) {
+                $q->where('agency_id', $agencyId);
+            }
+            if ($serviceType) {
+                $q->where('service_type', $serviceType);
+            }
+
+            return $q->count();
+        };
+        $packagesToday = $dayCountQuery($today);
+        $packagesYesterday = $dayCountQuery($yesterday);
+        $packagesDeltaPct = $packagesYesterday > 0
+            ? round((($packagesToday - $packagesYesterday) / $packagesYesterday) * 100, 1)
+            : null;
+
+        // Lbs totales históricos (sin filtro de fecha; si es usuario de agencia, solo de su agencia)
         $lbsBaseQuery = Preregistration::query();
         if ($agencyId) {
             $lbsBaseQuery->where('agency_id', $agencyId);
@@ -86,17 +132,27 @@ class DashboardController extends Controller
             ->selectRaw('COALESCE(SUM(COALESCE(verified_weight_lbs, intake_weight_lbs)), 0) as total')
             ->value('total');
 
-        // Lbs en el día por servicio (periodo = un solo día)
-        $lbsAirPeriod = (float) (clone $periodQuerySingleDay)->where('service_type', 'AIR')
+        // Lbs en el periodo por servicio (desglose sin reaplicar filtro de servicio)
+        $periodLbsBase = Preregistration::whereBetween('created_at', [$periodStartUtc, $periodEndUtc]);
+        if ($agencyId) {
+            $periodLbsBase->where('agency_id', $agencyId);
+        }
+        $lbsAirPeriod = (float) (clone $periodLbsBase)->where('service_type', 'AIR')
             ->selectRaw('COALESCE(SUM(COALESCE(verified_weight_lbs, intake_weight_lbs)), 0) as total')
             ->value('total');
-        $lbsSeaPeriod = (float) (clone $periodQuerySingleDay)->where('service_type', 'SEA')
+        $lbsSeaPeriod = (float) (clone $periodLbsBase)->where('service_type', 'SEA')
             ->selectRaw('COALESCE(SUM(COALESCE(verified_weight_lbs, intake_weight_lbs)), 0) as total')
             ->value('total');
+        // Total del periodo sí respeta el filtro de servicio si está activo
+        $totalLbsPeriod = $serviceType === 'AIR'
+            ? $lbsAirPeriod
+            : ($serviceType === 'SEA' ? $lbsSeaPeriod : ($lbsAirPeriod + $lbsSeaPeriod));
+        $airSharePct = ($lbsAirPeriod + $lbsSeaPeriod) > 0 ? round(($lbsAirPeriod / ($lbsAirPeriod + $lbsSeaPeriod)) * 100, 1) : 0;
+        $seaSharePct = ($lbsAirPeriod + $lbsSeaPeriod) > 0 ? round(($lbsSeaPeriod / ($lbsAirPeriod + $lbsSeaPeriod)) * 100, 1) : 0;
 
-        // Agencias que más mueven en el día (mismo día para consistencia)
+        // Agencias que más mueven en el periodo
         $agenciesByPeriod = Preregistration::query()
-            ->whereDate('created_at', $periodDay)
+            ->whereBetween('created_at', [$periodStartUtc, $periodEndUtc])
             ->whereNotNull('agency_id');
         if ($agencyId) {
             $agenciesByPeriod->where('agency_id', $agencyId);
@@ -123,22 +179,105 @@ class DashboardController extends Controller
             ];
         })->filter(fn ($row) => $row['agency'] !== null)->values();
 
-        // Métricas generales (si es usuario de agencia, filtradas por su agencia)
-        $metricsBase = Preregistration::query();
+        // Métricas del periodo (donut y alertas de listos)
+        $preregistrationsCount = $packagesInPeriod;
+        $preregistrationsReceived = (clone $periodQuery)->where('status', 'RECEIVED_MIAMI')->count();
+        $preregistrationsInTransit = (clone $periodQuery)->where('status', 'IN_TRANSIT')->count();
+        $preregistrationsReady = (clone $periodQuery)->where('status', 'READY')->count();
+        $preregistrationsNic = (clone $periodQuery)->where('status', 'IN_WAREHOUSE_NIC')->count();
+        $preregistrationsDelivered = (clone $periodQuery)->where('status', 'DELIVERED')->count();
+
+        // Distribución de estados del periodo (donut)
+        $statusDistribution = [
+            ['key' => 'RECEIVED_MIAMI', 'label' => 'Recibido Miami', 'count' => $preregistrationsReceived, 'color' => '#16a34a'],
+            ['key' => 'IN_TRANSIT', 'label' => 'En tránsito', 'count' => $preregistrationsInTransit, 'color' => '#3b82f6'],
+            ['key' => 'IN_WAREHOUSE_NIC', 'label' => 'Almacén NIC', 'count' => $preregistrationsNic, 'color' => '#8b5cf6'],
+            ['key' => 'READY', 'label' => 'Listo retiro', 'count' => $preregistrationsReady, 'color' => '#f59e0b'],
+            ['key' => 'DELIVERED', 'label' => 'Entregado', 'count' => $preregistrationsDelivered, 'color' => '#94a3b8'],
+        ];
+
+        // Volumen de carga de los últimos 7 días (calendario Miami) por servicio
+        $chartStartLocal = $nowLocal->copy()->subDays(6)->startOfDay();
+        [$chartStartUtc, $chartEndUtc] = $this->localDateRangeToUtc($chartStartLocal->toDateString(), $today, $displayTz);
+        $weeklyRawQuery = Preregistration::query()
+            ->whereBetween('created_at', [$chartStartUtc, $chartEndUtc]);
         if ($agencyId) {
-            $metricsBase->where('agency_id', $agencyId);
+            $weeklyRawQuery->where('agency_id', $agencyId);
         }
-        $preregistrationsCount = (clone $metricsBase)->count();
-        $preregistrationsReceived = (clone $metricsBase)->where('status', 'RECEIVED_MIAMI')->count();
-        $preregistrationsInTransit = (clone $metricsBase)->where('status', 'IN_TRANSIT')->count();
-        $preregistrationsReady = (clone $metricsBase)->where('status', 'READY')->count();
+        if ($serviceType) {
+            $weeklyRawQuery->where('service_type', $serviceType);
+        }
+        $weeklyRows = $weeklyRawQuery
+            ->get(['created_at', 'service_type', 'verified_weight_lbs', 'intake_weight_lbs']);
+
+        $weeklyByDay = [];
+        foreach ($weeklyRows as $row) {
+            $dayKey = $row->created_at->copy()->timezone($displayTz)->toDateString();
+            $svc = $row->service_type === 'SEA' ? 'sea' : 'air';
+            $lbs = (float) ($row->verified_weight_lbs ?? $row->intake_weight_lbs ?? 0);
+            $weeklyByDay[$dayKey][$svc] = ($weeklyByDay[$dayKey][$svc] ?? 0) + $lbs;
+        }
+
+        $dayNames = ['LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB', 'DOM'];
+        $weeklyVolume = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = $nowLocal->copy()->subDays($i);
+            $key = $date->toDateString();
+            $weeklyVolume[] = [
+                'label' => $dayNames[$date->dayOfWeekIso - 1],
+                'air' => (float) ($weeklyByDay[$key]['air'] ?? 0),
+                'sea' => (float) ($weeklyByDay[$key]['sea'] ?? 0),
+            ];
+        }
+        $weeklyMax = max(1, max(array_map(fn ($d) => max($d['air'], $d['sea']), $weeklyVolume)));
+
+        // Actividad de recepción: heatmap de las últimas 4 semanas (calendario Miami)
+        $heatStartLocal = $nowLocal->copy()->startOfWeek()->subWeeks(3)->startOfDay();
+        [$heatStartUtc] = $this->localDateRangeToUtc($heatStartLocal->toDateString(), $today, $displayTz);
+        $heatRawQuery = Preregistration::query()
+            ->where('created_at', '>=', $heatStartUtc);
+        if ($agencyId) {
+            $heatRawQuery->where('agency_id', $agencyId);
+        }
+        if ($serviceType) {
+            $heatRawQuery->where('service_type', $serviceType);
+        }
+        $heatCounts = [];
+        foreach ($heatRawQuery->get(['created_at']) as $row) {
+            $dayKey = $row->created_at->copy()->timezone($displayTz)->toDateString();
+            $heatCounts[$dayKey] = ($heatCounts[$dayKey] ?? 0) + 1;
+        }
+        $heatmapMax = max(1, empty($heatCounts) ? 0 : max($heatCounts));
+
+        $heatmapWeeks = [];
+        for ($w = 0; $w < 4; $w++) {
+            $week = [];
+            for ($d = 0; $d < 7; $d++) {
+                $date = $heatStartLocal->copy()->addWeeks($w)->addDays($d);
+                $key = $date->toDateString();
+                $count = $date->isFuture() ? null : (int) ($heatCounts[$key] ?? 0);
+                $week[] = [
+                    'date' => $date->format('d/m'),
+                    'count' => $count,
+                    'level' => $count === null || $count === 0 ? 0 : (int) ceil(($count / $heatmapMax) * 4),
+                ];
+            }
+            $heatmapWeeks[] = $week;
+        }
+
+        // Registros operativos recientes
+        $recentQuery = Preregistration::with('agency')->orderByDesc('updated_at')->limit(8);
+        if ($agencyId) {
+            $recentQuery->where('agency_id', $agencyId);
+        }
+        $recentRecords = $recentQuery->get();
 
         $isAgencyUser = auth()->user() && auth()->user()->isAgencyUser();
         $consolidationsCount = $isAgencyUser ? 0 : Consolidation::count();
         $consolidationsOpen = $isAgencyUser ? 0 : Consolidation::where('status', 'OPEN')->count();
         $consolidationsSent = $isAgencyUser ? 0 : Consolidation::where('status', 'SENT')->count();
 
-        // Alertas: requiere atención (si es agencia, solo alertas de sus paquetes y URLs a packages)
+        // Alertas: requiere atención (estado actual, no solo del periodo)
         $alerts = [];
         $miamiOldQuery = Preregistration::where('status', 'RECEIVED_MIAMI')->where('created_at', '<', now()->subHours(36));
         if ($agencyId) {
@@ -162,10 +301,16 @@ class DashboardController extends Controller
                 ];
             }
         }
-        if ($preregistrationsReady > 0) {
+        // Listos para retiro: estado actual (operativo), no limitado al periodo del dashboard
+        $readyNowQuery = Preregistration::where('status', 'READY');
+        if ($agencyId) {
+            $readyNowQuery->where('agency_id', $agencyId);
+        }
+        $readyNow = $readyNowQuery->count();
+        if ($readyNow > 0) {
             $alerts[] = [
                 'title' => 'Paquetes listos para retiro (pendientes de entrega)',
-                'count' => $preregistrationsReady,
+                'count' => $readyNow,
                 'url' => route('packages.index', ['status' => 'READY']),
             ];
         }
@@ -192,7 +337,23 @@ class DashboardController extends Controller
             'consolidationsOpen',
             'consolidationsSent',
             'preregistrationsReady',
-            'alerts'
+            'preregistrationsNic',
+            'preregistrationsDelivered',
+            'alerts',
+            'activePeriod',
+            'packagesToday',
+            'packagesYesterday',
+            'packagesDeltaPct',
+            'totalLbsPeriod',
+            'airSharePct',
+            'seaSharePct',
+            'statusDistribution',
+            'weeklyVolume',
+            'weeklyMax',
+            'heatmapWeeks',
+            'heatmapMax',
+            'recentRecords',
+            'displayTz'
         ));
     }
 
@@ -293,6 +454,19 @@ class DashboardController extends Controller
         }
 
         return view('reporte-paquetes', compact('paquetes', 'periodLabel'));
+    }
+
+    /**
+     * Convierte un rango de fechas calendario (Y-m-d) en zona operativa a UTC [start, end].
+     *
+     * @return array{0: \Carbon\Carbon, 1: \Carbon\Carbon}
+     */
+    private function localDateRangeToUtc(string $dateFrom, string $dateTo, string $displayTz): array
+    {
+        $start = \Carbon\Carbon::parse($dateFrom, $displayTz)->startOfDay()->utc();
+        $end = \Carbon\Carbon::parse($dateTo, $displayTz)->endOfDay()->utc();
+
+        return [$start, $end];
     }
 
     /**

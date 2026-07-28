@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'BCH Tracking') - {{ config('app.name', 'Laravel') }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     @php
         $manifestPath = public_path('build/manifest.json');
         if (file_exists($manifestPath)) {
@@ -21,11 +24,19 @@
     @endphp
     <style>
         :root {
-            --app-bg-base: #f5f7fb;
-            --app-bg-soft: #eef2f7;
+            --app-bg-base: #f8fafc;      /* Neutral */
+            --app-bg-soft: #f1f5f9;
             --app-surface: #ffffff;
-            --app-surface-border: #e5ecf3;
+            --app-surface-border: #e2e8f0;
             --app-surface-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 24px rgba(15, 23, 42, 0.03);
+            --brand-primary: #10b981;    /* Primary */
+            --brand-primary-strong: #059669;
+            --brand-primary-deep: #047857;
+            --brand-secondary: #0f172a;  /* Secondary */
+            --brand-tertiary: #64748b;   /* Tertiary */
+        }
+        body {
+            font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
         }
         .app-layout { display: flex; min-height: 100vh; }
         .sidebar {
@@ -43,7 +54,7 @@
             text-align: center;
         }
         .sidebar-brand a { font-size: 1.25rem; font-weight: 700; color: #111827; text-decoration: none; letter-spacing: -0.02em; }
-        .sidebar-brand a:hover { color: #0d9488; }
+        .sidebar-brand a:hover { color: #059669; }
         .sidebar-brand .brand-logo { display: inline-block; line-height: 0; }
         .sidebar-brand .brand-logo img { height: 3.5rem; width: auto; vertical-align: middle; display: block; object-fit: contain; margin: 0 auto; }
         .sidebar-brand-name {
@@ -115,32 +126,32 @@
             color: #64748b;
         }
         .sidebar-link-active {
-            color: #0f766e;
+            color: #047857;
             font-weight: 600;
-            background: #e7f8f5;
-            border-color: #b8ece4;
-            box-shadow: inset 3px 0 0 #0d9488;
+            background: #e7f8ef;
+            border-color: #b9ecd1;
+            box-shadow: inset 3px 0 0 #059669;
         }
         .sidebar-link-active .sidebar-link-icon {
-            color: #0d9488;
+            color: #059669;
         }
         .sidebar-link-tracking {
-            color: #0f766e;
+            color: #047857;
             background: #ecfdf5;
-            border-color: #bbf7d0;
+            border-color: #a7f3d0;
         }
         .sidebar-link-tracking .sidebar-link-icon {
             color: #059669;
         }
         .sidebar-link-tracking:hover {
             color: #065f46;
-            background: #dcfce7;
-            border-color: #86efac;
+            background: #d1fae5;
+            border-color: #6ee7b7;
         }
         .sidebar-link-active.sidebar-link-tracking {
             color: #065f46;
             background: #d1fae5;
-            border-color: #86efac;
+            border-color: #6ee7b7;
             box-shadow: inset 3px 0 0 #059669;
         }
         .sidebar-user { padding: 0.95rem 1rem 1.05rem; border-top: 1px solid #e6edf5; background: #f8fafc; }

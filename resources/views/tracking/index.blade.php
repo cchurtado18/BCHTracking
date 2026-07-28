@@ -106,16 +106,16 @@
 <style>
 .tracking-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
 .tracking-hero {
-    background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%);
+    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
     border-radius: 1rem; padding: 1.75rem 1.5rem; margin-bottom: 1.5rem;
-    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25);
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
 }
 .tracking-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
 .tracking-hero-title { margin: 0; font-size: 1.75rem; font-weight: 700; color: #fff; letter-spacing: -0.02em; }
 .tracking-hero-subtitle { margin: 0.35rem 0 0; font-size: 0.9375rem; color: rgba(255,255,255,0.9); max-width: 52ch; }
 .tracking-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 1.5rem; overflow: hidden; }
 .tracking-card-header { padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb; background: #fafafa; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
-.tracking-card-header.tracking-table-header { background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%); }
+.tracking-card-header.tracking-table-header { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); }
 .tracking-card-title { margin: 0; font-size: 0.9375rem; font-weight: 600; color: #374151; }
 .tracking-card-body { padding: 1.25rem 1.5rem; }
 .tracking-search-form { margin: 0; }
@@ -124,11 +124,11 @@
     flex: 1; min-width: 200px; padding: 0.65rem 1rem; font-size: 1rem; border: 1px solid #d1d5db; border-radius: 0.5rem;
     background: #fff; color: #111827;
 }
-.tracking-input:focus { outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15); }
+.tracking-input:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15); }
 .tracking-input::placeholder { color: #9ca3af; }
 .tracking-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.65rem 1.25rem; font-size: 0.9375rem; font-weight: 600; border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; }
-.tracking-btn-primary { background: #0d9488; color: #fff; border-color: #0d9488; }
-.tracking-btn-primary:hover { background: #0f766e; border-color: #0f766e; color: #fff; }
+.tracking-btn-primary { background: #059669; color: #fff; border-color: #059669; }
+.tracking-btn-primary:hover { background: #047857; border-color: #047857; color: #fff; }
 .tracking-alert { padding: 1rem 1.25rem; border-radius: 0.75rem; margin-bottom: 1.5rem; border: 1px solid; }
 .tracking-alert-warning { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
 .tracking-alert-title { margin: 0 0 0.25rem; font-weight: 600; }
@@ -162,14 +162,14 @@
 .tracking-timeline { display: flex; flex-direction: column; gap: 0; }
 .tracking-timeline-item { display: flex; align-items: flex-start; gap: 1rem; position: relative; padding: 0.6rem 0; }
 .tracking-timeline-item:not(:last-child)::after { content: ''; position: absolute; left: 0.9375rem; top: 2.25rem; bottom: -0.6rem; width: 2px; background: #e5e7eb; }
-.tracking-timeline-item-current:not(:last-child)::after { background: linear-gradient(180deg, #0d9488 0%, #e5e7eb 100%); }
+.tracking-timeline-item-current:not(:last-child)::after { background: linear-gradient(180deg, #059669 0%, #e5e7eb 100%); }
 .tracking-timeline-indicator {
     flex-shrink: 0; width: 2rem; height: 2rem; border-radius: 50%; display: flex; align-items: center; justify-content: center;
     font-size: 0.8125rem; font-weight: 700; background: #e5e7eb; color: #9ca3af; z-index: 1;
 }
-.tracking-timeline-item-current .tracking-timeline-indicator { background: #0d9488; color: #fff; }
+.tracking-timeline-item-current .tracking-timeline-indicator { background: #059669; color: #fff; }
 .tracking-timeline-item-pending .tracking-timeline-indicator { background: #f3f4f6; color: #9ca3af; }
-.tracking-timeline-item-current.tracking-timeline-item-completed .tracking-timeline-indicator { background: #0d9488; color: #fff; }
+.tracking-timeline-item-current.tracking-timeline-item-completed .tracking-timeline-indicator { background: #059669; color: #fff; }
 .tracking-timeline-icon-check { font-size: 1rem; line-height: 1; }
 .tracking-timeline-item .tracking-timeline-indicator .tracking-timeline-icon-check { color: #fff; }
 .tracking-timeline-item-pending .tracking-timeline-indicator .tracking-timeline-icon-check { color: #9ca3af; }

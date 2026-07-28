@@ -145,24 +145,24 @@
 
 /* Hero */
 .nic-hero {
-    background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%);
+    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
     border-radius: 1rem;
     padding: 1.75rem 1.5rem;
     margin-bottom: 1.5rem;
-    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25);
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
 }
 .nic-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
 .nic-hero-title { margin: 0; font-size: 1.75rem; font-weight: 700; color: #fff; letter-spacing: -0.02em; }
 .nic-hero-subtitle { margin: 0.35rem 0 0; font-size: 0.9375rem; color: rgba(255,255,255,0.9); max-width: 52ch; }
 
 /* Scan saco card */
-.nic-scan-card { border: 2px solid #0d9488; background: #f0fdfa; }
-.nic-scan-header { background: #ccfbf1; border-bottom-color: #99f6e4; }
-.nic-scan-header .nic-card-title { color: #0f766e; }
+.nic-scan-card { border: 2px solid #059669; background: #ecfdf5; }
+.nic-scan-header { background: #d1fae5; border-bottom-color: #a7f3d0; }
+.nic-scan-header .nic-card-title { color: #047857; }
 .nic-scan-hint { font-size: 0.875rem; color: #6b7280; margin: 0 0 1rem; }
 .nic-scan-form { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
 .nic-input { padding: 0.5rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.5rem; background: #fff; color: #111827; max-width: 280px; width: 100%; }
-.nic-input:focus { outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15); }
+.nic-input:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15); }
 .nic-input-lg { padding: 0.65rem 1rem; font-size: 1rem; font-family: ui-monospace, monospace; }
 .nic-scan-error { font-size: 0.875rem; color: #dc2626; margin: 0.75rem 0 0; }
 
@@ -181,10 +181,10 @@
 }
 .nic-stat-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #6b7280; }
 .nic-stat-value { font-size: 1.5rem; font-weight: 700; color: #111827; }
-.nic-stat-total { border-left: 4px solid #0d9488; }
+.nic-stat-total { border-left: 4px solid #059669; }
 .nic-stat-air { border-left: 4px solid #3b82f6; }
 .nic-stat-sea { border-left: 4px solid #059669; }
-.nic-stat-items { border-left: 4px solid #0d9488; }
+.nic-stat-items { border-left: 4px solid #059669; }
 
 /* Filters */
 .nic-filters-form { display: flex; flex-direction: column; gap: 1rem; }
@@ -194,21 +194,21 @@
     display: block; width: 100%; padding: 0.5rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.5rem;
     background: #fff; color: #111827;
 }
-.nic-select:focus { outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15); }
+.nic-select:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15); }
 .nic-filters-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
 
 /* Buttons */
 .nic-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; transition: background 0.15s, color 0.15s; }
-.nic-btn-primary { background: #0d9488; color: #fff; border-color: #0d9488; }
-.nic-btn-primary:hover { background: #0f766e; border-color: #0f766e; color: #fff; }
+.nic-btn-primary { background: #059669; color: #fff; border-color: #059669; }
+.nic-btn-primary:hover { background: #047857; border-color: #047857; color: #fff; }
 .nic-btn-secondary { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
 .nic-btn-secondary:hover { background: #e5e7eb; color: #111827; }
-.nic-btn-outline-primary { background: #fff; color: #0d9488; border-color: #0d9488; }
-.nic-btn-outline-primary:hover { background: #ccfbf1; color: #0f766e; }
+.nic-btn-outline-primary { background: #fff; color: #059669; border-color: #059669; }
+.nic-btn-outline-primary:hover { background: #d1fae5; color: #047857; }
 .nic-btn-sm { padding: 0.35rem 0.65rem; font-size: 0.8125rem; }
 
 /* Table */
-.nic-table-header { background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%); }
+.nic-table-header { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); }
 .nic-table-header .nic-card-title { color: #fff; }
 .nic-table-header .nic-card-badge { color: rgba(255,255,255,0.9); }
 .nic-table-wrap { overflow-x: auto; }
@@ -232,8 +232,8 @@
 .nic-pagination-links { display: flex; align-items: center; }
 .nic-pagination-links nav { display: flex; gap: 0.25rem; flex-wrap: wrap; }
 .nic-pagination-links a, .nic-pagination-links span { display: inline-block; padding: 0.35rem 0.65rem; font-size: 0.8125rem; border-radius: 0.375rem; border: 1px solid #e5e7eb; background: #fff; color: #374151; text-decoration: none; }
-.nic-pagination-links a:hover { background: #f3f4f6; color: #0d9488; }
+.nic-pagination-links a:hover { background: #f3f4f6; color: #059669; }
 .nic-pagination-links .disabled span { background: #f9fafb; color: #9ca3af; }
-.nic-pagination-links .active span { background: #0d9488; color: #fff; border-color: #0d9488; }
+.nic-pagination-links .active span { background: #059669; color: #fff; border-color: #059669; }
 </style>
 @endsection

@@ -8,11 +8,11 @@
 
 /* Hero */
 .preregs-hero {
-    background: linear-gradient(135deg, #0f766e 0%, #11695f 100%);
+    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
     border-radius: 0.875rem;
     padding: 1rem 1.2rem;
     margin-bottom: 1.35rem;
-    box-shadow: 0 6px 16px rgba(15, 118, 110, 0.14);
+    box-shadow: 0 6px 16px rgba(4, 120, 87, 0.14);
 }
 .preregs-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
 .preregs-hero-title { margin: 0; font-size: 1.8rem; font-weight: 700; color: #ffffff; letter-spacing: -0.02em; }
@@ -28,7 +28,7 @@
     color: #ffffff;
     background: #059669;
     border-radius: 0.625rem;
-    border: 1px solid rgba(15, 118, 110, 0.45);
+    border: 1px solid rgba(4, 120, 87, 0.45);
     text-decoration: none;
     box-shadow: 0 2px 8px rgba(2, 44, 34, 0.2);
     transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
@@ -87,16 +87,16 @@
 }
 .preregs-stat-label { font-size: 0.73rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; }
 .preregs-stat-value { font-size: 1.78rem; line-height: 1.05; font-weight: 800; color: #0f172a; }
-.preregs-stat-total::before { background: #0d9488; }
+.preregs-stat-total::before { background: #059669; }
 .preregs-stat-air::before { background: #2563eb; }
 .preregs-stat-sea::before { background: #059669; }
 .preregs-stat-received::before { background: #0284c7; }
-.preregs-stat-ready::before { background: #16a34a; }
-.preregs-stat-total .preregs-stat-icon { color: #0f766e; }
+.preregs-stat-ready::before { background: #059669; }
+.preregs-stat-total .preregs-stat-icon { color: #047857; }
 .preregs-stat-air .preregs-stat-icon { color: #1d4ed8; }
 .preregs-stat-sea .preregs-stat-icon { color: #047857; }
 .preregs-stat-received .preregs-stat-icon { color: #0369a1; }
-.preregs-stat-ready .preregs-stat-icon { color: #15803d; }
+.preregs-stat-ready .preregs-stat-icon { color: #047857; }
 
 /* Card */
 .preregs-card { background: #ffffff; border-radius: 0.75rem; border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05); margin-bottom: 1.5rem; overflow: hidden; }
@@ -118,16 +118,16 @@
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 .preregs-input:hover, .preregs-select:hover { border-color: #c7d2e0; background: #fcfdff; }
-.preregs-input:focus, .preregs-select:focus { outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.14); }
+.preregs-input:focus, .preregs-select:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.14); }
 .preregs-filters-actions { display: flex; flex-wrap: wrap; gap: 0.72rem; align-items: center; margin-top: 0.15rem; }
 .preregs-filters-card { border-color: #e5eaf1; }
 
 /* Buttons */
 .preregs-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.56rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.625rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
-.preregs-btn-primary { background: #0f766e; color: #fff; border-color: #0f766e; box-shadow: 0 3px 10px rgba(15, 118, 110, 0.24); font-weight: 600; }
-.preregs-btn-primary:hover { background: #115e59; border-color: #115e59; color: #fff; box-shadow: 0 8px 18px rgba(15, 118, 110, 0.26); }
-.preregs-btn-outline-primary { background: #fff; color: #0d9488; border-color: #0d9488; }
-.preregs-btn-outline-primary:hover { background: #ccfbf1; color: #0f766e; }
+.preregs-btn-primary { background: #047857; color: #fff; border-color: #047857; box-shadow: 0 3px 10px rgba(4, 120, 87, 0.24); font-weight: 600; }
+.preregs-btn-primary:hover { background: #065f46; border-color: #065f46; color: #fff; box-shadow: 0 8px 18px rgba(4, 120, 87, 0.26); }
+.preregs-btn-outline-primary { background: #fff; color: #059669; border-color: #059669; }
+.preregs-btn-outline-primary:hover { background: #d1fae5; color: #047857; }
 .preregs-btn-success { background: #059669; color: #fff; border-color: #059669; }
 .preregs-btn-success:hover { background: #047857; color: #fff; }
 .preregs-btn-danger { background: #fff; color: #dc2626; border-color: #dc2626; }
@@ -190,8 +190,8 @@
 }
 .preregs-icon-btn:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.22);
-    border-color: #0d9488;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.22);
+    border-color: #059669;
 }
 .preregs-icon-btn--view:hover {
     background: #eff6ff;
@@ -204,14 +204,14 @@
     color: #a16207;
 }
 .preregs-icon-btn--accent {
-    border-color: rgba(13, 148, 136, 0.28);
-    color: #0f766e;
-    background: #f0fdfa;
+    border-color: rgba(5, 150, 105, 0.28);
+    color: #047857;
+    background: #ecfdf5;
 }
 .preregs-icon-btn--accent:hover {
-    background: #ccfbf1;
-    border-color: #0d9488;
-    color: #0f766e;
+    background: #d1fae5;
+    border-color: #059669;
+    color: #047857;
 }
 .preregs-icon-btn--danger {
     border-color: #fecdd3;
@@ -261,13 +261,13 @@
 .preregs-actions .preregs-btn { margin-left: 0.25rem; }
 .preregs-badge { display: inline-block; padding: 0.28rem 0.65rem; font-size: 0.74rem; font-weight: 700; border-radius: 9999px; border: 1px solid transparent; }
 .preregs-badge-air { background: #dbeafe; color: #1e40af; }
-.preregs-badge-sea { background: #dcfce7; color: #166534; }
+.preregs-badge-sea { background: #d1fae5; color: #065f46; }
 .preregs-status { }
 .preregs-status.status-pending { background: #eef2ff; color: #3730a3; border-color: #c7d2fe; }
 .preregs-status.status-info { background: #e0f2fe; color: #075985; border-color: #bae6fd; }
 .preregs-status.status-warning { background: #fef3c7; color: #92400e; border-color: #fde68a; }
 .preregs-status.status-primary { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
-.preregs-status.status-success { background: #dcfce7; color: #166534; border-color: #86efac; }
+.preregs-status.status-success { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
 .preregs-status.status-delivered { background: #e2e8f0; color: #334155; border-color: #cbd5e1; }
 .preregs-status.status-danger { background: #ffe4e6; color: #be123c; border-color: #fda4af; }
 .preregs-status.status-default { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
@@ -278,9 +278,9 @@
 .preregs-pagination-links { display: flex; align-items: center; }
 .preregs-pagination-links nav { display: flex; gap: 0.25rem; flex-wrap: wrap; }
 .preregs-pagination-links a, .preregs-pagination-links span { display: inline-block; padding: 0.35rem 0.65rem; font-size: 0.8125rem; border-radius: 0.45rem; border: 1px solid #e2e8f0; background: #fff; color: #334155; text-decoration: none; }
-.preregs-pagination-links a:hover { background: #f8fafc; color: #0d9488; }
+.preregs-pagination-links a:hover { background: #f8fafc; color: #059669; }
 .preregs-pagination-links .disabled span { background: #f8fafc; color: #94a3b8; }
-.preregs-pagination-links .active span { background: #0d9488; color: #fff; border-color: #0d9488; }
+.preregs-pagination-links .active span { background: #059669; color: #fff; border-color: #059669; }
 </style>
 @endpush
 
@@ -387,6 +387,15 @@
                             <option value="READY" {{ request('status') == 'READY' ? 'selected' : '' }}>Listo para retiro</option>
                             <option value="DELIVERED" {{ request('status') == 'DELIVERED' ? 'selected' : '' }}>Entregado</option>
                             <option value="CANCELLED" {{ request('status') == 'CANCELLED' ? 'selected' : '' }}>Inactivo</option>
+                        </select>
+                    </div>
+                    <div class="preregs-field">
+                        <label class="preregs-label">Agencia</label>
+                        <select name="agency_id" class="preregs-select">
+                            <option value="">Todas</option>
+                            @foreach($agenciesForFilter ?? [] as $agencyOption)
+                            <option value="{{ $agencyOption->id }}" {{ (int) request('agency_id') === (int) $agencyOption->id ? 'selected' : '' }}>{{ $agencyOption->name }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div class="preregs-field">

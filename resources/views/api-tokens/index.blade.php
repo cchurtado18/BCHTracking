@@ -84,7 +84,7 @@
 
 <style>
 .api-tokens-page { padding: 1.5rem 0; max-width: 48rem; margin: 0 auto; width: 100%; }
-.api-tokens-hero { background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%); border-radius: 1rem; padding: 1.5rem 1.5rem; margin-bottom: 1.5rem; }
+.api-tokens-hero { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); border-radius: 1rem; padding: 1.5rem 1.5rem; margin-bottom: 1.5rem; }
 .api-tokens-hero-title { margin: 0; font-size: 1.5rem; font-weight: 700; color: #fff; }
 .api-tokens-hero-subtitle { margin: 0.35rem 0 0; font-size: 0.9375rem; color: rgba(255,255,255,0.9); }
 .api-tokens-alert { padding: 1rem 1.25rem; border-radius: 0.5rem; margin-bottom: 1rem; }
@@ -92,10 +92,10 @@
 .api-tokens-alert-info { background: #e0f2fe; border: 1px solid #7dd3fc; color: #0c4a6e; }
 .api-tokens-alert-title { font-weight: 600; margin: 0 0 0.35rem; }
 .api-tokens-alert-hint { font-size: 0.875rem; margin: 0 0 0.5rem; }
-.api-tokens-token-box { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; background: #fff; padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid #0d9488; }
+.api-tokens-token-box { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; background: #fff; padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid #059669; }
 .api-tokens-token-box code { flex: 1; min-width: 0; font-size: 0.8125rem; word-break: break-all; }
-.api-tokens-copy-btn { padding: 0.35rem 0.75rem; font-size: 0.8125rem; font-weight: 600; background: #0d9488; color: #fff; border: none; border-radius: 0.375rem; cursor: pointer; }
-.api-tokens-copy-btn:hover { background: #0f766e; }
+.api-tokens-copy-btn { padding: 0.35rem 0.75rem; font-size: 0.8125rem; font-weight: 600; background: #059669; color: #fff; border: none; border-radius: 0.375rem; cursor: pointer; }
+.api-tokens-copy-btn:hover { background: #047857; }
 .api-tokens-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e5e7eb; margin-bottom: 1.5rem; overflow: hidden; }
 .api-tokens-card-header { background: #f9fafb; padding: 0.75rem 1.25rem; border-bottom: 1px solid #e5e7eb; }
 .api-tokens-card-title { margin: 0; font-size: 1rem; font-weight: 600; color: #374151; }
@@ -103,11 +103,11 @@
 .api-tokens-field { margin-bottom: 1rem; }
 .api-tokens-label { display: block; font-size: 0.8125rem; font-weight: 600; color: #374151; margin-bottom: 0.35rem; }
 .api-tokens-input { width: 100%; max-width: 320px; padding: 0.5rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.5rem; }
-.api-tokens-input:focus { outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15); }
+.api-tokens-input:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15); }
 .api-tokens-error { font-size: 0.875rem; color: #dc2626; margin-top: 0.25rem; }
 .api-tokens-btn { display: inline-flex; align-items: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; }
-.api-tokens-btn-primary { background: #0d9488; color: #fff; border-color: #0d9488; }
-.api-tokens-btn-primary:hover { background: #0f766e; color: #fff; }
+.api-tokens-btn-primary { background: #059669; color: #fff; border-color: #059669; }
+.api-tokens-btn-primary:hover { background: #047857; color: #fff; }
 .api-tokens-btn-danger { background: #fff; color: #dc2626; border-color: #dc2626; }
 .api-tokens-btn-danger:hover { background: #fef2f2; color: #b91c1c; }
 .api-tokens-btn-sm { padding: 0.35rem 0.65rem; font-size: 0.8125rem; }

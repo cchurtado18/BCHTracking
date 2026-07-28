@@ -110,15 +110,15 @@
 <style>
 .agency-form-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
 .agency-form-page .agency-hero {
-    background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%);
+    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
     border-radius: 1rem; padding: 1.75rem 1.5rem; margin-bottom: 1.5rem;
-    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25);
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
 }
 .agency-form-page .agency-hero-title { color: #fff; margin: 0; font-size: 1.75rem; font-weight: 700; }
 .agency-form-page .agency-hero-subtitle { color: rgba(255,255,255,0.9); margin: 0.35rem 0 0; font-size: 0.9375rem; }
 .agency-form-page .agency-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-.agency-form-page .agency-hero-btn { background: #fff; color: #0f766e; padding: 0.5rem 1rem; font-weight: 600; border-radius: 0.5rem; text-decoration: none; border: 1px solid rgba(255,255,255,0.5); }
-.agency-form-page .agency-hero-btn:hover { background: #f0fdfa; color: #0d9488; }
+.agency-form-page .agency-hero-btn { background: #fff; color: #047857; padding: 0.5rem 1rem; font-weight: 600; border-radius: 0.5rem; text-decoration: none; border: 1px solid rgba(255,255,255,0.5); }
+.agency-form-page .agency-hero-btn:hover { background: #ecfdf5; color: #059669; }
 .agency-alert { padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.875rem; }
 .agency-alert-danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
 .agency-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; margin-bottom: 1.5rem; }
@@ -126,11 +126,11 @@
 .agency-card-title { margin: 0; font-size: 0.9375rem; font-weight: 600; color: #374151; }
 .agency-card-body { padding: 1.25rem; }
 .agency-form-card { max-width: 36rem; margin: 0 auto; }
-.agency-form-header { background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%); padding: 0.75rem 1.5rem; }
+.agency-form-header { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); padding: 0.75rem 1.5rem; }
 .agency-form-header .agency-card-title { color: #fff; }
 .agency-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; }
-.agency-btn-primary { background: #0d9488; color: #fff; border-color: #0d9488; }
-.agency-btn-primary:hover { background: #0f766e; color: #fff; }
+.agency-btn-primary { background: #059669; color: #fff; border-color: #059669; }
+.agency-btn-primary:hover { background: #047857; color: #fff; }
 .agency-btn-secondary { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
 .agency-btn-secondary:hover { background: #e5e7eb; color: #111827; }
 .agency-form-section { display: flex; flex-direction: column; gap: 1rem; }
@@ -143,7 +143,7 @@
 .agency-form-actions { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.75rem; }
 .agency-label, .agency-input, .agency-select, .agency-field-hint, .agency-field-error { display: block; width: 100%; }
 .agency-input, .agency-select { padding: 0.5rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.5rem; background: #fff; }
-.agency-input:focus, .agency-select:focus { outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15); }
+.agency-input:focus, .agency-select:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15); }
 .agency-field-error { color: #dc2626; font-size: 0.875rem; margin-top: 0.25rem; }
 .agency-field-hint { font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem; }
 </style>

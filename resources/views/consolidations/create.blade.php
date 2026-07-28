@@ -34,20 +34,20 @@
 <style>
 .cons-choose-page { padding: 1.5rem 0; max-width: 56rem; margin: 0 auto; width: 100%; }
 .cons-choose-hero {
-    background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%);
+    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
     border-radius: 1rem;
     padding: 1.75rem 1.5rem;
     margin-bottom: 1.75rem;
-    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25);
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
 }
 .cons-choose-hero-inner { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .cons-choose-title { margin: 0; font-size: 1.75rem; font-weight: 700; color: #fff; letter-spacing: -0.02em; }
 .cons-choose-sub { margin: 0.5rem 0 0; font-size: 0.9375rem; color: rgba(255,255,255,0.92); max-width: 40rem; line-height: 1.45; }
 .cons-choose-back {
     display: inline-flex; align-items: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600;
-    color: #0f766e; background: #fff; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none;
+    color: #047857; background: #fff; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none;
 }
-.cons-choose-back:hover { background: #f0fdfa; color: #0d9488; }
+.cons-choose-back:hover { background: #ecfdf5; color: #059669; }
 .cons-choose-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -71,16 +71,16 @@
     min-height: 14rem;
 }
 .cons-choose-card:hover {
-    border-color: #0d9488;
-    box-shadow: 0 8px 24px rgba(13, 148, 136, 0.12);
+    border-color: #059669;
+    box-shadow: 0 8px 24px rgba(5, 150, 105, 0.12);
     transform: translateY(-2px);
 }
-.cons-choose-card-scan { border-top: 4px solid #0d9488; }
+.cons-choose-card-scan { border-top: 4px solid #059669; }
 .cons-choose-card-select { border-top: 4px solid #6366f1; }
 .cons-choose-icon { font-size: 1.75rem; line-height: 1; margin-bottom: 0.75rem; opacity: 0.85; }
 .cons-choose-card-title { margin: 0 0 0.5rem; font-size: 1.125rem; font-weight: 700; color: #111827; }
 .cons-choose-card-text { margin: 0; font-size: 0.875rem; color: #4b5563; line-height: 1.5; flex: 1; }
-.cons-choose-cta { margin-top: 1.25rem; font-size: 0.875rem; font-weight: 700; color: #0d9488; }
+.cons-choose-cta { margin-top: 1.25rem; font-size: 0.875rem; font-weight: 700; color: #059669; }
 .cons-choose-card-select .cons-choose-cta { color: #4f46e5; }
 </style>
 @endsection

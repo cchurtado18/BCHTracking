@@ -183,20 +183,20 @@
 .cons-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
 
 .cons-hero {
-    background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%);
+    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
     border-radius: 1rem;
     padding: 1.75rem 1.5rem;
     margin-bottom: 1.5rem;
-    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25);
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
 }
 .cons-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
 .cons-hero-title { margin: 0; font-size: 1.75rem; font-weight: 700; color: #fff; letter-spacing: -0.02em; }
 .cons-hero-subtitle { margin: 0.35rem 0 0; font-size: 0.9375rem; color: rgba(255,255,255,0.9); max-width: 42ch; }
 .cons-hero-btn {
     display: inline-flex; align-items: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600;
-    color: #0f766e; background: #fff; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none;
+    color: #047857; background: #fff; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none;
 }
-.cons-hero-btn:hover { background: #f0fdfa; color: #0d9488; }
+.cons-hero-btn:hover { background: #ecfdf5; color: #059669; }
 
 .cons-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
 @media (min-width: 1024px) { .cons-grid { grid-template-columns: 360px 1fr; } }
@@ -219,7 +219,7 @@
     gap: 0.5rem;
 }
 .cons-card-header.cons-table-header {
-    background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%);
+    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
 }
 .cons-table-header .cons-card-title { color: #fff; }
 .cons-list-header { flex-wrap: wrap; }
@@ -242,18 +242,18 @@
 .cons-textarea { resize: vertical; min-height: 80px; }
 .cons-select:focus, .cons-input:focus, .cons-textarea:focus {
     outline: none;
-    border-color: #0d9488;
-    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+    border-color: #059669;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
 }
 
 .cons-selected-wrap { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #e5e7eb; }
 .cons-selected-box {
     padding: 0.75rem 1rem;
-    background: rgba(13, 148, 136, 0.1);
-    border: 1px solid rgba(13, 148, 136, 0.3);
+    background: rgba(5, 150, 105, 0.1);
+    border: 1px solid rgba(5, 150, 105, 0.3);
     border-radius: 0.5rem;
     font-size: 0.875rem;
-    color: #0f766e;
+    color: #047857;
     margin-bottom: 1rem;
 }
 .cons-selected-label { font-weight: 600; }
@@ -265,8 +265,8 @@
     border-radius: 0.5rem; border: 1px solid transparent;
     cursor: pointer; text-decoration: none;
 }
-.cons-btn-primary { background: #0d9488; color: #fff; border-color: #0d9488; font-weight: 600; }
-.cons-btn-primary:hover { background: #0f766e; border-color: #0f766e; color: #fff; }
+.cons-btn-primary { background: #059669; color: #fff; border-color: #059669; font-weight: 600; }
+.cons-btn-primary:hover { background: #047857; border-color: #047857; color: #fff; }
 .cons-btn-secondary { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
 .cons-btn-secondary:hover { background: #e5e7eb; color: #111827; }
 .cons-btn-outline-light {
@@ -275,8 +275,8 @@
     border-color: rgba(255,255,255,0.4);
 }
 .cons-btn-outline-light:hover { background: rgba(255,255,255,0.3); color: #fff; }
-.cons-btn-outline-primary { background: #fff; color: #0d9488; border-color: #0d9488; }
-.cons-btn-outline-primary:hover { background: #ccfbf1; color: #0f766e; }
+.cons-btn-outline-primary { background: #fff; color: #059669; border-color: #059669; }
+.cons-btn-outline-primary:hover { background: #d1fae5; color: #047857; }
 .cons-btn-sm { padding: 0.35rem 0.65rem; font-size: 0.8125rem; }
 
 .cons-filters { margin-bottom: 1.25rem; padding: 1rem; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.5rem; }
@@ -299,7 +299,7 @@
     padding: 0.65rem 0.75rem;
     font-weight: 600;
     color: #fff;
-    background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%);
+    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
     border-bottom: 1px solid rgba(255,255,255,0.2);
 }
 .cons-th-check { width: 2.5rem; }

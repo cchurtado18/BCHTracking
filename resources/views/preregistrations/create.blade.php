@@ -191,7 +191,7 @@
                     <div id="preview_weight" style="font-size: 15px; font-weight: 600; color: #111; margin-top: 2px;">—</div>
                     <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 12px;">Dimensión</div>
                     <div id="preview_dimension" style="font-size: 15px; font-weight: 600; color: #111; margin-top: 2px;">—</div>
-                    <div id="preview_cubic_feet" style="font-size: 12px; color: #0d9488; margin-top: 2px; display: none;">—</div>
+                    <div id="preview_cubic_feet" style="font-size: 12px; color: #059669; margin-top: 2px; display: none;">—</div>
                     <div class="preregs-label-preview-note">
                         <div class="preregs-label-preview-note-label">Nota de recepción en almacén</div>
                         <div id="preview_reception" class="preregs-label-preview-note-text">Al registrar se asignará fecha y hora</div>
@@ -235,17 +235,17 @@
     border-radius: 1rem;
 }
 .preregs-form-page .preregs-hero {
-    background: linear-gradient(135deg, #0f766e 0%, #0f766e 50%, #128176 100%);
+    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
     border-radius: 0.9rem;
     padding: 1.2rem 1.4rem;
     margin: 0 1rem 1.5rem;
-    box-shadow: 0 8px 22px rgba(15, 118, 110, 0.18);
+    box-shadow: 0 8px 22px rgba(4, 120, 87, 0.18);
 }
 .preregs-form-page .preregs-hero-title { color: #fff; margin: 0; font-size: 1.72rem; font-weight: 600; letter-spacing: -0.02em; }
 .preregs-form-page .preregs-hero-subtitle { color: rgba(236, 253, 245, 0.95); margin: 0.3rem 0 0; font-size: 0.9rem; font-weight: 400; }
 .preregs-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-.preregs-hero-btn { display: inline-flex; align-items: center; padding: 0.56rem 1rem; font-size: 0.875rem; font-weight: 500; background: rgba(255, 255, 255, 0.95); color: #0f766e; border: 1px solid rgba(255,255,255,0.7); border-radius: 0.625rem; text-decoration: none; transition: all 0.2s ease; }
-.preregs-hero-btn:hover { background: #ffffff; color: #0d9488; transform: translateY(-1px); box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12); }
+.preregs-hero-btn { display: inline-flex; align-items: center; padding: 0.56rem 1rem; font-size: 0.875rem; font-weight: 500; background: rgba(255, 255, 255, 0.95); color: #047857; border: 1px solid rgba(255,255,255,0.7); border-radius: 0.625rem; text-decoration: none; transition: all 0.2s ease; }
+.preregs-hero-btn:hover { background: #ffffff; color: #059669; transform: translateY(-1px); box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12); }
 .preregs-alert { padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.875rem; }
 .preregs-alert-danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
 .preregs-alert-title { font-weight: 600; margin-bottom: 0.35rem; }
@@ -273,7 +273,7 @@
 .preregs-field--inline { max-width: 12rem; }
 .preregs-field-label { display: block; font-size: 0.78rem; font-weight: 500; color: #334155; margin-bottom: 0.4rem; line-height: 1.35; }
 .preregs-field-label-muted { font-weight: 500; color: #94a3b8; text-transform: none; letter-spacing: 0; font-size: 0.75rem; }
-.preregs-req { color: #0d9488; font-weight: 500; opacity: 0.82; }
+.preregs-req { color: #059669; font-weight: 500; opacity: 0.82; }
 .preregs-opt { color: #94a3b8; font-weight: 500; font-size: 0.75rem; }
 .preregs-input {
     width: 100%; padding: 0.68rem 0.82rem; font-size: 0.875rem; border: 1px solid #dbe5ef; border-radius: 0.625rem;
@@ -293,8 +293,8 @@
     position: relative;
 }
 .preregs-input--file:hover {
-    border-color: #0d9488;
-    background: #f0fdfa;
+    border-color: #059669;
+    background: #ecfdf5;
 }
 .preregs-input--file::before {
     content: "↑  Arrastra o selecciona una foto";
@@ -318,8 +318,8 @@
     border-color: #cbd5e1;
 }
 .preregs-input--file.has-file {
-    border-color: #86efac;
-    background: #f0fdf4;
+    border-color: #6ee7b7;
+    background: #ecfdf5;
 }
 .preregs-file-state {
     margin: 0.45rem 0 0;
@@ -345,14 +345,14 @@
 @media (max-width: 900px) {
     .preregs-create-grid--bulto3 { grid-template-columns: 1fr; }
 }
-.preregs-cubic-line { margin: 0.5rem 0 0; font-size: 0.8125rem; color: #0f766e; }
+.preregs-cubic-line { margin: 0.5rem 0 0; font-size: 0.8125rem; color: #047857; }
 .preregs-cubic-label { font-weight: 600; color: #64748b; margin-right: 0.35rem; }
 .preregs-cubic-value { font-weight: 700; font-variant-numeric: tabular-nums; }
 .preregs-multi-bultos-wrap { margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #cbd5e1; }
 .preregs-multi-lead { font-size: 0.8125rem; color: #64748b; margin: 0 0 0.75rem; line-height: 1.45; }
 .preregs-bultos-container { margin-top: 0.75rem; }
 .preregs-bulto-block { padding: 1rem; margin-bottom: 0.9rem; border: 1px solid #e5ebf2; border-radius: 0.625rem; background: #ffffff; }
-.preregs-bulto-block h4 { margin: 0 0 0.75rem; font-size: 0.8125rem; font-weight: 700; color: #0d9488; text-transform: uppercase; letter-spacing: 0.04em; }
+.preregs-bulto-block h4 { margin: 0 0 0.75rem; font-size: 0.8125rem; font-weight: 700; color: #059669; text-transform: uppercase; letter-spacing: 0.04em; }
 .preregs-photo-lead { font-size: 0.875rem; color: #64748b; margin: 0 0 1rem; line-height: 1.5; }
 .preregs-photo-preview { margin-top: 1rem; display: none; }
 .preregs-photo-preview img,
@@ -371,24 +371,24 @@
 .preregs-label-preview-wrap[style*="display: block"] { display: block !important; }
 .preregs-section-title { font-size: 1rem; font-weight: 700; color: #0f172a; margin-bottom: 0.5rem; }
 .preregs-label-preview-box { width: 100%; max-width: 4in; min-height: 4in; background: #fff; border: none; border-radius: 0; padding: 0.875rem 1rem; box-shadow: none; }
-.preregs-label-preview-brand { font-size: 0.875rem; font-weight: 700; color: #0d9488; letter-spacing: 0.02em; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid #0d9488; }
-.preregs-label-preview-note { margin-top: 1rem; padding: 0.75rem 0.875rem; background: rgba(13, 148, 136, 0.1); border: 1px solid #0d9488; border-radius: 0.5rem; }
-.preregs-label-preview-note-label { font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.06em; color: #0d9488; font-weight: 700; margin-bottom: 0.25rem; }
-.preregs-label-preview-note-text { font-size: 0.875rem; font-weight: 700; color: #0f766e; }
+.preregs-label-preview-brand { font-size: 0.875rem; font-weight: 700; color: #059669; letter-spacing: 0.02em; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid #059669; }
+.preregs-label-preview-note { margin-top: 1rem; padding: 0.75rem 0.875rem; background: rgba(5, 150, 105, 0.1); border: 1px solid #059669; border-radius: 0.5rem; }
+.preregs-label-preview-note-label { font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.06em; color: #059669; font-weight: 700; margin-bottom: 0.25rem; }
+.preregs-label-preview-note-text { font-size: 0.875rem; font-weight: 700; color: #047857; }
 .preregs-label-preview-service { margin-top: 0.25rem; font-size: 1.25rem; font-weight: 800; letter-spacing: 0.03em; }
-.preregs-label-preview-service-air { color: #0f766e; }
+.preregs-label-preview-service-air { color: #047857; }
 .preregs-label-preview-service-sea { color: #1e40af; }
 .preregs-photo-section { margin-top: 0; padding-top: 0; border-top: none; }
 .preregs-form-panel.preregs-label-preview-wrap,
 .preregs-form-panel.preregs-photo-section { margin-top: 1rem; }
 .preregs-form-actions { margin-top: 1rem; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.85rem; align-items: center; }
 .preregs-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.58rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.625rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; transition: all 0.2s ease; }
-.preregs-btn-primary { background: #0d9488; color: #fff; border-color: #0d9488; font-weight: 600; padding-left: 1.3rem; padding-right: 1.3rem; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.22); }
-.preregs-btn-primary:hover { background: #0f766e; border-color: #0f766e; color: #fff; transform: translateY(-1px); box-shadow: 0 8px 18px rgba(15, 118, 110, 0.24); }
+.preregs-btn-primary { background: #059669; color: #fff; border-color: #059669; font-weight: 600; padding-left: 1.3rem; padding-right: 1.3rem; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.22); }
+.preregs-btn-primary:hover { background: #047857; border-color: #047857; color: #fff; transform: translateY(-1px); box-shadow: 0 8px 18px rgba(4, 120, 87, 0.24); }
 .preregs-btn-primary:disabled { background: #9ca3af; border-color: #9ca3af; cursor: not-allowed; }
 .preregs-btn-secondary { background: #ffffff; color: #475569; border-color: #dbe3ec; }
 .preregs-btn-secondary:hover { background: #f8fafc; color: #1e293b; border-color: #cbd5e1; }
-.preregs-form-card input:focus, .preregs-form-card select:focus, .preregs-form-card textarea:focus { outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.14); }
+.preregs-form-card input:focus, .preregs-form-card select:focus, .preregs-form-card textarea:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.14); }
 </style>
 
 @push('scripts')

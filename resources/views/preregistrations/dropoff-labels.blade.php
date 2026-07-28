@@ -231,7 +231,7 @@
             letter-spacing: 0.01em;
             text-align: center;
         }
-        .sl-grid-value.service-air { color: #0f766e; }
+        .sl-grid-value.service-air { color: #047857; }
         .sl-grid-value.service-sea { color: #1e40af; }
         .sl-description-title {
             margin-top: 16px;

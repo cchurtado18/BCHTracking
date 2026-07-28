@@ -114,20 +114,20 @@
 <style>
 .delivery-show-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
 .delivery-show-page .delivery-hero {
-    background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%);
+    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
     border-radius: 1rem; padding: 1.75rem 1.5rem; margin-bottom: 1.5rem;
-    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25);
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
 }
 .delivery-show-page .delivery-hero-title { color: #fff; margin: 0; font-size: 1.75rem; font-weight: 700; }
 .delivery-show-page .delivery-hero-subtitle { color: rgba(255,255,255,0.9); margin: 0.35rem 0 0; font-size: 0.9375rem; }
 .delivery-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-.delivery-hero-btn { display: inline-flex; align-items: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600; background: #fff; color: #0f766e; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none; }
-.delivery-hero-btn:hover { background: #f0fdfa; color: #0d9488; }
+.delivery-hero-btn { display: inline-flex; align-items: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600; background: #fff; color: #047857; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none; }
+.delivery-hero-btn:hover { background: #ecfdf5; color: #059669; }
 .delivery-show-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
 @media (min-width: 992px) { .delivery-show-grid { grid-template-columns: 1fr 1fr; } }
 .delivery-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; margin-bottom: 1.5rem; }
 .delivery-card-header { padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb; background: #fafafa; }
-.delivery-card-header.delivery-table-header { background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%); padding: 0.75rem 1.5rem; }
+.delivery-card-header.delivery-table-header { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); padding: 0.75rem 1.5rem; }
 .delivery-card-header.delivery-table-header .delivery-card-title { color: #fff; }
 .delivery-card-title { margin: 0; font-size: 0.9375rem; font-weight: 600; color: #374151; }
 .delivery-card-body { padding: 1.25rem; }
@@ -141,7 +141,7 @@
 .delivery-badge-delivery { background: #d1fae5; color: #047857; }
 .delivery-badge-air { background: #dbeafe; color: #1d4ed8; }
 .delivery-badge-sea { background: #d1fae5; color: #047857; }
-.delivery-link { color: #0d9488; text-decoration: none; font-weight: 500; }
+.delivery-link { color: #059669; text-decoration: none; font-weight: 500; }
 .delivery-link:hover { text-decoration: underline; }
 </style>
 @endsection

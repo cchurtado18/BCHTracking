@@ -4,6 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Consultar paquete') - BCH Tracking</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }</style>
     @php
         $manifestPath = public_path('build/manifest.json');
         if (file_exists($manifestPath)) {
@@ -28,7 +32,7 @@
                     <img src="{{ asset('images/bch-tracking-logo.png') }}" alt="BCH Tracking">
                 </a>
                 @auth
-                <a href="{{ route('dashboard') }}" class="text-sm font-medium text-gray-600 hover:text-teal-600">
+                <a href="{{ route('dashboard') }}" class="text-sm font-medium text-gray-600 hover:text-emerald-600">
                     ← Regresar
                 </a>
                 @endauth

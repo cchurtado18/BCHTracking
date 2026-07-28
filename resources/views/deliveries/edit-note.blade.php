@@ -119,22 +119,22 @@
 <style>
 .delivery-edit-note-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
 .delivery-edit-note-page .delivery-hero {
-    background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%);
+    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
     border-radius: 1rem; padding: 1.75rem 1.5rem; margin-bottom: 1.5rem;
-    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25);
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
 }
 .delivery-edit-note-page .delivery-hero-title { color: #fff; margin: 0; font-size: 1.75rem; font-weight: 700; }
 .delivery-edit-note-page .delivery-hero-subtitle { color: rgba(255,255,255,0.9); margin: 0.35rem 0 0; font-size: 0.9375rem; }
 .delivery-nota-code { font-family: ui-monospace, monospace; font-size: 1.1rem; font-weight: 700; color: #f8fafc; letter-spacing: 0.08em; margin-top: 0.5rem; }
 .delivery-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-.delivery-hero-btn { display: inline-flex; align-items: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600; background: #fff; color: #0f766e; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none; }
-.delivery-hero-btn:hover { background: #f0fdfa; color: #0d9488; }
+.delivery-hero-btn { display: inline-flex; align-items: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600; background: #fff; color: #047857; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none; }
+.delivery-hero-btn:hover { background: #ecfdf5; color: #059669; }
 .delivery-alert { padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.875rem; }
-.delivery-alert-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+.delivery-alert-success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
 .delivery-alert-danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
 .delivery-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 1.5rem; overflow: hidden; }
 .delivery-card-header { padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb; background: #fafafa; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
-.delivery-card-header.delivery-table-header { background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%); }
+.delivery-card-header.delivery-table-header { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); }
 .delivery-card-header.delivery-table-header .delivery-card-title { color: #fff; }
 .delivery-card-title { margin: 0; font-size: 0.9375rem; font-weight: 600; color: #374151; }
 .delivery-card-body { padding: 1.25rem; }
@@ -147,8 +147,8 @@
 .delivery-field-error { display: block; font-size: 0.75rem; color: #b91c1c; margin-top: 0.25rem; }
 .delivery-field-btn { flex: 0 0 auto; }
 .delivery-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; }
-.delivery-btn-primary { background: #0d9488; color: #fff; border-color: #0d9488; }
-.delivery-btn-primary:hover { background: #0f766e; color: #fff; }
+.delivery-btn-primary { background: #059669; color: #fff; border-color: #059669; }
+.delivery-btn-primary:hover { background: #047857; color: #fff; }
 .delivery-btn-sm { padding: 0.35rem 0.65rem; font-size: 0.8125rem; }
 .delivery-btn-outline-light { background: transparent; color: #fff; border-color: rgba(255,255,255,0.7); }
 .delivery-btn-outline-light:hover { background: rgba(255,255,255,0.15); color: #fff; }
@@ -156,7 +156,7 @@
 .delivery-btn-danger:hover { background: #fef2f2; }
 .delivery-table-wrap { overflow-x: auto; }
 .delivery-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-.delivery-table thead tr { background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%); }
+.delivery-table thead tr { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); }
 .delivery-table th { text-align: left; padding: 0.75rem 1rem; font-weight: 600; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.2); }
 .delivery-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
 .delivery-code { font-family: ui-monospace, monospace; font-weight: 600; color: #111827; }

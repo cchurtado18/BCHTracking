@@ -97,7 +97,7 @@
     color: #334155;
 }
 .admin-return-panel__muted { color: #64748b; }
-.admin-return-panel__link { color: #0d9488; font-weight: 600; text-decoration: none; }
+.admin-return-panel__link { color: #059669; font-weight: 600; text-decoration: none; }
 .admin-return-panel__link:hover { text-decoration: underline; }
 .admin-return-panel__trigger {
     flex-shrink: 0;
@@ -108,15 +108,15 @@
     font-size: 0.875rem;
     font-weight: 600;
     color: #fff;
-    background: linear-gradient(135deg, #0f766e 0%, #0d9488 55%, #14b8a6 100%);
+    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
     border: none;
     border-radius: 0.5rem;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(13, 148, 136, 0.25);
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
 }
 .admin-return-panel__trigger:hover {
     filter: brightness(1.05);
-    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
 }
 .admin-return-dialog {
     border: none;
@@ -143,7 +143,7 @@
     justify-content: space-between;
     gap: 1rem;
     padding: 1.125rem 1.25rem;
-    background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%);
+    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
 }
 .admin-return-dialog__title {
     margin: 0;
@@ -199,8 +199,8 @@
 }
 .admin-return-dialog__textarea:focus {
     outline: none;
-    border-color: #0d9488;
-    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.2);
+    border-color: #059669;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2);
 }
 .admin-return-dialog__check {
     display: flex;
@@ -246,11 +246,11 @@
 }
 .admin-return-dialog__btn--secondary:hover { background: #f1f5f9; }
 .admin-return-dialog__btn--primary {
-    background: #0d9488;
+    background: #059669;
     color: #fff;
-    border-color: #0d9488;
+    border-color: #059669;
 }
-.admin-return-dialog__btn--primary:hover { background: #0f766e; }
+.admin-return-dialog__btn--primary:hover { background: #047857; }
 </style>
 
 <script>

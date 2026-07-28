@@ -141,7 +141,7 @@
 .nic-show-sidebar { min-width: 0; }
 .nic-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 1.5rem; overflow: hidden; }
 .nic-card-header { padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb; background: #fafafa; }
-.nic-card-header.nic-table-header { background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%); }
+.nic-card-header.nic-table-header { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); }
 .nic-card-header.nic-table-header .nic-card-title { color: #fff; }
 .nic-card-title { margin: 0; font-size: 0.9375rem; font-weight: 600; color: #374151; }
 .nic-card-body { padding: 1.25rem; }
@@ -149,15 +149,15 @@
 .mb-4 { margin-bottom: 1rem; }
 .nic-scan-form-block { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 0.5rem; }
 .nic-input { padding: 0.5rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.5rem; background: #fff; color: #111827; flex: 1; min-width: 180px; }
-.nic-input:focus { outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15); }
+.nic-input:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15); }
 .nic-input-lg { padding: 0.65rem 1rem; font-size: 1rem; font-family: ui-monospace, monospace; }
 .nic-scan-feedback { min-height: 1.5rem; font-size: 0.875rem; margin-top: 0.25rem; }
 .nic-scan-feedback.text-success { color: #059669; }
 .nic-scan-feedback.text-danger { color: #dc2626; }
 .nic-scan-feedback.text-muted { color: #6b7280; }
 .nic-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; }
-.nic-btn-primary { background: #0d9488; color: #fff; border-color: #0d9488; }
-.nic-btn-primary:hover { background: #0f766e; border-color: #0f766e; color: #fff; }
+.nic-btn-primary { background: #059669; color: #fff; border-color: #059669; }
+.nic-btn-primary:hover { background: #047857; border-color: #047857; color: #fff; }
 .nic-btn-secondary { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
 .nic-btn-secondary:hover { background: #e5e7eb; color: #111827; }
 .nic-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
@@ -168,7 +168,7 @@
 .nic-stat-card { background: #fff; border-radius: 0.75rem; padding: 1rem 1.25rem; border: 1px solid #e5e7eb; display: flex; flex-direction: column; gap: 0.25rem; }
 .nic-stat-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #6b7280; }
 .nic-stat-value { font-size: 1.5rem; font-weight: 700; color: #111827; }
-.nic-stat-total { border-left: 4px solid #0d9488; }
+.nic-stat-total { border-left: 4px solid #059669; }
 .nic-stat-success { border-left: 4px solid #059669; }
 .nic-stat-success .nic-stat-label { color: #047857; }
 .nic-stat-value-success { color: #059669; }
@@ -185,7 +185,7 @@
 .nic-scanned-list { max-height: 24rem; }
 .nic-item-row { padding: 0.5rem 0.75rem; border-radius: 0.5rem; margin-bottom: 0.35rem; font-size: 0.875rem; border: 1px solid #e5e7eb; }
 .nic-missing-item { background: #fefce8; border-color: #fef08a; }
-.nic-scanned-item { background: #f0fdf4; border-color: #bbf7d0; }
+.nic-scanned-item { background: #ecfdf5; border-color: #a7f3d0; }
 .nic-item-name { font-weight: 600; color: #111827; }
 .nic-item-meta { font-size: 0.8125rem; color: #6b7280; margin-top: 0.2rem; }
 .font-mono { font-family: ui-monospace, monospace; }

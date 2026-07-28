@@ -70,18 +70,18 @@
         .guest-choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         @media (max-width: 600px) { .guest-choice-grid { grid-template-columns: 1fr; } }
         .guest-choice-card { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem 1.5rem; border-radius: 1rem; border: 2px solid #e5e7eb; cursor: pointer; transition: all 0.2s; text-decoration: none; color: inherit; background: #fff; min-height: 10rem; }
-        .guest-choice-card:hover { border-color: #99f6e4; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.15); }
-        .guest-choice-login:hover { border-color: #0d9488; background: #f0fdfa; }
+        .guest-choice-card:hover { border-color: #a7f3d0; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.15); }
+        .guest-choice-login:hover { border-color: #059669; background: #ecfdf5; }
         .guest-choice-tracking { border-color: #bae6fd; background: #f0f9ff; }
         .guest-choice-tracking:hover { border-color: #0ea5e9; background: #e0f2fe; }
-        .guest-choice-icon { width: 3rem; height: 3rem; margin-bottom: 0.75rem; color: #0d9488; }
+        .guest-choice-icon { width: 3rem; height: 3rem; margin-bottom: 0.75rem; color: #059669; }
         .guest-choice-tracking .guest-choice-icon { color: #0284c7; }
         .guest-choice-title { font-size: 1.25rem; font-weight: 700; color: #111827; display: block; margin-bottom: 0.25rem; }
         .guest-choice-desc { font-size: 0.875rem; color: #6b7280; }
-        .guest-form-screen { padding: 1.25rem 1.5rem 2rem; border-top: 3px solid #0d9488; }
+        .guest-form-screen { padding: 1.25rem 1.5rem 2rem; border-top: 3px solid #059669; }
         .guest-form-inner { max-width: 22rem; margin: 0 auto; }
         .guest-back-btn { display: inline-flex; align-items: center; gap: 0.375rem; background: #f3f4f6; border: none; color: #4b5563; font-size: 0.875rem; font-weight: 500; cursor: pointer; padding: 0.5rem 0.75rem; margin-bottom: 1.25rem; border-radius: 0.5rem; transition: background 0.2s, color 0.2s; }
-        .guest-back-btn:hover { background: #e5e7eb; color: #0d9488; }
+        .guest-back-btn:hover { background: #e5e7eb; color: #059669; }
         .guest-back-arrow { width: 1.125rem; height: 1.125rem; }
         .guest-form-brand { text-align: center; margin-bottom: 1.5rem; padding-bottom: 1.25rem; border-bottom: 1px solid #e5e7eb; }
         .guest-form-title { font-size: 1.375rem; font-weight: 700; color: #111827; margin: 0 0 0.25rem; letter-spacing: -0.02em; }
@@ -91,16 +91,16 @@
         .guest-field { }
         .guest-label { display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 0.375rem; }
         .guest-input { width: 100%; padding: 0.75rem 1rem; font-size: 1rem; border: 1px solid #d1d5db; border-radius: 0.5rem; background: #fff; transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box; }
-        .guest-input:focus { outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15); }
+        .guest-input:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15); }
         .guest-input::placeholder { color: #9ca3af; }
         .guest-error { margin-top: 0.25rem; font-size: 0.8125rem; color: #dc2626; }
         .guest-options { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; }
         .guest-checkbox-label { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: #4b5563; cursor: pointer; }
-        .guest-checkbox { width: 1rem; height: 1rem; border-radius: 0.25rem; border: 1px solid #d1d5db; color: #0d9488; }
-        .guest-forgot { font-size: 0.875rem; font-weight: 500; color: #0d9488; text-decoration: none; }
-        .guest-forgot:hover { color: #0f766e; text-decoration: underline; }
-        .guest-submit { width: 100%; padding: 0.875rem 1.25rem; font-size: 1rem; font-weight: 600; color: #fff; background: #0d9488; border: none; border-radius: 0.5rem; cursor: pointer; transition: background 0.2s, transform 0.05s; margin-top: 0.25rem; }
-        .guest-submit:hover { background: #0f766e; }
+        .guest-checkbox { width: 1rem; height: 1rem; border-radius: 0.25rem; border: 1px solid #d1d5db; color: #059669; }
+        .guest-forgot { font-size: 0.875rem; font-weight: 500; color: #059669; text-decoration: none; }
+        .guest-forgot:hover { color: #047857; text-decoration: underline; }
+        .guest-submit { width: 100%; padding: 0.875rem 1.25rem; font-size: 1rem; font-weight: 600; color: #fff; background: #059669; border: none; border-radius: 0.5rem; cursor: pointer; transition: background 0.2s, transform 0.05s; margin-top: 0.25rem; }
+        .guest-submit:hover { background: #047857; }
         .guest-submit:active { transform: scale(0.99); }
     </style>
 

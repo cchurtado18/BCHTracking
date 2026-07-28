@@ -34,7 +34,7 @@ class PreregistrationController extends Controller
             return redirect()->route('preregistrations.index');
         }
 
-        $filterKeys = ['search', 'service_type', 'intake_type', 'status', 'date_from', 'date_to'];
+        $filterKeys = ['search', 'service_type', 'intake_type', 'status', 'agency_id', 'date_from', 'date_to'];
         $stateKeys = array_merge($filterKeys, ['page']);
         if (! $request->hasAny($stateKeys) && session()->has('preregistrations_index_filters')) {
             return redirect()->route('preregistrations.index', session('preregistrations_index_filters'));
@@ -61,6 +61,9 @@ class PreregistrationController extends Controller
         }
         if ($request->filled('status')) {
             $query->where('status', $request->status);
+        }
+        if ($request->filled('agency_id') && (int) $request->agency_id > 0) {
+            $query->where('agency_id', (int) $request->agency_id);
         }
         if ($request->filled('search')) {
             $search = $request->search;
@@ -90,6 +93,9 @@ class PreregistrationController extends Controller
         if ($request->filled('status')) {
             $statsQuery->where('status', $request->status);
         }
+        if ($request->filled('agency_id') && (int) $request->agency_id > 0) {
+            $statsQuery->where('agency_id', (int) $request->agency_id);
+        }
         if ($request->filled('search')) {
             $search = $request->search;
             $statsQuery->where(function ($q) use ($search) {
@@ -110,7 +116,9 @@ class PreregistrationController extends Controller
         $statsReceived = (clone $statsQuery)->where('status', 'RECEIVED_MIAMI')->count();
         $statsReady = (clone $statsQuery)->where('status', 'READY')->count();
 
-        return view('preregistrations.index', compact('preregistrations', 'statsTotal', 'statsAir', 'statsSea', 'statsReceived', 'statsReady'));
+        $agenciesForFilter = Agency::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+
+        return view('preregistrations.index', compact('preregistrations', 'statsTotal', 'statsAir', 'statsSea', 'statsReceived', 'statsReady', 'agenciesForFilter'));
     }
 
     public function create(Request $request)
@@ -382,7 +390,12 @@ class PreregistrationController extends Controller
 
     public function show(string $id)
     {
-        $preregistration = Preregistration::with(['photos', 'agency', 'consolidationItem.consolidation', 'delivery'])->findOrFail($id);
+        $preregistration = Preregistration::with([
+            'photos',
+            'agency',
+            'consolidationItem.consolidation',
+            'delivery.deliveryNote',
+        ])->findOrFail($id);
         $preregistration->photos->each(function ($photo) {
             $photo->url = asset('storage/'.$photo->path);
         });

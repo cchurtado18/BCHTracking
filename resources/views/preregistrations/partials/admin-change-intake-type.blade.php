@@ -85,8 +85,8 @@
 }
 .admin-intake-panel__select:focus {
     outline: none;
-    border-color: #0d9488;
-    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.2);
+    border-color: #059669;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2);
 }
 .admin-intake-panel__btn {
     display: inline-flex;
@@ -96,12 +96,12 @@
     font-size: 0.875rem;
     font-weight: 600;
     color: #fff;
-    background: #0d9488;
+    background: #059669;
     border: none;
     border-radius: 0.5rem;
     cursor: pointer;
 }
-.admin-intake-panel__btn:hover { background: #0f766e; }
+.admin-intake-panel__btn:hover { background: #047857; }
 .admin-intake-panel__err {
     margin: 0.5rem 0 0;
     font-size: 0.8125rem;

@@ -74,20 +74,20 @@
 .reporte-solicitar-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
 
 .reporte-solicitar-hero {
-    background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%);
+    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
     border-radius: 1rem;
     padding: 1.75rem 1.5rem;
     margin-bottom: 1.5rem;
-    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25);
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
 }
 .reporte-solicitar-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
 .reporte-solicitar-hero-title { margin: 0; font-size: 1.75rem; font-weight: 700; color: #fff; letter-spacing: -0.02em; }
 .reporte-solicitar-hero-subtitle { margin: 0.35rem 0 0; font-size: 0.9375rem; color: rgba(255,255,255,0.9); max-width: 52ch; }
 .reporte-solicitar-hero-btn {
     display: inline-flex; align-items: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600;
-    color: #0f766e; background: #fff; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none;
+    color: #047857; background: #fff; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none;
 }
-.reporte-solicitar-hero-btn:hover { background: #f0fdfa; color: #0d9488; }
+.reporte-solicitar-hero-btn:hover { background: #ecfdf5; color: #059669; }
 
 .reporte-solicitar-card {
     background: #fff;
@@ -98,7 +98,7 @@
     max-width: 42rem;
 }
 .reporte-solicitar-card-header {
-    background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%);
+    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
     padding: 0.75rem 1.5rem;
 }
 .reporte-solicitar-card-title { margin: 0; font-size: 1rem; font-weight: 600; color: #fff; }
@@ -113,7 +113,7 @@
     border: 1px solid #d1d5db; border-radius: 0.5rem; background: #fff; color: #111827;
 }
 .reporte-solicitar-input:focus, .reporte-solicitar-select:focus {
-    outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+    outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
 }
 .reporte-solicitar-fixed-value { margin: 0; padding: 0.5rem 0.75rem; background: #f3f4f6; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; color: #111827; }
 .reporte-solicitar-code { color: #6b7280; font-weight: 400; }
@@ -121,9 +121,9 @@
 .reporte-solicitar-actions { margin-top: 1.5rem; }
 .reporte-solicitar-btn {
     display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; font-size: 0.9375rem; font-weight: 600;
-    border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; background: #0d9488; color: #fff; border-color: #0d9488;
+    border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; background: #059669; color: #fff; border-color: #059669;
 }
-.reporte-solicitar-btn:hover { background: #0f766e; border-color: #0f766e; color: #fff; }
+.reporte-solicitar-btn:hover { background: #047857; border-color: #047857; color: #fff; }
 .reporte-solicitar-note { margin: 1rem 0 0; font-size: 0.8125rem; color: #6b7280; }
 </style>
 @endsection

@@ -7,8 +7,9 @@
 
         <title>@yield('title', 'Iniciar sesión') - {{ config('app.name', 'Laravel') }}</title>
 
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
         @php
             $manifestPath = public_path('build/manifest.json');
@@ -25,6 +26,7 @@
             }
         @endphp
         <style>
+            body { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
             .guest-page {
                 min-height: 100vh;
                 display: flex;

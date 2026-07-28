@@ -176,7 +176,7 @@
             font-weight: 800;
             color: #111;
         }
-        .sl-grid-value.service-air { color: #0f766e; }
+        .sl-grid-value.service-air { color: #047857; }
         .sl-grid-value.service-sea { color: #1e40af; }
 
         /* Badge AIR/SEA para distinguir en blanco y negro (por forma) */
@@ -408,7 +408,7 @@
 
         @if(!empty($dropoffNextStep) && !empty($dropoffTotal))
             <p style="margin-top: 14px;">
-                <a href="{{ route('preregistrations.create') }}" style="display: inline-block; padding: 8px 14px; background: #0d9488; color: #fff; border-radius: 6px; font-weight: 600; text-decoration: none;">
+                <a href="{{ route('preregistrations.create') }}" style="display: inline-block; padding: 8px 14px; background: #059669; color: #fff; border-radius: 6px; font-weight: 600; text-decoration: none;">
                     Continuar con el siguiente bulto ({{ $dropoffNextStep }}/{{ $dropoffTotal }})
                 </a>
             </p>

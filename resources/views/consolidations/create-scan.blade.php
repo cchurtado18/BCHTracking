@@ -103,8 +103,8 @@
 <style>
 /* —— Page shell —— */
 .csscan-page {
-    --csscan-accent: #0d9488;
-    --csscan-accent-dark: #0f766e;
+    --csscan-accent: #059669;
+    --csscan-accent-dark: #047857;
     --csscan-surface: #ffffff;
     --csscan-canvas: #f4f6f9;
     --csscan-border: #e8ecf1;
@@ -273,8 +273,8 @@
     font-size: 0.6875rem;
     font-weight: 600;
     color: var(--csscan-accent-dark);
-    background: rgba(13, 148, 136, 0.1);
-    border: 1px solid rgba(13, 148, 136, 0.2);
+    background: rgba(5, 150, 105, 0.1);
+    border: 1px solid rgba(5, 150, 105, 0.2);
     padding: 0.25rem 0.6rem;
     border-radius: 9999px;
 }
@@ -301,7 +301,7 @@
     outline: none;
     border-color: var(--csscan-accent);
     background: #fff;
-    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
 }
 .csscan-textarea { resize: vertical; min-height: 72px; line-height: 1.45; }
 
@@ -310,7 +310,7 @@
     margin-top: 0.35rem;
     padding: 1.25rem 1.25rem 1.1rem;
     background: linear-gradient(180deg, #fafcfc 0%, #f4f9f8 100%);
-    border: 1px solid rgba(13, 148, 136, 0.18);
+    border: 1px solid rgba(5, 150, 105, 0.18);
     border-radius: var(--csscan-radius);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
@@ -339,8 +339,8 @@
     outline: none;
     border-color: var(--csscan-accent);
     box-shadow:
-        0 0 0 4px rgba(13, 148, 136, 0.14),
-        0 8px 28px rgba(13, 148, 136, 0.12);
+        0 0 0 4px rgba(5, 150, 105, 0.14),
+        0 8px 28px rgba(5, 150, 105, 0.12);
 }
 .csscan-input:focus-visible {
     outline: none;
@@ -388,13 +388,13 @@
 }
 .csscan-btn-primary {
     color: #fff;
-    background: linear-gradient(180deg, #14b8a6 0%, var(--csscan-accent) 55%, var(--csscan-accent-dark) 100%);
-    border-color: rgba(15, 118, 110, 0.35);
-    box-shadow: 0 2px 4px rgba(13, 148, 136, 0.25), 0 8px 20px rgba(13, 148, 136, 0.2);
+    background: linear-gradient(180deg, #10b981 0%, var(--csscan-accent) 55%, var(--csscan-accent-dark) 100%);
+    border-color: rgba(4, 120, 87, 0.35);
+    box-shadow: 0 2px 4px rgba(5, 150, 105, 0.25), 0 8px 20px rgba(5, 150, 105, 0.2);
 }
 .csscan-btn-primary:hover:not(:disabled) {
     filter: brightness(1.03);
-    box-shadow: 0 4px 8px rgba(13, 148, 136, 0.28), 0 12px 28px rgba(13, 148, 136, 0.22);
+    box-shadow: 0 4px 8px rgba(5, 150, 105, 0.28), 0 12px 28px rgba(5, 150, 105, 0.22);
     transform: translateY(-1px);
 }
 .csscan-btn-primary:active:not(:disabled) {
@@ -494,9 +494,9 @@
     font-weight: 700;
     color: var(--csscan-accent-dark);
     background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%);
-    border: 1px solid rgba(13, 148, 136, 0.25);
+    border: 1px solid rgba(5, 150, 105, 0.25);
     border-radius: 10px;
-    box-shadow: 0 1px 2px rgba(13, 148, 136, 0.08);
+    box-shadow: 0 1px 2px rgba(5, 150, 105, 0.08);
 }
 
 .csscan-list {
@@ -535,7 +535,7 @@
 }
 .csscan-row.match {
     border-color: rgba(16, 185, 129, 0.45);
-    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+    background: linear-gradient(135deg, #ecfdf5 0%, #ecfdf5 100%);
     box-shadow: 0 1px 3px rgba(16, 185, 129, 0.12);
 }
 .csscan-row.unmatch {

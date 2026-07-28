@@ -5,8 +5,8 @@
 @section('content')
 <style>
     .cons-show-page {
-        --cs-accent: #0d9488;
-        --cs-accent-dark: #0f766e;
+        --cs-accent: #059669;
+        --cs-accent-dark: #047857;
         --cs-surface: #ffffff;
         --cs-muted: #64748b;
         --cs-border: #e2e8f0;
@@ -19,7 +19,7 @@
 
     /* Hero */
     .cons-show-hero {
-        background: linear-gradient(135deg, #0f766e 0%, #0d9488 45%, #14b8a6 100%);
+        background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
         border-radius: var(--cs-radius);
         padding: 1.25rem 1.35rem 1.35rem;
         margin-bottom: 1.5rem;
@@ -87,7 +87,7 @@
         border-color: rgba(255, 255, 255, 0.65);
     }
     .cons-show-btn--solid:hover {
-        background: #f0fdfa;
+        background: #ecfdf5;
         color: var(--cs-accent);
         border-color: #fff;
     }
@@ -140,7 +140,7 @@
         letter-spacing: 0.04em;
         text-transform: uppercase;
         color: #fff;
-        background: linear-gradient(135deg, #0f766e 0%, #0d9488 55%, #0f766e 100%);
+        background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
     }
     .cons-show-card-b {
         padding: 1.35rem 1.4rem 1.5rem;
@@ -208,7 +208,7 @@
         border: 1px solid var(--cs-border);
         background: #fafbfc;
     }
-    .cons-show-item--ok { border-color: rgba(16, 185, 129, 0.35); background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); }
+    .cons-show-item--ok { border-color: rgba(16, 185, 129, 0.35); background: linear-gradient(135deg, #ecfdf5 0%, #ecfdf5 100%); }
     .cons-show-item-name { font-size: 0.875rem; font-weight: 600; color: #0f172a; }
     .cons-show-item-code { font-size: 0.75rem; font-family: ui-monospace, monospace; color: var(--cs-muted); margin-top: 0.25rem; }
     .cons-show-item-meta { font-size: 0.75rem; color: var(--cs-muted); margin-top: 0.2rem; }
@@ -290,9 +290,9 @@
     }
     .cons-show-mode-card:hover {
         border-color: var(--cs-accent);
-        box-shadow: 0 6px 18px rgba(13, 148, 136, 0.12);
+        box-shadow: 0 6px 18px rgba(5, 150, 105, 0.12);
         transform: translateY(-1px);
-        background: #f0fdfa;
+        background: #ecfdf5;
     }
     .cons-show-mode-card-icon { font-size: 1.5rem; line-height: 1; margin-bottom: 0.55rem; opacity: 0.85; }
     .cons-show-mode-card-title { margin: 0 0 0.35rem; font-size: 1rem; font-weight: 700; color: #0f172a; }
@@ -328,7 +328,7 @@
     .cons-show-edit-tab--active {
         color: var(--cs-accent-dark);
         background: #fff;
-        border-color: rgba(13, 148, 136, 0.35);
+        border-color: rgba(5, 150, 105, 0.35);
         box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
     }
     .cons-show-edit-tab--active:hover {
@@ -340,7 +340,7 @@
     .cons-show-scan-box {
         padding: 1.25rem 1.25rem 1.1rem;
         background: linear-gradient(180deg, #fafcfc 0%, #f4f9f8 100%);
-        border: 1px solid rgba(13, 148, 136, 0.18);
+        border: 1px solid rgba(5, 150, 105, 0.18);
         border-radius: var(--cs-radius);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
     }
@@ -366,8 +366,8 @@
         outline: none;
         border-color: var(--cs-accent);
         box-shadow:
-            0 0 0 4px rgba(13, 148, 136, 0.14),
-            0 8px 28px rgba(13, 148, 136, 0.12);
+            0 0 0 4px rgba(5, 150, 105, 0.14),
+            0 8px 28px rgba(5, 150, 105, 0.12);
     }
     .cons-show-scan-feedback {
         min-height: 1.35rem;
@@ -390,7 +390,7 @@
         background: #fff;
     }
     .cons-show-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-    .cons-show-table thead { background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%); }
+    .cons-show-table thead { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); }
     .cons-show-table th {
         padding: 0.65rem 1rem;
         text-align: left;
@@ -409,14 +409,14 @@
         font-size: 0.8125rem;
         font-weight: 600;
         color: var(--cs-accent-dark);
-        background: #f0fdfa;
-        border: 1px solid rgba(13, 148, 136, 0.35);
+        background: #ecfdf5;
+        border: 1px solid rgba(5, 150, 105, 0.35);
         border-radius: 8px;
         cursor: pointer;
         transition: background 0.15s, border-color 0.15s;
     }
     .cons-show-table-add:hover {
-        background: #ccfbf1;
+        background: #d1fae5;
         border-color: var(--cs-accent);
     }
 

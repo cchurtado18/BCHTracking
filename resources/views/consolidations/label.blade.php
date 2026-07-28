@@ -25,12 +25,12 @@
         .label-sheet .label-header {
             margin-bottom: 10px;
             padding-bottom: 8px;
-            border-bottom: 2px solid #0d9488;
+            border-bottom: 2px solid #059669;
         }
         .label-sheet .label-header .company {
             font-size: 14px;
             font-weight: 700;
-            color: #0d9488;
+            color: #059669;
             letter-spacing: 0.02em;
         }
         .label-sheet .saco-code {
@@ -66,7 +66,7 @@
             margin-bottom: 0;
         }
         .no-print button {
-            background: #0d9488;
+            background: #059669;
             color: white;
             border: none;
             padding: 12px 24px;
@@ -75,7 +75,7 @@
             cursor: pointer;
             font-weight: 600;
         }
-        .no-print button:hover { background: #0f766e; }
+        .no-print button:hover { background: #047857; }
         .no-print a {
             display: inline-block;
             margin-left: 12px;
@@ -103,26 +103,26 @@
             padding: 10px 12px;
             font-size: 13px;
             font-weight: 600;
-            color: #0f766e;
-            background: #f0fdfa;
-            border: 1px solid rgba(13, 148, 136, 0.4);
+            color: #047857;
+            background: #ecfdf5;
+            border: 1px solid rgba(5, 150, 105, 0.4);
             border-radius: 8px;
             text-decoration: none;
             transition: background 0.15s, border-color 0.15s, color 0.15s;
         }
         .edit-prompt-btn:hover {
-            background: #ccfbf1;
-            border-color: #0d9488;
-            color: #0f766e;
+            background: #d1fae5;
+            border-color: #059669;
+            color: #047857;
         }
         .edit-prompt-btn--primary {
             color: #fff;
-            background: #0d9488;
-            border-color: #0d9488;
+            background: #059669;
+            border-color: #059669;
         }
         .edit-prompt-btn--primary:hover {
-            background: #0f766e;
-            border-color: #0f766e;
+            background: #047857;
+            border-color: #047857;
             color: #fff;
         }
 

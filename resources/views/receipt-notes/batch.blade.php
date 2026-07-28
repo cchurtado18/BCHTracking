@@ -237,9 +237,9 @@
 .rnb-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
 
 .rnb-hero {
-    background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%);
+    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
     border-radius: 1rem; padding: 1.5rem 1.5rem; margin-bottom: 1.5rem;
-    box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25);
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
 }
 .rnb-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
 .rnb-kicker { margin: 0 0 0.25rem; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.85); }
@@ -253,12 +253,12 @@
     border-radius: 0.5rem; border: 1px solid transparent;
     cursor: pointer; text-decoration: none; transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.rnb-btn-primary { background: #0d9488; color: #fff; border-color: #0d9488; font-weight: 600; }
-.rnb-btn-primary:hover { background: #0f766e; border-color: #0f766e; color: #fff; }
+.rnb-btn-primary { background: #059669; color: #fff; border-color: #059669; font-weight: 600; }
+.rnb-btn-primary:hover { background: #047857; border-color: #047857; color: #fff; }
 .rnb-btn-secondary { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
 .rnb-btn-secondary:hover { background: #e5e7eb; color: #111827; }
-.rnb-btn-outline-primary { background: #fff; color: #0d9488; border-color: #0d9488; }
-.rnb-btn-outline-primary:hover { background: #ccfbf1; color: #0f766e; }
+.rnb-btn-outline-primary { background: #fff; color: #059669; border-color: #059669; }
+.rnb-btn-outline-primary:hover { background: #d1fae5; color: #047857; }
 .rnb-btn-glass { background: rgba(255,255,255,0.18); color: #fff; border-color: rgba(255,255,255,0.4); }
 .rnb-btn-glass:hover { background: rgba(255,255,255,0.28); color: #fff; }
 .rnb-btn-danger { background: #fff; color: #b91c1c; border-color: #fecaca; }
@@ -269,7 +269,7 @@
 .rnb-card-h {
     padding: 0.85rem 1.25rem; font-size: 0.8125rem; font-weight: 700;
     letter-spacing: 0.04em; text-transform: uppercase; color: #fff;
-    background: linear-gradient(135deg, #0f766e 0%, #0d9488 55%, #0f766e 100%);
+    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
 }
 .rnb-card-h-row { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; text-transform: none; letter-spacing: 0; font-size: 0.875rem; }
 .rnb-card-b { padding: 1.25rem 1.5rem; }
@@ -289,7 +289,7 @@
 }
 .rnb-textarea { resize: vertical; min-height: 64px; }
 .rnb-input:focus, .rnb-select:focus, .rnb-textarea:focus {
-    outline: none; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+    outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
 }
 
 .rnb-scan-input {
@@ -302,7 +302,7 @@
     box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
     transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
-.rnb-scan-input:focus { outline: none; border-color: #0d9488; box-shadow: 0 0 0 4px rgba(13,148,136,0.14); }
+.rnb-scan-input:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 4px rgba(5, 150, 105,0.14); }
 .rnb-hint { margin: 0.75rem 0 0; font-size: 0.75rem; color: #6b7280; line-height: 1.45; }
 
 .rnb-info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem 1.25rem; }
@@ -311,8 +311,8 @@
 
 .rnb-table-wrap { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 0.5rem; }
 .rnb-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-.rnb-table thead { background: #f0fdfa; }
-.rnb-table th { padding: 0.55rem 0.75rem; text-align: left; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #0f766e; border-bottom: 1px solid #ccfbf1; }
+.rnb-table thead { background: #ecfdf5; }
+.rnb-table th { padding: 0.55rem 0.75rem; text-align: left; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #047857; border-bottom: 1px solid #d1fae5; }
 .rnb-table td { padding: 0.65rem 0.75rem; border-top: 1px solid #f1f5f9; vertical-align: middle; }
 .rnb-table tbody tr:hover { background: #f8fafc; }
 .rnb-row-actions { text-align: right; }

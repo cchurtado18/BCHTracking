@@ -59,7 +59,7 @@
                     </div>
                 </div>
                 <div class="mt-6 flex justify-end">
-                    <button type="submit" id="btn-scan-retirer-submit" class="bg-teal-600 text-white px-4 py-2 rounded-md hover:bg-teal-700 font-medium disabled:opacity-60 disabled:cursor-not-allowed">
+                    <button type="submit" id="btn-scan-retirer-submit" class="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 font-medium disabled:opacity-60 disabled:cursor-not-allowed">
                         Guardar y escanear
                     </button>
                 </div>
@@ -88,7 +88,7 @@
             </div>
             <div class="flex flex-wrap items-center gap-3 shrink-0">
                 @if($scanDeliveryNote)
-                <a href="{{ route('deliveries.print-report', ['delivery_note_id' => $scanDeliveryNote->id]) }}" target="_blank" class="text-sm font-medium text-teal-800 underline hover:text-teal-950">Imprimir nota</a>
+                <a href="{{ route('deliveries.print-report', ['delivery_note_id' => $scanDeliveryNote->id]) }}" target="_blank" class="text-sm font-medium text-emerald-800 underline hover:text-emerald-950">Imprimir nota</a>
                 @endif
                 <form action="{{ route('deliveries.scan-clear-retirer-session') }}" method="POST">
                     @csrf
@@ -146,8 +146,8 @@
         </div>
 
         @if($scannedDeliveries->isNotEmpty())
-        <div class="bg-white shadow rounded-lg overflow-hidden border-2 border-teal-600">
-            <div class="px-4 py-3 bg-teal-700 text-white flex items-center justify-between gap-2">
+        <div class="bg-white shadow rounded-lg overflow-hidden border-2 border-emerald-600">
+            <div class="px-4 py-3 bg-emerald-700 text-white flex items-center justify-between gap-2">
                 <h2 class="text-base font-semibold">Escaneados hoy</h2>
                 <span class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-full bg-white/20 font-bold">{{ $scannedDeliveries->count() }}</span>
             </div>
@@ -155,7 +155,7 @@
                 @foreach($scannedDeliveries as $i => $delivery)
                     @php $pkg = $delivery->preregistration; @endphp
                     <li class="px-4 py-3 flex items-center gap-3 {{ $i === 0 ? 'bg-emerald-50' : '' }}">
-                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold {{ $i === 0 ? 'bg-teal-600 text-white' : 'bg-teal-100 text-teal-800' }}">{{ $scannedDeliveries->count() - $i }}</span>
+                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold {{ $i === 0 ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-800' }}">{{ $scannedDeliveries->count() - $i }}</span>
                         <div class="min-w-0 flex-1">
                             <div class="font-semibold text-gray-900 truncate">{{ $pkg?->label_name ?: 'Sin nombre' }}</div>
                             <div class="mt-0.5 flex flex-wrap gap-x-3 gap-y-1 text-xs font-mono text-gray-600">
