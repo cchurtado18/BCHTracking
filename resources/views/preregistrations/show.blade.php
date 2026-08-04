@@ -344,6 +344,7 @@
 </div>
 
 @push('scripts')
+@include('partials.compress-image-script')
 <script>
     const photoUpload = document.getElementById('photoUpload');
     const photoUploadUi = document.getElementById('photoUploadUi');
@@ -453,7 +454,7 @@
             photoUpload.click();
         });
 
-        photoUpload.addEventListener('change', function() {
+        photoUpload.addEventListener('change', async function() {
             const file = photoUpload.files && photoUpload.files[0];
             photoUpload.value = '';
             if (!file) return;
@@ -461,9 +462,17 @@
                 alert('Ya alcanzaste el máximo de 3 fotos.');
                 return;
             }
-            pendingFiles.push(file);
-            renderPendingPhotos();
-            updatePhotoUiState();
+            if (btnTakePhoto) btnTakePhoto.disabled = true;
+            try {
+                const compressed = await window.skylinkCompressImage(file);
+                pendingFiles.push(compressed);
+                renderPendingPhotos();
+                updatePhotoUiState();
+            } catch (e) {
+                pendingFiles.push(file);
+                renderPendingPhotos();
+                updatePhotoUiState();
+            }
             if (keepCameraOpen && remainingSlots() > 0) {
                 setTimeout(function() { photoUpload.click(); }, 180);
             }
@@ -471,6 +480,9 @@
 
         btnUploadPhotos.addEventListener('click', async function() {
             keepCameraOpen = false;
+            const originalTitle = btnUploadPhotos.title;
+            btnUploadPhotos.disabled = true;
+            btnUploadPhotos.title = 'Subiendo...';
             try {
                 const uploaded = await uploadPendingFiles();
                 if (uploaded > 0) {
@@ -479,6 +491,7 @@
             } catch (err) {
                 alert(err.message || 'Error al subir fotos');
                 updatePhotoUiState();
+                btnUploadPhotos.title = originalTitle;
             }
         });
     }

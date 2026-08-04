@@ -86,6 +86,7 @@
 </div>
 
 @push('scripts')
+@include('partials.compress-image-script')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var form = document.getElementById('quickCourierForm');
@@ -152,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (input) {
-        input.addEventListener('change', function(e) {
+        input.addEventListener('change', async function(e) {
             var file = e.target.files && e.target.files[0];
             if (!file) return;
             if (files.length >= maxPhotos) {
@@ -160,6 +161,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.target.value = '';
                 return;
             }
+            if (btnTake) btnTake.disabled = true;
+            try {
+                file = await window.skylinkCompressImage(file);
+            } catch (err) {}
             files.push({ file: file, previewUrl: URL.createObjectURL(file) });
             renderGrid();
             refreshCounter();
