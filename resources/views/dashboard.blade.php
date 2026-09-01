@@ -228,7 +228,6 @@
                 @foreach($heatmapWeeks ?? [] as $week)
                 <div class="opx-heatmap-week">
                     @foreach($week as $cell)
-                    @foreach($week as $cell)
                     <div class="opx-heatcell opx-heat-{{ $cell['count'] === null ? 'future' : $cell['level'] }}{{ $cell['count'] === null ? '' : ' has-tip' }}">
                         @if($cell['count'] !== null)
                         <span class="opx-heat-tip">
@@ -237,7 +236,6 @@
                         </span>
                         @endif
                     </div>
-                    @endforeach
                     @endforeach
                 </div>
                 @endforeach
