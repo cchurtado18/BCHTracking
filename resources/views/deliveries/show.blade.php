@@ -1,28 +1,32 @@
 @extends('layouts.app')
 
-@section('title', 'Detalle Entrega')
+@section('title', 'Detalle de salida')
 
 @section('content')
 <div class="delivery-page delivery-show-page">
-    <header class="delivery-hero">
-        <div class="delivery-hero-inner">
-            <div class="delivery-hero-text">
-                <h1 class="delivery-hero-title">Entrega #{{ $delivery->id }}</h1>
-                <p class="delivery-hero-subtitle">Detalle de la entrega</p>
-            </div>
-            <a href="{{ route('deliveries.index', session('deliveries_index_filters', [])) }}" class="delivery-hero-btn">← Volver</a>
-        </div>
-    </header>
+    <x-module-banner
+        section="Operaciones"
+        current="Detalle de salida"
+        title="Salida #{{ $delivery->id }}"
+        subtitle="Paquete registrado en la hoja {{ $delivery->deliveryNote?->code ?? 'de salida' }} · {{ $delivery->preregistration?->label_name ?? 'Sin etiqueta' }}."
+        back-href="{{ route('salidas.index', session('deliveries_index_filters', [])) }}"
+        back-label="Volver a Salidas"
+        :hide-back="(bool) auth()->user()?->isAgencyUser()"
+    >
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h11.25v10.5H3.75V6.75Zm11.25 3h3.19a1.5 1.5 0 0 1 1.22.63l1.59 2.24v4.63H15V9.75ZM7.5 18.75a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm12 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"/></svg>
+        </x-slot:icon>
+    </x-module-banner>
 
     <div class="delivery-show-grid">
         <div class="delivery-card">
             <div class="delivery-card-header delivery-table-header">
-                <h2 class="delivery-card-title">Información de entrega</h2>
+                <h2 class="delivery-card-title">Información de la salida</h2>
             </div>
             <div class="delivery-card-body">
                 <dl class="delivery-dl">
                     <div class="delivery-dl-row">
-                        <dt class="delivery-dt">Fecha de entrega</dt>
+                        <dt class="delivery-dt">Fecha de salida</dt>
                         <dd class="delivery-dd">{{ $delivery->delivered_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') }}</dd>
                     </div>
                     <div class="delivery-dl-row">
@@ -41,15 +45,9 @@
                         <dd class="delivery-dd">{{ $delivery->retirer_phone }}</dd>
                     </div>
                     @endif
-                    @if($delivery->invoice_number)
-                    <div class="delivery-dl-row">
-                        <dt class="delivery-dt">Nº de factura</dt>
-                        <dd class="delivery-dd"><span class="delivery-code">{{ $delivery->invoice_number }}</span></dd>
-                    </div>
-                    @endif
                     @if($delivery->deliveryNote)
                     <div class="delivery-dl-row">
-                        <dt class="delivery-dt">Nota de entrega</dt>
+                        <dt class="delivery-dt">Hoja de salida</dt>
                         <dd class="delivery-dd"><span class="delivery-code">{{ $delivery->deliveryNote->code }}</span></dd>
                     </div>
                     @endif
@@ -70,7 +68,7 @@
             <div class="delivery-card-body">
                 <dl class="delivery-dl">
                     <div class="delivery-dl-row">
-                        <dt class="delivery-dt">Warehouse code</dt>
+                        <dt class="delivery-dt">Código</dt>
                         <dd class="delivery-dd delivery-code">{{ $delivery->preregistration->warehouse_code ?? 'N/A' }}</dd>
                     </div>
                     <div class="delivery-dl-row">
@@ -80,7 +78,7 @@
                     <div class="delivery-dl-row">
                         <dt class="delivery-dt">Tipo de servicio</dt>
                         <dd class="delivery-dd">
-                            <span class="delivery-badge delivery-badge-{{ strtolower($delivery->preregistration->service_type ?? '') }}">{{ $delivery->preregistration->service_type == 'AIR' ? 'Aéreo' : 'Marítimo' }}</span>
+                            <span class="delivery-badge delivery-badge-{{ strtolower($delivery->preregistration->service_type ?? '') }}">{{ \App\Support\ServiceType::label($delivery->preregistration->service_type) }}</span>
                         </dd>
                     </div>
                     <div class="delivery-dl-row">
@@ -113,21 +111,11 @@
 
 <style>
 .delivery-show-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
-.delivery-show-page .delivery-hero {
-    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
-    border-radius: 1rem; padding: 1.75rem 1.5rem; margin-bottom: 1.5rem;
-    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
-}
-.delivery-show-page .delivery-hero-title { color: #fff; margin: 0; font-size: 1.75rem; font-weight: 700; }
-.delivery-show-page .delivery-hero-subtitle { color: rgba(255,255,255,0.9); margin: 0.35rem 0 0; font-size: 0.9375rem; }
-.delivery-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-.delivery-hero-btn { display: inline-flex; align-items: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600; background: #fff; color: #047857; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none; }
-.delivery-hero-btn:hover { background: #ecfdf5; color: #059669; }
 .delivery-show-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
 @media (min-width: 992px) { .delivery-show-grid { grid-template-columns: 1fr 1fr; } }
 .delivery-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; margin-bottom: 1.5rem; }
 .delivery-card-header { padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb; background: #fafafa; }
-.delivery-card-header.delivery-table-header { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); padding: 0.75rem 1.5rem; }
+.delivery-card-header.delivery-table-header { background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%); padding: 0.75rem 1.5rem; }
 .delivery-card-header.delivery-table-header .delivery-card-title { color: #fff; }
 .delivery-card-title { margin: 0; font-size: 0.9375rem; font-weight: 600; color: #374151; }
 .delivery-card-body { padding: 1.25rem; }
@@ -138,10 +126,10 @@
 .delivery-code { font-family: ui-monospace, monospace; font-weight: 600; }
 .delivery-badge { display: inline-block; padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem; }
 .delivery-badge-pickup { background: #dbeafe; color: #1d4ed8; }
-.delivery-badge-delivery { background: #d1fae5; color: #047857; }
+.delivery-badge-delivery { background: #E8EEF8; color: #0A2D6F; }
 .delivery-badge-air { background: #dbeafe; color: #1d4ed8; }
-.delivery-badge-sea { background: #d1fae5; color: #047857; }
-.delivery-link { color: #059669; text-decoration: none; font-weight: 500; }
+.delivery-badge-sea { background: #E8EEF8; color: #0A2D6F; }
+.delivery-link { color: #0A2D6F; text-decoration: none; font-weight: 500; }
 .delivery-link:hover { text-decoration: underline; }
 </style>
 @endsection

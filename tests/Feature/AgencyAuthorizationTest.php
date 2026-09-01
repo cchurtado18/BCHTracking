@@ -65,10 +65,53 @@ class AgencyAuthorizationTest extends TestCase
         $agencies = $this->createAgencies();
         $user = User::factory()->create(['agency_id' => $agencies['subA']->id]);
 
-        $this->actingAs($user)->get(route('preregistrations.index'))->assertForbidden();
-        $this->actingAs($user)->get(route('consolidations.index'))->assertForbidden();
-        $this->actingAs($user)->get(route('nic-consolidations.index'))->assertForbidden();
-        $this->actingAs($user)->get(route('receipt-notes.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('preregistrations.index'))->assertRedirect(route('packages.index'));
+        $this->actingAs($user)->get(route('consolidations.index'))->assertRedirect(route('packages.index'));
+        $this->actingAs($user)->get(route('nic-consolidations.index'))->assertRedirect(route('packages.index'));
+        $this->actingAs($user)->get(route('receipt-notes.index'))->assertRedirect(route('packages.index'));
+        $this->actingAs($user)->get(route('api-tokens.index'))->assertRedirect(route('packages.index'));
+        $this->actingAs($user)->get(route('dashboard'))->assertRedirect(route('packages.index'));
+        $this->actingAs($user)->get(route('salidas.index'))->assertOk();
+        $this->actingAs($user)->get(route('accounting.invoices.index'))->assertOk();
+        $this->actingAs($user)->get(route('packages.index'))
+            ->assertOk()
+            ->assertDontSee('>Inicio</span>', false)
+            ->assertDontSee('>Panel</span>', false)
+            ->assertDontSee('Volver al panel');
+    }
+
+    public function test_agency_user_cannot_process_or_reprint_warehouse_packages(): void
+    {
+        $agencies = $this->createAgencies();
+        $user = User::factory()->create(['agency_id' => $agencies['subA']->id, 'password' => 'password']);
+        $package = $this->createPackage($agencies['subA']->id, '440001');
+        $package->update(['status' => 'IN_WAREHOUSE_NIC', 'ready_at' => null]);
+
+        $this->actingAs($user)
+            ->get(route('packages.process', $package->id))
+            ->assertRedirect(route('packages.index'));
+
+        $this->actingAs($user)
+            ->post(route('packages.process.store', $package->id), [
+                'verified_weight_lbs' => 4.5,
+            ])
+            ->assertRedirect(route('packages.index'));
+
+        $this->actingAs($user)
+            ->post(route('packages.reprint-label', $package->id))
+            ->assertRedirect(route('packages.index'));
+
+        $this->assertSame('IN_WAREHOUSE_NIC', $package->fresh()->status);
+
+        $this->actingAs($user)
+            ->get(route('packages.show', $package->id))
+            ->assertOk()
+            ->assertDontSee('Procesar paquete');
+
+        $this->postJson('/api/auth/token', [
+            'email' => $user->email,
+            'password' => 'password',
+        ])->assertStatus(422);
     }
 
     public function test_central_user_can_access_central_modules(): void

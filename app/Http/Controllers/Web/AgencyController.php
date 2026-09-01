@@ -7,6 +7,7 @@ use App\Models\Agency;
 use App\Models\Preregistration;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\Password;
@@ -22,7 +23,7 @@ class AgencyController extends Controller
 
     public function index(Request $request)
     {
-        $query = Agency::with('parent')->withCount(['clients', 'preregistrations']);
+        $query = Agency::with(['parent', 'users:id,agency_id,email'])->withCount(['clients', 'preregistrations']);
 
         if ($request->has('is_active') && $request->filled('is_active')) {
             $query->where('is_active', (bool) $request->is_active);
@@ -34,7 +35,10 @@ class AgencyController extends Controller
             });
         }
 
-        $agencies = $query->orderBy('name')->paginate(15)->withQueryString();
+        if ($request->filled('account_type')) {
+            $query->where('account_type', $request->account_type);
+        }
+        $agencies = $query->orderBy('name')->paginate(25)->withQueryString();
 
         // Estadísticas con los mismos filtros
         $statsQuery = Agency::query();
@@ -47,34 +51,66 @@ class AgencyController extends Controller
                 $q->where('name', 'like', "%{$s}%")->orWhere('code', 'like', "%{$s}%");
             });
         }
+        if ($request->filled('account_type')) {
+            $statsQuery->where('account_type', $request->account_type);
+        }
         $statsTotal = $statsQuery->count();
         $statsActive = (clone $statsQuery)->where('is_active', true)->count();
         $statsInactive = (clone $statsQuery)->where('is_active', false)->count();
-        $statsSubagencies = (clone $statsQuery)->where('is_main', false)->count();
+        $statsSubagencies = (clone $statsQuery)->where('account_type', Agency::TYPE_SUBAGENCY)->count();
+        $statsDirectClients = (clone $statsQuery)->where('account_type', Agency::TYPE_DIRECT_CLIENT)->count();
 
-        return view('agencies.index', compact('agencies', 'statsTotal', 'statsActive', 'statsInactive', 'statsSubagencies'));
+        return view('agencies.index', compact('agencies', 'statsTotal', 'statsActive', 'statsInactive', 'statsSubagencies', 'statsDirectClients'));
     }
 
     public function create()
     {
         $departments = self::NICARAGUA_DEPARTMENTS;
-        $mainAgencies = Agency::mainAgencies()->orderBy('name')->get();
+        $parentOptions = Agency::parentCandidates()->get();
+        $slo = Agency::query()
+            ->where(function ($q) {
+                $q->where('is_main', true)->orWhere('account_type', Agency::TYPE_ROOT);
+            })
+            ->orderByDesc('is_main')
+            ->first();
+        $subagencyParents = $parentOptions
+            ->filter(fn (Agency $agency) => ! $agency->is_main && $agency->account_type !== Agency::TYPE_ROOT)
+            ->values();
 
-        return view('agencies.create', compact('departments', 'mainAgencies'));
+        return view('agencies.create', compact('departments', 'parentOptions', 'slo', 'subagencyParents'));
     }
 
     public function store(Request $request)
     {
         // Normalizar nombre (trim) para validar y guardar el mismo valor; así solo falla si ya existe uno igual
+        $email = mb_strtolower(trim((string) $request->input('user_email', '')));
         $request->merge([
             'name' => trim((string) $request->input('name', '')),
             'phone' => $request->filled('phone') ? trim((string) $request->input('phone')) : null,
             'address' => $request->filled('address') ? trim((string) $request->input('address')) : null,
-            'user_email' => $request->filled('user_email') ? trim((string) $request->input('user_email')) : $request->input('user_email'),
+            'user_email' => $email !== '' ? $email : $request->input('user_email'),
         ]);
 
+        $accountType = (string) $request->input('account_type');
+        $slo = Agency::query()
+            ->where(function ($q) {
+                $q->where('is_main', true)->orWhere('account_type', Agency::TYPE_ROOT);
+            })
+            ->orderByDesc('is_main')
+            ->first();
+
+        if ($accountType === Agency::TYPE_DIRECT_CLIENT && $slo) {
+            $request->merge(['parent_agency_id' => $slo->id]);
+        } elseif ($accountType === Agency::TYPE_SUBAGENCY && $request->input('subagency_scope') === 'slo' && $slo) {
+            $request->merge(['parent_agency_id' => $slo->id]);
+        }
+
         $request->validate([
-            'parent_agency_id' => 'required|exists:agencies,id',
+            'account_type' => 'required|in:subagency,direct_client',
+            'subagency_scope' => 'nullable|in:slo,nested',
+            'parent_agency_id' => $accountType === Agency::TYPE_DIRECT_CLIENT
+                ? 'nullable|exists:agencies,id'
+                : 'required|exists:agencies,id',
             'name' => 'required|string|max:255|unique:agencies,name',
             'phone' => 'nullable|string|max:50',
             'address' => 'nullable|string|max:500',
@@ -84,26 +120,37 @@ class AgencyController extends Controller
             'user_email' => 'required|email|unique:users,email',
             'user_password' => 'required|string|min:8|confirmed',
         ], [
-            'parent_agency_id.required' => 'Debe seleccionar si la subagencia es de SkyLink One o de CH LOGISTICS.',
-            'parent_agency_id.exists' => 'La agencia principal seleccionada no es válida.',
-            'name.required' => 'El nombre de la subagencia es obligatorio.',
-            'name.unique' => 'Ya existe una subagencia con ese nombre. Elija otro nombre.',
-            'user_email.required' => 'El correo del usuario de la agencia es obligatorio.',
-            'user_email.unique' => 'Ya existe un usuario con ese correo. Use otro correo.',
-            'user_password.required' => 'La contraseña del usuario es obligatoria.',
+            'account_type.required' => 'Indique si es subagencia o cliente de SkyLink One.',
+            'parent_agency_id.required' => 'Debe seleccionar a quién pertenece esta cuenta.',
+            'parent_agency_id.exists' => 'La cuenta padre seleccionada no es válida.',
+            'name.required' => 'El nombre es obligatorio.',
+            'name.unique' => 'Ya existe una cuenta con ese nombre. Elija otro nombre.',
+            'user_email.required' => 'El correo de acceso es obligatorio.',
+            'user_email.unique' => $this->userEmailTakenMessage($email),
+            'user_password.required' => 'La contraseña es obligatoria.',
             'user_password.min' => 'La contraseña debe tener al menos 8 caracteres.',
             'user_password.confirmed' => 'La confirmación de contraseña no coincide.',
         ]);
 
         $parent = Agency::find($request->parent_agency_id);
-        if (! $parent || ! $parent->is_main) {
-            return redirect()->back()->withInput()->withErrors(['parent_agency_id' => 'Debe seleccionar SkyLink One o CH LOGISTICS.']);
+        $accountType = (string) $request->account_type;
+
+        if ($accountType === Agency::TYPE_DIRECT_CLIENT) {
+            if (! $slo) {
+                return redirect()->back()->withInput()->withErrors(['account_type' => 'No se encontró SkyLink One para asignar el cliente.']);
+            }
+            $parent = $slo;
+        } elseif (! $parent || $parent->isDirectClient()) {
+            return redirect()->back()->withInput()->withErrors(['parent_agency_id' => 'Una subagencia debe pertenecer a SkyLink One o a otra agencia/subagencia (no a un cliente propio de SLO).']);
         }
 
-        $data = $request->only(['name', 'phone', 'address', 'department', 'parent_agency_id']);
+        $data = $request->only(['name', 'phone', 'address', 'department']);
+        $data['parent_agency_id'] = $parent->id;
         $data['code'] = Agency::nextAvailableNumericCode();
         $data['is_active'] = true;
         $data['is_main'] = false;
+        $data['account_type'] = $accountType;
+        $data['billing_email'] = trim((string) $request->user_email);
 
         if ($request->hasFile('logo')) {
             try {
@@ -118,32 +165,41 @@ class AgencyController extends Controller
         }
 
         try {
-            $agency = Agency::create($data);
+            $agency = DB::transaction(function () use ($request, $data) {
+                $agency = Agency::create($data);
+                $userName = trim((string) $request->input('user_name', ''));
+                if ($userName === '' || filter_var($userName, FILTER_VALIDATE_EMAIL)) {
+                    $userName = $agency->name;
+                }
+                User::create([
+                    'name' => $userName,
+                    'email' => trim((string) $request->user_email),
+                    'password' => $request->user_password,
+                    'agency_id' => $agency->id,
+                    'is_admin' => false,
+                ]);
+
+                return $agency;
+            });
         } catch (\Throwable $e) {
             \Log::warning('Agency store failed', ['exception' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'data' => $data]);
             $message = 'No se pudo guardar la agencia. Intente de nuevo.';
+            $field = 'name';
             if (str_contains($e->getMessage(), 'UNIQUE') || str_contains($e->getMessage(), 'unique')) {
-                $message = 'Ya existe una subagencia con ese nombre. Elija otro nombre.';
+                if (str_contains(mb_strtolower($e->getMessage()), 'email') || str_contains(mb_strtolower($e->getMessage()), 'users')) {
+                    $field = 'user_email';
+                    $message = $this->userEmailTakenMessage(trim((string) $request->user_email));
+                } else {
+                    $message = 'Ya existe una cuenta con ese nombre. Elija otro nombre.';
+                }
             }
 
             return redirect()->back()
                 ->withInput()
-                ->withErrors(['name' => $message]);
+                ->withErrors([$field => $message]);
         }
 
-        $userName = $request->filled('user_name')
-            ? trim((string) $request->user_name)
-            : $agency->name;
-        $userEmail = trim((string) $request->user_email);
-        User::create([
-            'name' => $userName,
-            'email' => $userEmail,
-            'password' => Hash::make($request->user_password),
-            'agency_id' => $agency->id,
-            'is_admin' => false,
-        ]);
-
-        return redirect()->route('agencies.index')->with('success', 'Agencia creada. Se creó el usuario de acceso para la agencia (pueden iniciar sesión con el correo y contraseña indicados).');
+        return redirect()->route('agencies.index')->with('success', 'Cliente creado. Ya puede iniciar sesión con el correo y contraseña indicados.');
     }
 
     public function show(string $id)
@@ -152,7 +208,22 @@ class AgencyController extends Controller
             ->with(['clients', 'users', 'parent', 'children' => fn ($q) => $q->withCount('clients')->orderBy('name')])
             ->findOrFail($id);
 
-        return view('agencies.show', compact('agency'));
+        // Bloque Contabilidad (solo lectura): tarifas vigentes y saldo pendiente
+        $currentRates = \App\Models\AccountingRateCard::query()
+            ->where('agency_id', $agency->id)
+            ->whereNull('effective_to')
+            ->orderBy('service_type')
+            ->get();
+        $openBalance = round(
+            \App\Models\AccountingInvoice::query()
+                ->where('agency_id', $agency->id)
+                ->whereIn('status', ['issued', 'partially_paid'])
+                ->get(['id', 'total_usd', 'amount_paid'])
+                ->sum(fn ($i) => $i->balanceUsd()),
+            2
+        );
+
+        return view('agencies.show', compact('agency', 'currentRates', 'openBalance'));
     }
 
     public function edit(string $id)
@@ -179,11 +250,17 @@ class AgencyController extends Controller
             'logo' => 'nullable|image|mimes:jpeg,jpg,png,gif,webp|max:2048',
             'is_active' => 'sometimes|boolean',
             'remove_logo' => 'sometimes|boolean',
+            'credit_limit_usd' => 'nullable|numeric|min:0|max:9999999',
+            'credit_days' => 'nullable|integer|min:0|max:365',
+            'tax_id' => 'nullable|string|max:50',
+            'billing_contact_name' => 'nullable|string|max:120',
+            'billing_contact_phone' => 'nullable|string|max:40',
+            'billing_email' => 'nullable|email|max:255',
         ], [
             'name.required' => 'El nombre de la subagencia es obligatorio.',
             'name.unique' => 'Ya existe otra subagencia con ese nombre. Elija otro nombre.',
         ]);
-        $data = $request->only(['name', 'phone', 'address', 'department']);
+        $data = $request->only(['name', 'phone', 'address', 'department', 'credit_limit_usd', 'credit_days', 'tax_id', 'billing_contact_name', 'billing_contact_phone', 'billing_email']);
         if ($request->boolean('remove_logo') && $agency->logo_path) {
             Storage::disk('public')->delete($agency->logo_path);
             $data['logo_path'] = null;
@@ -234,9 +311,9 @@ class AgencyController extends Controller
     {
         $agency = Agency::findOrFail($id);
 
-        if ($agency->is_main) {
+        if ($agency->is_main || $agency->account_type === Agency::TYPE_ROOT) {
             return redirect()->route('agencies.index')
-                ->with('error', 'No se pueden eliminar las agencias principales (SkyLink One y CH LOGISTICS).');
+                ->with('error', 'No se puede eliminar SkyLink One.');
         }
 
         $packagesCount = Preregistration::where('agency_id', $agency->id)->count();
@@ -245,12 +322,49 @@ class AgencyController extends Controller
                 ->with('error', "No se puede eliminar la agencia: tiene {$packagesCount} paquete(s) asignado(s). Reasigne o elimine los paquetes antes.");
         }
 
-        if ($agency->logo_path) {
-            Storage::disk('public')->delete($agency->logo_path);
+        $invoicesCount = $agency->accountingInvoices()->count();
+        $paymentsCount = $agency->accountingPayments()->count();
+        $creditNotesCount = $agency->creditNotes()->count();
+        if ($invoicesCount + $paymentsCount + $creditNotesCount > 0) {
+            return redirect()->route('agencies.index')
+                ->with('error', 'No se puede eliminar la cuenta: tiene historial de facturas, cobros o notas de crédito.');
         }
 
-        $agency->delete();
+        DB::transaction(function () use ($agency) {
+            $agency->users()->delete();
+            if ($agency->logo_path) {
+                Storage::disk('public')->delete($agency->logo_path);
+            }
+            $agency->delete();
+        });
 
-        return redirect()->route('agencies.index')->with('success', 'Subagencia eliminada.');
+        return redirect()->route('agencies.index')->with('success', 'Cuenta eliminada.');
+    }
+
+    private function userEmailTakenMessage(string $email): string
+    {
+        $email = mb_strtolower(trim($email));
+        if ($email === '') {
+            return 'Ya existe un usuario con ese correo. Use otro correo para el acceso.';
+        }
+
+        $existing = User::query()
+            ->with('agency:id,code,name')
+            ->whereRaw('lower(email) = ?', [$email])
+            ->first();
+
+        if (! $existing) {
+            return 'Ya existe un usuario con ese correo. Use otro correo para el acceso.';
+        }
+
+        if ($existing->agency) {
+            return "Ese correo ya lo usa {$existing->name} (cuenta {$existing->agency->code} · {$existing->agency->name}). Use otro correo para el acceso de este cliente.";
+        }
+
+        if ($existing->is_admin) {
+            return "Ese correo ya lo usa el administrador {$existing->name}. Use otro correo para el acceso de este cliente.";
+        }
+
+        return "Ese correo ya lo usa el usuario {$existing->name} en Usuarios. Use otro correo, o cambie el de ese usuario si ya no aplica.";
     }
 }

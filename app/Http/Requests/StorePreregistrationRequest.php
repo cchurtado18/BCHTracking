@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\ServiceType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -29,7 +30,7 @@ class StorePreregistrationRequest extends FormRequest
             ],
             'service_type' => [
                 Rule::requiredIf(fn () => ! $this->isDropoffStepSubmission() || (int) $this->input('dropoff_step') === 1),
-                'in:AIR,SEA',
+                ServiceType::rule(),
             ],
             'photo' => 'nullable|file|image|mimes:jpg,jpeg,png,webp|max:10240',
             'bultos_count' => 'sometimes|integer|min:1|max:20',
@@ -48,14 +49,16 @@ class StorePreregistrationRequest extends FormRequest
             $rules['description'] = 'nullable|string|max:500';
             $rules['photo'] = 'required|file|image|mimes:jpg,jpeg,png,webp|max:10240';
             $rules['agency_id'] = 'required_if:dropoff_step,1|exists:agencies,id';
-            $rules['service_type'] = 'required_if:dropoff_step,1|in:AIR,SEA';
+            $rules['service_type'] = 'required_if:dropoff_step,1|'.ServiceType::rule();
             return $rules;
         }
         // Single bulto (or Courier): require label_name, weight, dimension when not multi-bulto
         if (!$this->isMultiBultoDropoff()) {
             $rules['label_name'] = 'required|string|max:255';
             $rules['intake_weight_lbs'] = 'required|numeric|min:0.01|max:999999.99';
-            $rules['dimension'] = 'required_if:intake_type,DROP_OFF|nullable|string|max:100';
+            $rules['dimension'] = ServiceType::isCft($this->input('service_type'))
+                ? 'required|string|max:100'
+                : 'required_if:intake_type,DROP_OFF|nullable|string|max:100';
             $rules['description'] = 'nullable|string|max:500';
         } else {
             // Una foto por bulto
@@ -104,5 +107,22 @@ class StorePreregistrationRequest extends FormRequest
             }
         }
         return $messages;
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $id = (int) $this->input('agency_id');
+            if ($id <= 0) {
+                return;
+            }
+            $agency = \App\Models\Agency::find($id);
+            if ($agency && $agency->isRootAccount()) {
+                $validator->errors()->add(
+                    'agency_id',
+                    'Si el paquete es de SkyLink One, seleccione un cliente propio de SLO. No se puede asignar a SLO como cuenta genérica.'
+                );
+            }
+        });
     }
 }

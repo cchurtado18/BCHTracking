@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Etiquetas Drop Off - {{ $preregistrations->first()->warehouse_code ?? 'BCH' }} - BCH Tracking</title>
+    <title>Etiquetas Drop Off - {{ $preregistrations->first()->warehouse_code ?? 'SLO' }} - PrimeTrack Group</title>
     <style>
         @php
             $first = $preregistrations->first();
@@ -231,7 +231,7 @@
             letter-spacing: 0.01em;
             text-align: center;
         }
-        .sl-grid-value.service-air { color: #047857; }
+        .sl-grid-value.service-air { color: #0A2D6F; }
         .sl-grid-value.service-sea { color: #1e40af; }
         .sl-description-title {
             margin-top: 16px;
@@ -372,7 +372,7 @@
 <body class="{{ $isNarrow ? 'label-paper-narrow' : 'label-paper-4x6' }}">
     <div class="no-print">
         @if(session('success'))
-        <p style="margin-bottom: 12px; padding: 10px; background: #d1fae5; color: #065f46; border-radius: 6px; font-size: 14px;">{{ session('success') }}</p>
+        <p style="margin-bottom: 12px; padding: 10px; background: #E8EEF8; color: #0A2D6F; border-radius: 6px; font-size: 14px;">{{ session('success') }}</p>
         @endif
         <button type="button" onclick="window.print();">🖨️ Imprimir todas las etiquetas</button>
         @if($isNarrow)

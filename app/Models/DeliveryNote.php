@@ -32,20 +32,42 @@ class DeliveryNote extends Model
     }
 
     /**
-     * Genera el siguiente código único para una nota de entrega: BCH-0001, BCH-0002, ...
+     * Factura PrimeTrack activa (no anulada) vinculada a esta hoja de salida.
+     */
+    public function accountingInvoice(): HasOne
+    {
+        return $this->hasOne(AccountingInvoice::class)->ofMany(
+            ['id' => 'max'],
+            fn ($query) => $query->where('status', '!=', 'void')
+        );
+    }
+
+    public function accountingInvoices(): HasMany
+    {
+        return $this->hasMany(AccountingInvoice::class);
+    }
+
+    /**
+     * Genera el siguiente código único para una nota de entrega: SLO-0001, SLO-0002, ...
+     * También considera códigos históricos BCH- para no reiniciar la secuencia.
      */
     public static function generateCode(): string
     {
-        $prefix = 'BCH-';
-        $last = static::where('code', 'like', $prefix . '%')
-            ->orderByDesc('id')
-            ->value('code');
+        $prefix = 'SLO-';
+        $codes = static::query()
+            ->where(function ($query) {
+                $query->where('code', 'like', 'SLO-%')
+                    ->orWhere('code', 'like', 'BCH-%');
+            })
+            ->pluck('code');
 
-        $seq = 1;
-        if ($last && preg_match('/^BCH-(\d+)$/', $last, $m)) {
-            $seq = (int) $m[1] + 1;
+        $max = 0;
+        foreach ($codes as $code) {
+            if (preg_match('/^(?:SLO|BCH)-(\d+)$/', (string) $code, $m)) {
+                $max = max($max, (int) $m[1]);
+            }
         }
 
-        return $prefix . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+        return $prefix.str_pad((string) ($max + 1), 4, '0', STR_PAD_LEFT);
     }
 }

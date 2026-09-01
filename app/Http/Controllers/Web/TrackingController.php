@@ -123,6 +123,7 @@ class TrackingController extends Controller
         return match (strtoupper((string) $serviceType)) {
             'AIR' => 'Aéreo ✈️',
             'SEA' => 'Marítimo 🚢',
+            'CFT' => 'Pie cúbico ▣',
             default => $serviceType ?: '—',
         };
     }

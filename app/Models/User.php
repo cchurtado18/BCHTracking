@@ -73,11 +73,8 @@ class User extends Authenticatable
         $ids = [(int) $this->agency_id];
         $agency = $this->relationLoaded('agency') ? $this->agency : Agency::find($this->agency_id);
 
-        if ($agency?->is_main) {
-            $ids = array_merge(
-                $ids,
-                Agency::where('parent_agency_id', $agency->id)->pluck('id')->all()
-            );
+        if ($agency && $agency->canHaveChildren()) {
+            $ids = $agency->networkIds();
         }
 
         return array_values(array_unique(array_map('intval', $ids)));

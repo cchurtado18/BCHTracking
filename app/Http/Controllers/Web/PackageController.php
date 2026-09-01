@@ -129,10 +129,11 @@ class PackageController extends Controller
         $statsTotal = $statsQuery->count();
         $statsAir = (clone $statsQuery)->where('service_type', 'AIR')->count();
         $statsSea = (clone $statsQuery)->where('service_type', 'SEA')->count();
+        $statsCft = (clone $statsQuery)->where('service_type', 'CFT')->count();
         $statsReady = (clone $statsQuery)->where('status', 'READY')->count();
         $statsDelivered = (clone $statsQuery)->where('status', 'DELIVERED')->count();
 
-        return view('packages.index', compact('packages', 'agenciesForFilter', 'statsTotal', 'statsAir', 'statsSea', 'statsReady', 'statsDelivered'));
+        return view('packages.index', compact('packages', 'agenciesForFilter', 'statsTotal', 'statsAir', 'statsSea', 'statsCft', 'statsReady', 'statsDelivered'));
     }
 
     public function show(string $id)
@@ -151,6 +152,10 @@ class PackageController extends Controller
 
     public function showProcess(string $id)
     {
+        if ($redirect = $this->denyAgencyWarehouseWrite()) {
+            return $redirect;
+        }
+
         $package = Preregistration::with('agency')->findOrFail($id);
         $this->ensureUserCanAccessPreregistration($package);
         if ($package->status !== 'IN_WAREHOUSE_NIC') {
@@ -164,6 +169,10 @@ class PackageController extends Controller
 
     public function process(Request $request, string $id)
     {
+        if ($redirect = $this->denyAgencyWarehouseWrite()) {
+            return $redirect;
+        }
+
         $package = Preregistration::findOrFail($id);
         $this->ensureUserCanAccessPreregistration($package);
         $request->validate([
@@ -182,6 +191,7 @@ class PackageController extends Controller
                 ->withErrors(['agency_id' => 'Seleccione una agencia: este paquete aún no tiene agencia asignada.'])
                 ->withInput();
         }
+        $this->ensureUserCanAccessAgencyId($agencyId);
         try {
             $this->packageService->processPackage(
                 $package,
@@ -200,6 +210,10 @@ class PackageController extends Controller
 
     public function reprintLabel(string $id)
     {
+        if ($redirect = $this->denyAgencyWarehouseWrite()) {
+            return $redirect;
+        }
+
         $package = Preregistration::findOrFail($id);
         $this->ensureUserCanAccessPreregistration($package);
         try {
@@ -209,5 +223,14 @@ class PackageController extends Controller
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
+    }
+
+    private function denyAgencyWarehouseWrite(): ?\Illuminate\Http\RedirectResponse
+    {
+        if (auth()->user()?->isAgencyUser()) {
+            return redirect()->route('packages.index');
+        }
+
+        return null;
     }
 }

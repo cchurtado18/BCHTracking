@@ -17,7 +17,7 @@ class StoreConsolidationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'service_type' => 'required|in:AIR,SEA',
+            'service_type' => 'required|'.\App\Support\ServiceType::routeRule(),
             'notes' => 'nullable|string|max:1000',
             'preregistration_ids' => 'nullable|array',
             'preregistration_ids.*' => 'integer|exists:preregistrations,id',

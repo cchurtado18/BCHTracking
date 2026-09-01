@@ -1,23 +1,23 @@
 <style>
-    .page-banner { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25); }
+    .page-banner { background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%); box-shadow: 0 4px 14px rgba(10, 45, 111, 0.25); }
     .page-banner-title { color: #fff !important; }
     .page-banner-subtitle { color: rgba(255,255,255,0.9) !important; }
-    .btn-banner { background: #fff; color: #047857; border: 1px solid rgba(255,255,255,0.5); padding: 0.5rem 1rem; font-weight: 600; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); text-decoration: none; }
-    .btn-banner:hover { background: #ecfdf5; color: #059669; }
-    .page-banner-create { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25); border-radius: 0.75rem; }
-    .btn-banner-create { background: #fff; color: #047857; border: 1px solid rgba(255,255,255,0.35); padding: 0.5rem 1rem; font-weight: 600; border-radius: 0.5rem; font-size: 0.875rem; text-decoration: none; }
-    .btn-banner-create:hover { background: #ecfdf5; color: #059669; }
+    .btn-banner { background: #fff; color: #0A2D6F; border: 1px solid rgba(255,255,255,0.5); padding: 0.5rem 1rem; font-weight: 600; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); text-decoration: none; }
+    .btn-banner:hover { background: #F4F8FD; color: #0A2D6F; }
+    .page-banner-create { background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%); box-shadow: 0 4px 14px rgba(10, 45, 111, 0.25); border-radius: 0.75rem; }
+    .btn-banner-create { background: #fff; color: #0A2D6F; border: 1px solid rgba(255,255,255,0.35); padding: 0.5rem 1rem; font-weight: 600; border-radius: 0.5rem; font-size: 0.875rem; text-decoration: none; }
+    .btn-banner-create:hover { background: #F4F8FD; color: #0A2D6F; }
     .card-create { background: #fff; border: 1px solid #dee2e6; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden; }
-    .card-create-header { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); color: #fff; padding: 0.75rem 1.25rem; font-weight: 600; font-size: 1rem; }
+    .card-create-header { background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%); color: #fff; padding: 0.75rem 1.25rem; font-weight: 600; font-size: 1rem; }
     .card-create-body { padding: 1.5rem 1.75rem; }
     .card { border-radius: 0.5rem; background: #fff; border: 1px solid #dee2e6; }
     .card-body { padding: 1rem 1.5rem; }
     .card-footer { border-top: 1px solid #dee2e6; }
-    .table-header-teal { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); color: #fff; }
+    .table-header-teal { background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%); color: #fff; }
     .table-header-teal th { border-bottom-color: rgba(255,255,255,0.2); color: #fff; font-weight: 600; }
     .form-label { margin-bottom: 0.25rem; color: #6c757d; font-weight: 500; }
     .form-control, .form-select { display: block; width: 100%; padding: 0.375rem 0.75rem; font-size: 0.875rem; border: 1px solid #ced4da; border-radius: 0.375rem; background: #fff; }
-    .form-control:focus { outline: 0; border-color: #059669; box-shadow: 0 0 0 0.2rem rgba(5, 150, 105, 0.25); }
+    .form-control:focus { outline: 0; border-color: #0A2D6F; box-shadow: 0 0 0 0.2rem rgba(30, 79, 168, 0.25); }
     .form-control.is-invalid { border-color: #dc3545; }
     .invalid-feedback { color: #dc3545; font-size: 0.875em; margin-top: 0.25rem; }
     .form-control-sm, .form-select-sm { padding: 0.25rem 0.5rem; font-size: 0.8125rem; }

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\AccountingInvoice;
+use App\Models\AccountingInvoiceLine;
 use App\Models\AuditLog;
 use App\Models\ConsolidationItem;
 use App\Models\Preregistration;
@@ -44,6 +46,23 @@ class PreregistrationAdminResetService
             }
         } elseif ($preregistration->delivery()->exists()) {
             return 'No se puede revertir: el paquete tiene un registro de entrega.';
+        }
+
+        $onOpenInvoice = AccountingInvoiceLine::query()
+            ->where('preregistration_id', $preregistration->id)
+            ->whereHas('invoice', fn ($q) => $q->where('status', '!=', 'void'))
+            ->exists();
+        if ($onOpenInvoice) {
+            return 'No se puede revertir: el paquete está incluido en una factura vigente.';
+        }
+
+        $noteId = $preregistration->delivery?->delivery_note_id
+            ?? $preregistration->delivery()->value('delivery_note_id');
+        if ($noteId && AccountingInvoice::query()
+            ->where('delivery_note_id', $noteId)
+            ->where('status', '!=', 'void')
+            ->exists()) {
+            return 'No se puede revertir: la hoja de salida de este paquete ya tiene una factura vigente.';
         }
 
         return null;

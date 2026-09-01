@@ -10,11 +10,20 @@ use Illuminate\Support\Facades\Storage;
 
 class Agency extends Model
 {
-    protected $fillable = ['parent_agency_id', 'code', 'name', 'phone', 'address', 'department', 'logo_path', 'is_active', 'is_main'];
+    public const TYPE_ROOT = 'root';
+
+    public const TYPE_SUBAGENCY = 'subagency';
+
+    public const TYPE_DIRECT_CLIENT = 'direct_client';
+
+    protected $fillable = ['parent_agency_id', 'code', 'name', 'phone', 'address', 'department', 'logo_path', 'is_active', 'is_main', 'account_type', 'credit_limit_usd', 'credit_days', 'credit_balance_usd', 'tax_id', 'billing_contact_name', 'billing_contact_phone', 'billing_email'];
 
     protected $casts = [
         'is_active' => 'boolean',
         'is_main' => 'boolean',
+        'credit_limit_usd' => 'decimal:2',
+        'credit_days' => 'integer',
+        'credit_balance_usd' => 'decimal:2',
     ];
 
     public function parent(): BelongsTo
@@ -27,43 +36,174 @@ class Agency extends Model
         return $this->hasMany(Agency::class, 'parent_agency_id');
     }
 
+    public function creditNotes(): HasMany
+    {
+        return $this->hasMany(AccountingCreditNote::class);
+    }
+
+    public function creditMovements(): HasMany
+    {
+        return $this->hasMany(AccountingCreditMovement::class);
+    }
+
     public function scopeMainAgencies(Builder $query): Builder
     {
         return $query->where('is_main', true);
     }
 
+    public function isRootAccount(): bool
+    {
+        return $this->is_main || $this->account_type === self::TYPE_ROOT;
+    }
+
+    public function isDirectClient(): bool
+    {
+        return $this->account_type === self::TYPE_DIRECT_CLIENT;
+    }
+
+    public function canHaveChildren(): bool
+    {
+        return $this->is_main || $this->account_type === self::TYPE_SUBAGENCY || $this->account_type === self::TYPE_ROOT;
+    }
+
+    public function typeLabel(): string
+    {
+        if ($this->is_main || $this->account_type === self::TYPE_ROOT) {
+            return 'SkyLink One';
+        }
+
+        return $this->isDirectClient() ? 'Cliente SLO' : 'Subagencia';
+    }
+
     /**
-     * Si esta agencia es CH LOGISTICS o subagencia de CH LOGISTICS (encomienda familiar).
-     * Se usa para mostrar la "Nota de cobro" con diseño CH Logistics en lugar del comprobante BCH.
+     * IDs de hijas/nietas (sin incluir esta agencia).
+     *
+     * @return list<int>
+     */
+    public function descendantIds(): array
+    {
+        $ids = [];
+        $frontier = [(int) $this->id];
+        $guard = 0;
+
+        while ($frontier !== [] && $guard++ < 30) {
+            $children = static::query()
+                ->whereIn('parent_agency_id', $frontier)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+            $children = array_values(array_diff($children, $ids, [(int) $this->id]));
+            if ($children === []) {
+                break;
+            }
+            $ids = array_merge($ids, $children);
+            $frontier = $children;
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Esta cuenta + toda su descendencia.
+     *
+     * @return list<int>
+     */
+    public function networkIds(): array
+    {
+        return array_values(array_unique(array_merge([(int) $this->id], $this->descendantIds())));
+    }
+
+    /**
+     * Paquetes que van juntos en una hoja de salida para este nodo comercial.
+     * Subagencia: ella + todas sus subagencias. Cliente SLO: solo él. Raíz SLO: SLO + clientes propios (no mezcla redes de otras subagencias).
+     *
+     * @return list<int>
+     */
+    public function deliveryNetworkIds(): array
+    {
+        if ($this->isDirectClient()) {
+            return [(int) $this->id];
+        }
+
+        if ($this->is_main || $this->account_type === self::TYPE_ROOT) {
+            $direct = static::query()
+                ->where('parent_agency_id', $this->id)
+                ->where('account_type', self::TYPE_DIRECT_CLIENT)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            return array_values(array_unique(array_merge([(int) $this->id], $direct)));
+        }
+
+        return $this->networkIds();
+    }
+
+    /**
+     * @return list<object{id: int, name: string, code: string}>
+     */
+    public function ancestorChain(): array
+    {
+        $chain = [];
+        $current = $this;
+        $guard = 0;
+        while ($current && $guard++ < 20) {
+            $chain[] = $current;
+            if (! $current->parent_agency_id) {
+                break;
+            }
+            $current = $current->relationLoaded('parent') && $current->parent
+                ? $current->parent
+                : $current->parent()->first();
+        }
+
+        return $chain;
+    }
+
+    /**
+     * Si esta agencia es CH LOGISTICS o está en su red (hija/nieta).
      */
     public function isChLogistics(): bool
     {
-        $name = strtoupper((string) ($this->name ?? ''));
-        if ($name === 'CH LOGISTICS' || (string) $this->code === '0002') {
-            return true;
-        }
-        if ($this->parent_agency_id && $this->relationLoaded('parent') && $this->parent) {
-            return strtoupper((string) $this->parent->name) === 'CH LOGISTICS' || (string) $this->parent->code === '0002';
+        foreach ($this->ancestorChain() as $node) {
+            $name = strtoupper((string) ($node->name ?? ''));
+            if ($name === 'CH LOGISTICS' || (string) $node->code === '0002') {
+                return true;
+            }
         }
 
         return false;
     }
 
     /**
-     * Si esta agencia es SkyLink One o subagencia de SkyLink One.
-     * Se usa para renderizar la etiqueta con el diseño "SkyLink One Logistics".
+     * Si esta agencia es SkyLink One o está en su árbol.
      */
     public function isSkyLinkOne(): bool
     {
-        $name = strtoupper((string) ($this->name ?? ''));
-        if ($name === 'SKYLINK ONE' || (string) $this->code === '0001') {
-            return true;
-        }
-        if ($this->parent_agency_id && $this->relationLoaded('parent') && $this->parent) {
-            return strtoupper((string) $this->parent->name) === 'SKYLINK ONE' || (string) $this->parent->code === '0001';
+        foreach ($this->ancestorChain() as $node) {
+            $name = strtoupper((string) ($node->name ?? ''));
+            if ($name === 'SKYLINK ONE' || (string) $node->code === '0001') {
+                return true;
+            }
         }
 
         return false;
+    }
+
+    /**
+     * Cuentas que pueden tener subagencias: SLO y cualquier subagencia (no clientes propios de SLO).
+     */
+    public static function parentCandidates()
+    {
+        return static::query()
+            ->where('is_active', true)
+            ->where(function (Builder $q) {
+                $q->where('is_main', true)
+                    ->orWhereNull('account_type')
+                    ->orWhere('account_type', '!=', self::TYPE_DIRECT_CLIENT);
+            })
+            ->orderByDesc('is_main')
+            ->orderBy('name');
     }
 
     /**
@@ -120,10 +260,35 @@ class Agency extends Model
     }
 
     /**
+     * Correo al que se envían las facturas: el de cobranza, o el de acceso de la cuenta.
+     */
+    public function billingEmail(): ?string
+    {
+        $email = trim((string) $this->billing_email);
+        if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return $email;
+        }
+
+        $userEmail = trim((string) ($this->users->first()?->email ?? $this->users()->orderBy('id')->value('email')));
+
+        return $userEmail !== '' && filter_var($userEmail, FILTER_VALIDATE_EMAIL) ? $userEmail : null;
+    }
+
+    /**
      * Usuarios de acceso vinculados a esta agencia (inicio de sesión para la subagencia).
      */
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    public function accountingInvoices(): HasMany
+    {
+        return $this->hasMany(AccountingInvoice::class);
+    }
+
+    public function accountingPayments(): HasMany
+    {
+        return $this->hasMany(AccountingPayment::class);
     }
 }

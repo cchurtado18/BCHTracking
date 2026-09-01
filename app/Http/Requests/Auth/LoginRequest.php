@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -33,6 +35,18 @@ class LoginRequest extends FormRequest
     }
 
     /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'email.required' => 'El correo es obligatorio.',
+            'email.email' => 'Ingrese el correo de la cuenta (no el nombre del cliente).',
+            'password.required' => 'La contraseña es obligatoria.',
+        ];
+    }
+
+    /**
      * Attempt to authenticate the request's credentials.
      *
      * @throws \Illuminate\Validation\ValidationException
@@ -41,25 +55,30 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        $email = trim((string) $this->input('email'));
-        if (! Auth::attempt(['email' => $email, 'password' => $this->input('password')], $this->boolean('remember'))) {
+        $email = mb_strtolower(trim((string) $this->input('email')));
+        $this->merge(['email' => $email]);
+
+        $user = User::query()->whereRaw('lower(email) = ?', [$email])->first();
+        $passwordOk = $user && Hash::check((string) $this->input('password'), $user->password);
+
+        if (! $passwordOk) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'email' => 'Correo o contraseña incorrectos. El acceso es con el correo de la cuenta, no con el nombre.',
             ]);
         }
 
-        $user = Auth::user();
-        if ($user && $user->agency_id) {
+        if ($user->agency_id) {
             $agency = $user->agency;
             if ($agency && ! $agency->is_active) {
-                Auth::logout();
                 throw ValidationException::withMessages([
-                    'email' => 'La agencia asociada a este usuario está desactivada. Contacte al administrador.',
+                    'email' => 'La cuenta asociada a este usuario está desactivada. Contacte al administrador.',
                 ]);
             }
         }
+
+        Auth::login($user, $this->boolean('remember'));
 
         RateLimiter::clear($this->throttleKey());
     }

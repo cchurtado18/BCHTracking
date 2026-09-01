@@ -4,20 +4,21 @@
 
 @section('content')
 <div class="py-6">
-    <div class="mb-6 flex justify-between items-center">
-        <div>
-            <h1 class="text-3xl font-bold text-gray-900">{{ $client->full_name }}</h1>
-            <p class="mt-2 text-sm text-gray-600">Cliente de {{ $client->agency->name }}</p>
-        </div>
-        <div class="flex space-x-2">
-            <a href="{{ route('agency-clients.edit', $client->id) }}" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
-                Editar
-            </a>
-            <a href="{{ route('agency-clients.index', $client->agency_id) }}" class="text-gray-600 hover:text-gray-900">
-                ← Volver
-            </a>
-        </div>
-    </div>
+    <x-module-banner
+        section="Administración"
+        current="Destinatario"
+        title="{{ $client->full_name }}"
+        subtitle="Destinatario de {{ $client->agency->name }}. Datos de contacto y paquetes asociados."
+        back-href="{{ route('agency-clients.index', $client->agency_id) }}"
+        back-label="Volver a destinatarios"
+    >
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
+        </x-slot:icon>
+        <x-slot:actions>
+            <a href="{{ route('agency-clients.edit', $client->id) }}" class="mb-btn mb-btn-primary">Editar</a>
+        </x-slot:actions>
+    </x-module-banner>
 
     <div class="max-w-2xl">
         <div class="bg-white shadow rounded-lg p-6">

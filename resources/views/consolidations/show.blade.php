@@ -5,8 +5,8 @@
 @section('content')
 <style>
     .cons-show-page {
-        --cs-accent: #059669;
-        --cs-accent-dark: #047857;
+        --cs-accent: #0A2D6F;
+        --cs-accent-dark: #0A2D6F;
         --cs-surface: #ffffff;
         --cs-muted: #64748b;
         --cs-border: #e2e8f0;
@@ -16,10 +16,22 @@
         margin: 0 auto;
         padding: 1.25rem 1rem 2rem;
     }
+    .cons-cft-tag {
+        display: inline-block;
+        margin-left: 0.35rem;
+        padding: 0.1rem 0.4rem;
+        font-size: 0.65rem;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: #16794C;
+        background: #E8F6EE;
+        border-radius: 0.3rem;
+    }
 
     /* Hero */
     .cons-show-hero {
-        background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+        background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%);
         border-radius: var(--cs-radius);
         padding: 1.25rem 1.35rem 1.35rem;
         margin-bottom: 1.5rem;
@@ -87,7 +99,7 @@
         border-color: rgba(255, 255, 255, 0.65);
     }
     .cons-show-btn--solid:hover {
-        background: #ecfdf5;
+        background: #F4F8FD;
         color: var(--cs-accent);
         border-color: #fff;
     }
@@ -105,13 +117,13 @@
     /* Éxito / enviar: mismo lenguaje que solid pero con acento verde oscuro */
     .cons-show-btn--success {
         background: #fff;
-        color: #047857;
+        color: #0A2D6F;
         border-color: rgba(16, 185, 129, 0.45);
     }
     .cons-show-btn--success:hover {
-        background: #ecfdf5;
-        color: #065f46;
-        border-color: #34d399;
+        background: #F4F8FD;
+        color: #0A2D6F;
+        border-color: #1E4FA8;
     }
     /* Peligro */
     .cons-show-btn--danger {
@@ -140,7 +152,7 @@
         letter-spacing: 0.04em;
         text-transform: uppercase;
         color: #fff;
-        background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+        background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%);
     }
     .cons-show-card-b {
         padding: 1.35rem 1.4rem 1.5rem;
@@ -162,8 +174,8 @@
         letter-spacing: 0.02em;
     }
     .cons-show-badge-air { background: #dbeafe; color: #1e40af; }
-    .cons-show-badge-sea { background: #d1fae5; color: #047857; }
-    .cons-show-badge-open { background: #d1fae5; color: #065f46; }
+    .cons-show-badge-sea { background: #E8EEF8; color: #0A2D6F; }
+    .cons-show-badge-open { background: #E8EEF8; color: #0A2D6F; }
     .cons-show-badge-sent { background: #dbeafe; color: #1d4ed8; }
     .cons-show-badge-received { background: #ede9fe; color: #5b21b6; }
     .cons-show-badge-cancelled { background: #fee2e2; color: #991b1b; }
@@ -191,7 +203,7 @@
     }
     .cons-show-metric-label { font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--cs-muted); }
     .cons-show-metric-value { margin-top: 0.35rem; font-size: 1.375rem; font-weight: 800; letter-spacing: -0.02em; color: #0f172a; line-height: 1.1; }
-    .cons-show-metric-value--ok { color: #047857; }
+    .cons-show-metric-value--ok { color: #0A2D6F; }
     .cons-show-metric-value--warn { color: #b45309; }
     .cons-show-metric-wide { grid-column: 1 / -1; }
     .cons-show-metric--amber {
@@ -208,11 +220,11 @@
         border: 1px solid var(--cs-border);
         background: #fafbfc;
     }
-    .cons-show-item--ok { border-color: rgba(16, 185, 129, 0.35); background: linear-gradient(135deg, #ecfdf5 0%, #ecfdf5 100%); }
+    .cons-show-item--ok { border-color: rgba(16, 185, 129, 0.35); background: linear-gradient(135deg, #F4F8FD 0%, #F4F8FD 100%); }
     .cons-show-item-name { font-size: 0.875rem; font-weight: 600; color: #0f172a; }
     .cons-show-item-code { font-size: 0.75rem; font-family: ui-monospace, monospace; color: var(--cs-muted); margin-top: 0.25rem; }
     .cons-show-item-meta { font-size: 0.75rem; color: var(--cs-muted); margin-top: 0.2rem; }
-    .cons-show-item-tag { margin-top: 0.45rem; font-size: 0.6875rem; font-weight: 600; color: #047857; }
+    .cons-show-item-tag { margin-top: 0.45rem; font-size: 0.6875rem; font-weight: 600; color: #0A2D6F; }
 
     .cons-show-item--orphan {
         border-color: #fcd34d;
@@ -290,9 +302,9 @@
     }
     .cons-show-mode-card:hover {
         border-color: var(--cs-accent);
-        box-shadow: 0 6px 18px rgba(5, 150, 105, 0.12);
+        box-shadow: 0 6px 18px rgba(30, 79, 168, 0.12);
         transform: translateY(-1px);
-        background: #ecfdf5;
+        background: #F4F8FD;
     }
     .cons-show-mode-card-icon { font-size: 1.5rem; line-height: 1; margin-bottom: 0.55rem; opacity: 0.85; }
     .cons-show-mode-card-title { margin: 0 0 0.35rem; font-size: 1rem; font-weight: 700; color: #0f172a; }
@@ -367,7 +379,7 @@
         border-color: var(--cs-accent);
         box-shadow:
             0 0 0 4px rgba(5, 150, 105, 0.14),
-            0 8px 28px rgba(5, 150, 105, 0.12);
+            0 8px 28px rgba(30, 79, 168, 0.12);
     }
     .cons-show-scan-feedback {
         min-height: 1.35rem;
@@ -377,7 +389,7 @@
         font-weight: 600;
         border-radius: 6px;
     }
-    .cons-show-scan-feedback.ok { color: #047857; background: rgba(16, 185, 129, 0.08); }
+    .cons-show-scan-feedback.ok { color: #0A2D6F; background: rgba(16, 185, 129, 0.08); }
     .cons-show-scan-feedback.warn { color: #b45309; background: rgba(245, 158, 11, 0.1); }
     .cons-show-scan-feedback.err { color: #b91c1c; background: rgba(239, 68, 68, 0.08); }
     .cons-show-scan-hint { margin: 0.85rem 0 0; font-size: 0.75rem; color: var(--cs-muted); line-height: 1.5; }
@@ -390,7 +402,7 @@
         background: #fff;
     }
     .cons-show-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-    .cons-show-table thead { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); }
+    .cons-show-table thead { background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%); }
     .cons-show-table th {
         padding: 0.65rem 1rem;
         text-align: left;
@@ -409,14 +421,14 @@
         font-size: 0.8125rem;
         font-weight: 600;
         color: var(--cs-accent-dark);
-        background: #ecfdf5;
+        background: #F4F8FD;
         border: 1px solid rgba(5, 150, 105, 0.35);
         border-radius: 8px;
         cursor: pointer;
         transition: background 0.15s, border-color 0.15s;
     }
     .cons-show-table-add:hover {
-        background: #d1fae5;
+        background: #E8EEF8;
         border-color: var(--cs-accent);
     }
 
@@ -447,34 +459,42 @@
 </style>
 
 <div class="cons-show-page">
-    <header class="cons-show-hero">
-        <div class="cons-show-hero-top">
-            <div>
-                <p class="cons-show-kicker">Consolidación</p>
-                <h1 class="cons-show-title">{{ $consolidation->code }}</h1>
-                <p class="cons-show-sub">Detalle del saco y paquetes incluidos</p>
-            </div>
-        </div>
-        <div class="cons-show-toolbar">
-            <a href="{{ route('consolidations.label', $consolidation->id) }}" target="_blank" class="cons-show-btn cons-show-btn--solid">Etiqueta del saco</a>
-            <a href="{{ route('consolidations.report', $consolidation->id) }}" target="_blank" class="cons-show-btn cons-show-btn--solid">Reporte detallado</a>
+    <x-module-banner
+        section="Operaciones"
+        current="Detalle del saco"
+        title="{{ $consolidation->code }}"
+        subtitle="Paquetes incluidos en este saco, estado del envío y acciones de etiqueta o reporte."
+        back-href="{{ route('consolidations.index', session('consolidations_index_filters', [])) }}"
+        back-label="Volver a consolidaciones"
+    >
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 8.25h16.5M3.75 15.75h16.5M7.5 3.75v16.5m9-16.5v16.5"/></svg>
+        </x-slot:icon>
+        <x-slot:actions>
+            <a href="{{ route('consolidations.label', $consolidation->id) }}" target="_blank" class="mb-btn mb-btn-secondary">Etiqueta del saco</a>
+            <a href="{{ route('consolidations.report', $consolidation->id) }}" target="_blank" class="mb-btn mb-btn-secondary">Reporte detallado</a>
             @if($consolidation->status === 'OPEN')
-                <a href="{{ route('consolidations.edit', $consolidation->id) }}" class="cons-show-btn cons-show-btn--glass">Editar</a>
+                <a href="{{ route('consolidations.edit', $consolidation->id) }}" class="mb-btn mb-btn-secondary">Editar</a>
                 @if($consolidation->items->count() > 0)
-                    <form action="{{ route('consolidations.send', $consolidation->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Estás seguro de enviar este saco? Esto cambiará el estado a SENT y los paquetes con preregistro pasarán a IN_TRANSIT.');">
+                    <form action="{{ route('consolidations.send', $consolidation->id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de enviar este saco? Esto cambiará el estado a SENT y los paquetes con preregistro pasarán a IN_TRANSIT.');">
                         @csrf
-                        <button type="submit" class="cons-show-btn cons-show-btn--success border-0">Enviar saco</button>
+                        <button type="submit" class="mb-btn mb-btn-primary">Enviar saco</button>
                     </form>
                 @endif
-                <form action="{{ route('consolidations.destroy', $consolidation->id) }}" method="POST" class="inline" onsubmit="return confirm('¿Eliminar este saco? Se quitarán los items y los preregistros quedarán disponibles de nuevo.');">
+                <form action="{{ route('consolidations.destroy', $consolidation->id) }}" method="POST" onsubmit="return confirm('¿Eliminar este saco? Se quitarán los items y los preregistros quedarán disponibles de nuevo.');">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="cons-show-btn cons-show-btn--danger border-0">Eliminar saco</button>
+                    <button type="submit" class="mb-btn mb-btn-danger">Eliminar saco</button>
                 </form>
             @endif
-            <a href="{{ route('consolidations.index', session('consolidations_index_filters', [])) }}" class="cons-show-btn cons-show-btn--glass">← Volver</a>
-        </div>
-    </header>
+        </x-slot:actions>
+        <x-slot:strip>
+            <span class="mb-strip-label">Saco</span>
+            <span class="mb-pill">{{ \App\Support\ServiceType::label($consolidation->service_type) }}</span>
+            <span class="mb-pill">{{ $consolidation->status }}</span>
+            <span class="mb-pill">{{ $consolidation->items->count() }} {{ $consolidation->items->count() === 1 ? 'paquete' : 'paquetes' }}</span>
+        </x-slot:strip>
+    </x-module-banner>
 
     <div class="cons-show-grid-main">
         <div class="cons-show-card">
@@ -488,8 +508,8 @@
                     <div>
                         <dt class="cons-show-dt">Tipo de servicio</dt>
                         <dd class="cons-show-dd">
-                            <span class="cons-show-badge {{ $consolidation->service_type == 'AIR' ? 'cons-show-badge-air' : 'cons-show-badge-sea' }}">
-                                {{ $consolidation->service_type == 'AIR' ? 'Aéreo' : 'Marítimo' }}
+                            <span class="cons-show-badge {{ \App\Support\ServiceType::route($consolidation->service_type) == 'AIR' ? 'cons-show-badge-air' : 'cons-show-badge-sea' }}">
+                                {{ \App\Support\ServiceType::routeLabel($consolidation->service_type) }}
                             </span>
                         </dd>
                     </div>
@@ -657,7 +677,7 @@
                 ])</script>
 
                 <div class="cons-show-card">
-                    <div class="cons-show-card-h">Agregar por escaneo ({{ $consolidation->service_type === 'AIR' ? 'Aéreo' : 'Marítimo' }})</div>
+                    <div class="cons-show-card-h">Agregar por escaneo ({{ \App\Support\ServiceType::label($consolidation->service_type) }})</div>
                     <div class="cons-show-card-b">
                         <form action="{{ route('consolidations.scan-item', $consolidation->id) }}" method="POST" id="cons-show-scan-form">
                             @csrf
@@ -693,7 +713,7 @@
                                         @foreach($availablePreregistrations as $preregistration)
                                         <tr>
                                             <td class="font-mono text-gray-600">{{ $preregistration->warehouse_code ?? $preregistration->tracking_external ?? 'N/A' }}</td>
-                                            <td class="font-medium text-gray-900">{{ $preregistration->label_name }}</td>
+                                            <td class="font-medium text-gray-900">{{ $preregistration->label_name }}@if(\App\Support\ServiceType::isCft($preregistration->service_type)) <span class="cons-cft-tag">Pie cúbico</span>@endif</td>
                                             <td class="text-gray-500">{{ $preregistration->intake_weight_lbs }} lbs</td>
                                             <td class="text-gray-500">{{ $preregistration->created_at->format('d/m/Y') }}</td>
                                             <td>
@@ -745,12 +765,16 @@
         return String(s || '').trim().toUpperCase();
     }
 
+    function packageRoute(st) {
+        return st === 'CFT' ? 'SEA' : st;
+    }
+
     function findInLookupSameSvc(code) {
         var n = norm(code);
         if (!n) return null;
         for (var i = 0; i < lookup.length; i++) {
             var row = lookup[i];
-            if (row.service_type !== serviceType) continue;
+            if (packageRoute(row.service_type) !== packageRoute(serviceType)) continue;
             if (n === norm(row.tracking) || n === norm(row.warehouse)) return row;
         }
         return null;
@@ -761,7 +785,7 @@
         if (!n) return null;
         for (var i = 0; i < lookup.length; i++) {
             var row = lookup[i];
-            if (row.service_type === serviceType) continue;
+            if (packageRoute(row.service_type) === packageRoute(serviceType)) continue;
             if (n === norm(row.tracking) || n === norm(row.warehouse)) return row;
         }
         return null;
@@ -790,8 +814,9 @@
         }
         var otherSvc = findOtherServiceMatch(code);
         if (otherSvc) {
-            var sackWord = serviceType === 'AIR' ? 'aéreo' : 'marítimo';
-            var pkgWord = otherSvc.service_type === 'AIR' ? 'aéreo' : 'marítimo';
+            var routeLabels = { AIR: 'aéreo', SEA: 'marítimo', CFT: 'marítimo' };
+            var sackWord = routeLabels[serviceType] || serviceType;
+            var pkgWord = routeLabels[otherSvc.service_type] || otherSvc.service_type;
             setFeedback('Alerta: el paquete está en preregistro como ' + pkgWord + ', no como ' + sackWord + '. Cambie el saco o use otro código.', 'err');
             input.select();
             return;

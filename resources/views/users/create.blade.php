@@ -3,20 +3,27 @@
 @section('title', 'Crear usuario')
 
 @section('content')
-<div class="users-page users-form-page">
-    <header class="users-hero">
-        <div class="users-hero-inner">
-            <div class="users-hero-text">
-                <h1 class="users-hero-title">Crear usuario</h1>
-                <p class="users-hero-subtitle">Agregar un nuevo usuario al sistema</p>
-            </div>
-            <a href="{{ route('users.index') }}" class="users-hero-btn">← Volver a usuarios</a>
-        </div>
-    </header>
+@php
+    $isAdmin = (string) old('is_admin', '0') === '1';
+@endphp
+<div class="cx-page">
+    <x-module-banner
+        section="Administración"
+        current="Crear usuario"
+        title="Crear usuario"
+        subtitle="Alta de personal interno de PrimeTrack. Los accesos de clientes se crean desde la ficha de cada cuenta."
+        back-href="{{ route('users.index') }}"
+        back-label="Volver a usuarios"
+    >
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.011a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z"/></svg>
+        </x-slot:icon>
+    </x-module-banner>
 
     @if($errors->any())
-    <div class="users-alert users-alert-danger">
-        <ul class="users-alert-list">
+    <div class="cx-alert cx-alert-danger">
+        <strong>No se pudo crear el usuario.</strong>
+        <ul class="cx-alert-list">
             @foreach($errors->all() as $err)
             <li>{{ $err }}</li>
             @endforeach
@@ -24,94 +31,67 @@
     </div>
     @endif
 
-    <div class="users-card users-form-card">
-        <div class="users-card-header users-form-header">
-            <h2 class="users-card-title">Datos del usuario</h2>
+    <form action="{{ route('users.store') }}" method="POST" class="cx-card" autocomplete="off">
+        @csrf
+
+        <div class="cx-section-head">
+            <h2 class="cx-section-title">Datos de acceso</h2>
+            <p class="cx-section-note">Nombre, correo y contraseña con los que iniciará sesión.</p>
         </div>
-        <div class="users-card-body">
-            <form action="{{ route('users.store') }}" method="POST" class="users-form">
-                @csrf
-                <div class="users-field">
-                    <label for="name" class="users-label">Nombre <span class="users-required">*</span></label>
-                    <input type="text" name="name" id="name" class="users-input {{ $errors->has('name') ? 'users-input-invalid' : '' }}" value="{{ old('name') }}" required maxlength="255">
-                    @error('name')<p class="users-field-error">{{ $message }}</p>@enderror
+        <div class="cx-card-body">
+            <div class="cx-form-grid">
+                <div class="cx-field">
+                    <label for="name" class="cx-label">Nombre <span class="cx-req">*</span></label>
+                    <input type="text" name="name" id="name" class="cx-input {{ $errors->has('name') ? 'is-invalid' : '' }}" value="{{ old('name') }}" required maxlength="255" autocomplete="name">
+                    @error('name')<p class="cx-field-error">{{ $message }}</p>@enderror
                 </div>
-                <div class="users-field">
-                    <label for="email" class="users-label">Correo electrónico <span class="users-required">*</span></label>
-                    <input type="email" name="email" id="email" class="users-input {{ $errors->has('email') ? 'users-input-invalid' : '' }}" value="{{ old('email') }}" required maxlength="255">
-                    @error('email')<p class="users-field-error">{{ $message }}</p>@enderror
+                <div class="cx-field">
+                    <label for="email" class="cx-label">Correo electrónico <span class="cx-req">*</span></label>
+                    <input type="email" name="email" id="email" class="cx-input {{ $errors->has('email') ? 'is-invalid' : '' }}" value="{{ old('email') }}" required maxlength="255" autocomplete="email">
+                    @error('email')<p class="cx-field-error">{{ $message }}</p>@enderror
                 </div>
-                <div class="users-field">
-                    <label for="password" class="users-label">Contraseña <span class="users-required">*</span></label>
-                    <input type="password" name="password" id="password" class="users-input {{ $errors->has('password') ? 'users-input-invalid' : '' }}" required>
-                    @error('password')<p class="users-field-error">{{ $message }}</p>@enderror
-                    <p class="users-field-hint">Mínimo 8 caracteres.</p>
+                <div class="cx-field">
+                    <label for="password" class="cx-label">Contraseña <span class="cx-req">*</span></label>
+                    <input type="password" name="password" id="password" class="cx-input {{ $errors->has('password') ? 'is-invalid' : '' }}" required minlength="8" autocomplete="new-password">
+                    <p class="cx-field-hint">Mínimo 8 caracteres.</p>
+                    @error('password')<p class="cx-field-error">{{ $message }}</p>@enderror
                 </div>
-                <div class="users-field">
-                    <label for="password_confirmation" class="users-label">Confirmar contraseña <span class="users-required">*</span></label>
-                    <input type="password" name="password_confirmation" id="password_confirmation" class="users-input" required>
+                <div class="cx-field">
+                    <label for="password_confirmation" class="cx-label">Confirmar contraseña <span class="cx-req">*</span></label>
+                    <input type="password" name="password_confirmation" id="password_confirmation" class="cx-input" required minlength="8" autocomplete="new-password">
                 </div>
-                <div class="users-field">
-                    <label class="users-checkbox-label">
-                        <input type="hidden" name="is_admin" value="0">
-                        <input type="checkbox" name="is_admin" id="is_admin" value="1" class="users-checkbox" {{ old('is_admin') ? 'checked' : '' }}>
-                        <span>Administrador (puede crear y editar usuarios)</span>
-                    </label>
-                </div>
-                <div class="users-form-actions">
-                    <button type="submit" class="users-btn users-btn-primary">Crear usuario</button>
-                    <a href="{{ route('users.index') }}" class="users-btn users-btn-secondary">Cancelar</a>
-                </div>
-            </form>
+            </div>
         </div>
-    </div>
+
+        <div class="cx-section-head">
+            <h2 class="cx-section-title">Rol</h2>
+            <p class="cx-section-note">Define qué ve en el panel. El acceso de un cliente se crea desde Clientes.</p>
+        </div>
+        <div class="cx-card-body">
+            <div class="cx-type-cards" role="radiogroup" aria-label="Rol del usuario">
+                <label class="cx-type-card {{ ! $isAdmin ? 'is-selected' : '' }}">
+                    <input type="radio" name="is_admin" value="0" {{ ! $isAdmin ? 'checked' : '' }}>
+                    <span class="cx-type-card-body">
+                        <strong>Operaciones</strong>
+                        <span>Paquetes, salidas, consolidaciones y fichaje. Sin administración ni contabilidad.</span>
+                    </span>
+                </label>
+                <label class="cx-type-card {{ $isAdmin ? 'is-selected' : '' }}">
+                    <input type="radio" name="is_admin" value="1" {{ $isAdmin ? 'checked' : '' }}>
+                    <span class="cx-type-card-body">
+                        <strong>Administrador</strong>
+                        <span>Usuarios, clientes, auditoría, facturas, cobros y parámetros.</span>
+                    </span>
+                </label>
+            </div>
+        </div>
+
+        <div class="cx-card-foot">
+            <a href="{{ route('users.index') }}" class="cx-btn cx-btn-secondary">Cancelar</a>
+            <button type="submit" class="cx-btn cx-btn-primary">Crear usuario</button>
+        </div>
+    </form>
 </div>
 
-<style>
-.users-form-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
-.users-form-page .users-hero {
-    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
-    border-radius: 1rem; padding: 1.75rem 1.5rem; margin-bottom: 1.5rem;
-    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
-}
-.users-form-page .users-hero-title { color: #fff; margin: 0; font-size: 1.75rem; font-weight: 700; }
-.users-form-page .users-hero-subtitle { color: rgba(255,255,255,0.9); margin: 0.35rem 0 0; font-size: 0.9375rem; }
-.users-form-page .users-hero-btn { background: #fff; color: #047857; padding: 0.5rem 1rem; font-weight: 600; border-radius: 0.5rem; text-decoration: none; border: 1px solid rgba(255,255,255,0.5); }
-.users-form-page .users-hero-btn:hover { background: #ecfdf5; color: #059669; }
-.users-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-.users-hero-text { min-width: 0; }
-
-.users-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 0.85rem; box-shadow: 0 1px 3px rgba(15,23,42,0.06); overflow: hidden; }
-.users-card-header { padding: 0.85rem 1.5rem; border-bottom: 1px solid #e2e8f0; }
-.users-card-title { margin: 0; font-size: 0.95rem; font-weight: 700; color: #0f172a; }
-.users-card-body { padding: 1.5rem; }
-
-.users-btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;
-    padding: 0.55rem 1.1rem; font-size: 0.875rem; font-weight: 600; border-radius: 0.55rem;
-    border: 1px solid transparent; cursor: pointer; text-decoration: none; white-space: nowrap;
-}
-.users-btn-primary { background: #059669; color: #fff; border-color: #059669; }
-.users-btn-primary:hover { background: #047857; border-color: #047857; color: #fff; }
-.users-btn-secondary { background: #fff; color: #475569; border-color: #cbd5e1; }
-.users-btn-secondary:hover { background: #f8fafc; color: #0f172a; }
-
-.users-alert { padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.875rem; }
-.users-alert-danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
-.users-alert-list { margin: 0; padding-left: 1.25rem; }
-.users-form-card { max-width: 36rem; margin: 0 auto; }
-.users-form-header { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); }
-.users-form-header .users-card-title { color: #fff; }
-.users-form .users-field { margin-bottom: 1.25rem; }
-.users-label { display: block; font-size: 0.8125rem; font-weight: 600; color: #374151; margin-bottom: 0.35rem; }
-.users-required { color: #dc2626; }
-.users-input { display: block; width: 100%; padding: 0.5rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.5rem; background: #fff; color: #111827; }
-.users-input:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15); }
-.users-input-invalid { border-color: #dc2626; }
-.users-field-error { color: #dc2626; font-size: 0.875rem; margin-top: 0.25rem; }
-.users-field-hint { font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem; }
-.users-checkbox-label { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: #374151; cursor: pointer; }
-.users-checkbox { width: 1.25rem; height: 1.25rem; }
-.users-form-actions { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; display: flex; flex-wrap: wrap; gap: 0.75rem; }
-</style>
+@include('users.partials.form-styles')
 @endsection

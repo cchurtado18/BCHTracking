@@ -16,17 +16,21 @@
 <script type="application/json" id="scan-lookup-json">@json($lookupJson)</script>
 
 <div class="csscan-page">
-    <header class="csscan-topbar">
-        <div class="csscan-topbar-main">
-            <p class="csscan-kicker">Consolidación</p>
-            <h1 class="csscan-title">Crear saco por escaneo</h1>
-            <p class="csscan-sub">Pulse Enter tras cada código. El servidor validará de nuevo al guardar.</p>
-        </div>
-        <div class="csscan-topbar-actions">
-            <a href="{{ route('consolidations.create') }}" class="csscan-link csscan-link-secondary">Modos de creación</a>
-            <a href="{{ route('consolidations.index') }}" class="csscan-link csscan-link-primary">Lista de sacos</a>
-        </div>
-    </header>
+    <x-module-banner
+        section="Operaciones"
+        current="Escaneo"
+        title="Crear saco por escaneo"
+        subtitle="Pulse Enter tras cada código (warehouse o tracking). El servidor validará de nuevo al guardar."
+        back-href="{{ route('consolidations.create') }}"
+        back-label="Modos de creación"
+    >
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.5h16.5v15H3.75V4.5Zm4.5 4.5h3m-3 3h7.5"/></svg>
+        </x-slot:icon>
+        <x-slot:actions>
+            <a href="{{ route('consolidations.index') }}" class="mb-btn mb-btn-secondary">Lista de sacos</a>
+        </x-slot:actions>
+    </x-module-banner>
 
     @if ($errors->any())
     <div class="csscan-errors" role="alert">
@@ -103,8 +107,8 @@
 <style>
 /* —— Page shell —— */
 .csscan-page {
-    --csscan-accent: #059669;
-    --csscan-accent-dark: #047857;
+    --csscan-accent: #0A2D6F;
+    --csscan-accent-dark: #0A2D6F;
     --csscan-surface: #ffffff;
     --csscan-canvas: #f4f6f9;
     --csscan-border: #e8ecf1;
@@ -301,7 +305,7 @@
     outline: none;
     border-color: var(--csscan-accent);
     background: #fff;
-    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
+    box-shadow: 0 0 0 3px rgba(30, 79, 168, 0.12);
 }
 .csscan-textarea { resize: vertical; min-height: 72px; line-height: 1.45; }
 
@@ -340,7 +344,7 @@
     border-color: var(--csscan-accent);
     box-shadow:
         0 0 0 4px rgba(5, 150, 105, 0.14),
-        0 8px 28px rgba(5, 150, 105, 0.12);
+        0 8px 28px rgba(30, 79, 168, 0.12);
 }
 .csscan-input:focus-visible {
     outline: none;
@@ -356,7 +360,7 @@
     border-radius: 6px;
     transition: color 0.15s, background 0.15s;
 }
-.csscan-feedback.ok { color: #047857; background: rgba(16, 185, 129, 0.08); padding: 0.35rem 0.5rem; }
+.csscan-feedback.ok { color: #0A2D6F; background: rgba(16, 185, 129, 0.08); padding: 0.35rem 0.5rem; }
 .csscan-feedback.warn { color: #b45309; background: rgba(245, 158, 11, 0.1); padding: 0.35rem 0.5rem; }
 .csscan-feedback.err { color: #b91c1c; background: rgba(239, 68, 68, 0.08); padding: 0.35rem 0.5rem; }
 
@@ -388,7 +392,7 @@
 }
 .csscan-btn-primary {
     color: #fff;
-    background: linear-gradient(180deg, #10b981 0%, var(--csscan-accent) 55%, var(--csscan-accent-dark) 100%);
+    background: linear-gradient(180deg, #1E4FA8 0%, var(--csscan-accent) 55%, var(--csscan-accent-dark) 100%);
     border-color: rgba(4, 120, 87, 0.35);
     box-shadow: 0 2px 4px rgba(5, 150, 105, 0.25), 0 8px 20px rgba(5, 150, 105, 0.2);
 }
@@ -493,7 +497,7 @@
     font-size: 0.875rem;
     font-weight: 700;
     color: var(--csscan-accent-dark);
-    background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%);
+    background: linear-gradient(180deg, #F4F8FD 0%, #E8EEF8 100%);
     border: 1px solid rgba(5, 150, 105, 0.25);
     border-radius: 10px;
     box-shadow: 0 1px 2px rgba(5, 150, 105, 0.08);
@@ -535,7 +539,7 @@
 }
 .csscan-row.match {
     border-color: rgba(16, 185, 129, 0.45);
-    background: linear-gradient(135deg, #ecfdf5 0%, #ecfdf5 100%);
+    background: linear-gradient(135deg, #F4F8FD 0%, #F4F8FD 100%);
     box-shadow: 0 1px 3px rgba(16, 185, 129, 0.12);
 }
 .csscan-row.unmatch {
@@ -592,7 +596,7 @@
     border-radius: 6px;
 }
 .csscan-row-badge.ok {
-    color: #047857;
+    color: #0A2D6F;
     background: rgba(16, 185, 129, 0.15);
     border: 1px solid rgba(16, 185, 129, 0.28);
 }
@@ -687,13 +691,17 @@
         return String(s || '').trim().toUpperCase();
     }
 
+    function packageRoute(st) {
+        return st === 'CFT' ? 'SEA' : st;
+    }
+
     function findInLookup(code) {
         const st = serviceSelect.value;
         const n = norm(code);
         if (!n) return null;
         for (let i = 0; i < lookup.length; i++) {
             const row = lookup[i];
-            if (row.service_type !== st) continue;
+            if (packageRoute(row.service_type) !== packageRoute(st)) continue;
             const t = norm(row.tracking);
             const w = norm(row.warehouse);
             if (n === t || n === w) return row;
@@ -731,7 +739,7 @@
         if (!n) return null;
         for (let i = 0; i < lookup.length; i++) {
             const row = lookup[i];
-            if (row.service_type === st) continue;
+            if (packageRoute(row.service_type) === packageRoute(st)) continue;
             const t = norm(row.tracking);
             const w = norm(row.warehouse);
             if (n === t || n === w) return row;
@@ -841,10 +849,9 @@
         }
         const otherSvc = findOtherServiceMatch(display);
         if (otherSvc) {
-            const sackIsAir = serviceSelect.value === 'AIR';
-            const pkgIsAir = otherSvc.service_type === 'AIR';
-            const sackWord = sackIsAir ? 'aéreo' : 'marítimo';
-            const pkgWord = pkgIsAir ? 'aéreo' : 'marítimo';
+            const routeLabels = { AIR: 'aéreo', SEA: 'marítimo', CFT: 'marítimo' };
+            const sackWord = routeLabels[serviceSelect.value] || serviceSelect.value;
+            const pkgWord = routeLabels[otherSvc.service_type] || otherSvc.service_type;
             setFeedback('Alerta: este paquete está en preregistro como ' + pkgWord + ', no como ' + sackWord + '. Cambie el tipo de servicio del saco o use otro código.', 'err');
             input.select();
             return false;

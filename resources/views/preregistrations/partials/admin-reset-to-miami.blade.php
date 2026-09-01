@@ -97,7 +97,7 @@
     color: #334155;
 }
 .admin-return-panel__muted { color: #64748b; }
-.admin-return-panel__link { color: #059669; font-weight: 600; text-decoration: none; }
+.admin-return-panel__link { color: #0A2D6F; font-weight: 600; text-decoration: none; }
 .admin-return-panel__link:hover { text-decoration: underline; }
 .admin-return-panel__trigger {
     flex-shrink: 0;
@@ -108,7 +108,7 @@
     font-size: 0.875rem;
     font-weight: 600;
     color: #fff;
-    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+    background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%);
     border: none;
     border-radius: 0.5rem;
     cursor: pointer;
@@ -143,7 +143,7 @@
     justify-content: space-between;
     gap: 1rem;
     padding: 1.125rem 1.25rem;
-    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+    background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%);
 }
 .admin-return-dialog__title {
     margin: 0;
@@ -199,7 +199,7 @@
 }
 .admin-return-dialog__textarea:focus {
     outline: none;
-    border-color: #059669;
+    border-color: #0A2D6F;
     box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2);
 }
 .admin-return-dialog__check {
@@ -246,11 +246,11 @@
 }
 .admin-return-dialog__btn--secondary:hover { background: #f1f5f9; }
 .admin-return-dialog__btn--primary {
-    background: #059669;
+    background: #0A2D6F;
     color: #fff;
-    border-color: #059669;
+    border-color: #0A2D6F;
 }
-.admin-return-dialog__btn--primary:hover { background: #047857; }
+.admin-return-dialog__btn--primary:hover { background: #0A2D6F; }
 </style>
 
 <script>

@@ -4,15 +4,18 @@
 
 @section('content')
 <div class="cons-choose-page">
-    <header class="cons-choose-hero">
-        <div class="cons-choose-hero-inner">
-            <div>
-                <h1 class="cons-choose-title">Crear consolidación (saco)</h1>
-                <p class="cons-choose-sub">Elige cómo quieres armar el saco. Puedes volver atrás y cambiar de modo en cualquier momento.</p>
-            </div>
-            <a href="{{ route('consolidations.index') }}" class="cons-choose-back">← Volver a consolidaciones</a>
-        </div>
-    </header>
+    <x-module-banner
+        section="Operaciones"
+        current="Nuevo saco"
+        title="Crear consolidación"
+        subtitle="Elija cómo armar el saco: escaneando códigos o seleccionando paquetes en la tabla."
+        back-href="{{ route('consolidations.index') }}"
+        back-label="Volver a consolidaciones"
+    >
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        </x-slot:icon>
+    </x-module-banner>
 
     <div class="cons-choose-grid">
         <a href="{{ route('consolidations.create-scan') }}" class="cons-choose-card cons-choose-card-scan">
@@ -34,7 +37,7 @@
 <style>
 .cons-choose-page { padding: 1.5rem 0; max-width: 56rem; margin: 0 auto; width: 100%; }
 .cons-choose-hero {
-    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+    background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%);
     border-radius: 1rem;
     padding: 1.75rem 1.5rem;
     margin-bottom: 1.75rem;
@@ -45,9 +48,9 @@
 .cons-choose-sub { margin: 0.5rem 0 0; font-size: 0.9375rem; color: rgba(255,255,255,0.92); max-width: 40rem; line-height: 1.45; }
 .cons-choose-back {
     display: inline-flex; align-items: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600;
-    color: #047857; background: #fff; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none;
+    color: #0A2D6F; background: #fff; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none;
 }
-.cons-choose-back:hover { background: #ecfdf5; color: #059669; }
+.cons-choose-back:hover { background: #F4F8FD; color: #0A2D6F; }
 .cons-choose-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -71,16 +74,16 @@
     min-height: 14rem;
 }
 .cons-choose-card:hover {
-    border-color: #059669;
-    box-shadow: 0 8px 24px rgba(5, 150, 105, 0.12);
+    border-color: #0A2D6F;
+    box-shadow: 0 8px 24px rgba(30, 79, 168, 0.12);
     transform: translateY(-2px);
 }
-.cons-choose-card-scan { border-top: 4px solid #059669; }
+.cons-choose-card-scan { border-top: 4px solid #0A2D6F; }
 .cons-choose-card-select { border-top: 4px solid #6366f1; }
 .cons-choose-icon { font-size: 1.75rem; line-height: 1; margin-bottom: 0.75rem; opacity: 0.85; }
 .cons-choose-card-title { margin: 0 0 0.5rem; font-size: 1.125rem; font-weight: 700; color: #111827; }
 .cons-choose-card-text { margin: 0; font-size: 0.875rem; color: #4b5563; line-height: 1.5; flex: 1; }
-.cons-choose-cta { margin-top: 1.25rem; font-size: 0.875rem; font-weight: 700; color: #059669; }
+.cons-choose-cta { margin-top: 1.25rem; font-size: 0.875rem; font-weight: 700; color: #0A2D6F; }
 .cons-choose-card-select .cons-choose-cta { color: #4f46e5; }
 </style>
 @endsection

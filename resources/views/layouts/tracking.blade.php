@@ -3,11 +3,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', 'Consultar paquete') - BCH Tracking</title>
+    <title>@yield('title', 'Consultar paquete') - PrimeTrack Group</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>body { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }</style>
     @php
         $manifestPath = public_path('build/manifest.json');
         if (file_exists($manifestPath)) {
@@ -19,44 +18,103 @@
             echo '<script src="https://cdn.tailwindcss.com"></script>';
         }
     @endphp
+    <style>
+        :root {
+            --pt-navy: #0A2D6F;
+            --pt-blue: #1E4FA8;
+            --pt-muted: #5E6168;
+            --pt-line: #E8EBEF;
+            --pt-form: #D8DCE2;
+            --pt-soft: #F4F8FD;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            color: #0f172a;
+        }
+        .trk-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 1.5rem 1.1rem 2.5rem;
+            background-color: var(--pt-navy);
+            background-image:
+                radial-gradient(ellipse 80% 60% at 12% 18%, rgba(30, 79, 168, 0.55) 0%, transparent 55%),
+                radial-gradient(ellipse 70% 50% at 92% 88%, rgba(10, 45, 111, 0.15) 0%, transparent 50%),
+                linear-gradient(165deg, #0A2D6F 0%, #123A86 42%, #1E4FA8 100%),
+                url("{{ asset('images/login-bg-texture.png') }}");
+            background-size: auto, auto, auto, 420px;
+            background-blend-mode: normal, normal, normal, overlay;
+        }
+        .trk-shell {
+            width: 100%;
+            max-width: 40rem;
+            margin-top: 1.25rem;
+            background: #fff;
+            border-radius: 1.35rem;
+            overflow: hidden;
+            box-shadow: 0 24px 64px rgba(4, 16, 48, 0.35);
+        }
+        .trk-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.95rem 1.35rem;
+            background: linear-gradient(180deg, #123A86 0%, #0A2D6F 100%);
+        }
+        .trk-bar a.trk-logo {
+            display: inline-flex;
+            align-items: center;
+            background: #fff;
+            border-radius: 0.75rem;
+            padding: 0.28rem 0.55rem;
+            line-height: 0;
+        }
+        .trk-bar img { height: 2.65rem; width: auto; object-fit: contain; display: block; }
+        .trk-bar-link {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #fff;
+            text-decoration: none;
+            padding: 0.45rem 0.85rem;
+            border-radius: 0.6rem;
+            border: 1px solid rgba(255,255,255,0.28);
+        }
+        .trk-bar-link:hover { background: rgba(255,255,255,0.12); }
+        .trk-slot { padding: 1.7rem 1.7rem 1.9rem; }
+        @media (max-width: 640px) {
+            .trk-page { padding: 0.85rem 0.7rem 1.6rem; }
+            .trk-shell { margin-top: 0.35rem; border-radius: 1.1rem; }
+            .trk-slot { padding: 1.25rem 1.15rem 1.45rem; }
+            .trk-bar { padding: 0.8rem 1rem; }
+            .trk-bar img { height: 2.2rem; }
+        }
+    </style>
 </head>
-<body class="bg-gray-50" style="background:
-    radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.07), transparent 40%),
-    radial-gradient(circle at 80% 0%, rgba(59, 130, 246, 0.06), transparent 42%),
-    linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);">
-    <style>.nav-logo-dark { display: inline-block; line-height: 0; } .nav-logo-dark img { height: 4rem; width: auto; display: block; object-fit: contain; }</style>
-    <nav class="bg-white shadow-sm border-b border-gray-200">
-        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-14 items-center">
-                <a href="{{ route('tracking.index') }}" class="nav-logo-dark">
-                    <img src="{{ asset('images/bch-tracking-logo.png') }}" alt="BCH Tracking">
+<body>
+    <div class="trk-page">
+        <div class="trk-shell">
+            <header class="trk-bar">
+                <a href="{{ route('tracking.index') }}" class="trk-logo" title="PrimeTrack Group">
+                    <img src="{{ asset('images/primetrack-group-logo.png') }}?v=2" alt="PrimeTrack Group">
                 </a>
                 @auth
-                <a href="{{ route('dashboard') }}" class="text-sm font-medium text-gray-600 hover:text-emerald-600">
-                    ← Regresar
-                </a>
+                @if(auth()->user()->is_admin)
+                <a href="{{ route('dashboard') }}" class="trk-bar-link">Ir al panel</a>
+                @else
+                <a href="{{ route('packages.index') }}" class="trk-bar-link">Mis paquetes</a>
+                @endif
+                @else
+                <a href="{{ route('login') }}" class="trk-bar-link">Iniciar sesión</a>
                 @endauth
+            </header>
+            <div class="trk-slot">
+                @yield('content')
             </div>
         </div>
-    </nav>
-
-    <main class="py-8">
-        <div class="tracking-layout-inner">
-            @yield('content')
-        </div>
-    </main>
-    <style>
-    .tracking-surface,
-    .tracking-layout-inner .bg-white,
-    .tracking-layout-inner .card {
-        background: #ffffff;
-        border: 1px solid #e5ecf3;
-        border-radius: 0.75rem;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 24px rgba(15, 23, 42, 0.03);
-    }
-    .tracking-layout-inner { max-width: 96rem; margin-left: auto; margin-right: auto; padding-left: 1rem; padding-right: 1rem; width: 100%; }
-    @media (min-width: 640px) { .tracking-layout-inner { padding-left: 1.5rem; padding-right: 1.5rem; } }
-    @media (min-width: 1024px) { .tracking-layout-inner { padding-left: 2rem; padding-right: 2rem; } }
-    </style>
+    </div>
 </body>
 </html>

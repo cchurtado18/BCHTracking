@@ -176,8 +176,9 @@
             font-weight: 800;
             color: #111;
         }
-        .sl-grid-value.service-air { color: #047857; }
+        .sl-grid-value.service-air { color: #0A2D6F; }
         .sl-grid-value.service-sea { color: #1e40af; }
+        .sl-grid-value.service-cft { color: #16794C; }
 
         /* Badge AIR/SEA para distinguir en blanco y negro (por forma) */
         .sl-service-badge {
@@ -398,7 +399,7 @@
 <body class="{{ $isNarrow ? 'label-paper-narrow' : 'label-paper-4x6' }}">
     <div class="no-print">
         @if(session('success'))
-        <p style="margin-bottom: 12px; padding: 10px; background: #d1fae5; color: #065f46; border-radius: 6px; font-size: 14px;">{{ session('success') }}</p>
+        <p style="margin-bottom: 12px; padding: 10px; background: #E8EEF8; color: #0A2D6F; border-radius: 6px; font-size: 14px;">{{ session('success') }}</p>
         @endif
         @if(session('warning'))
         <p style="margin-bottom: 12px; padding: 10px; background: #fef3c7; color: #92400e; border-radius: 6px; font-size: 14px;">{{ session('warning') }}</p>
@@ -408,7 +409,7 @@
 
         @if(!empty($dropoffNextStep) && !empty($dropoffTotal))
             <p style="margin-top: 14px;">
-                <a href="{{ route('preregistrations.create') }}" style="display: inline-block; padding: 8px 14px; background: #059669; color: #fff; border-radius: 6px; font-weight: 600; text-decoration: none;">
+                <a href="{{ route('preregistrations.create') }}" style="display: inline-block; padding: 8px 14px; background: #0A2D6F; color: #fff; border-radius: 6px; font-weight: 600; text-decoration: none;">
                     Continuar con el siguiente bulto ({{ $dropoffNextStep }}/{{ $dropoffTotal }})
                 </a>
             </p>
@@ -452,9 +453,13 @@
         $bultoBadge = ($preregistration->bultos_total && $preregistration->bultos_total > 1)
             ? (($preregistration->bulto_index ?? 1) . ' de ' . $preregistration->bultos_total)
             : null;
-        $serviceLabel = $preregistration->service_type === 'SEA' ? 'SEA' : 'AIR';
-        $serviceClass = $preregistration->service_type === 'SEA' ? 'service-sea' : 'service-air';
-        $serviceMark = $preregistration->service_type === 'SEA' ? 'M' : 'A';
+        $serviceLabel = match ($preregistration->service_type) {
+            'SEA' => 'SEA',
+            'CFT' => 'CFT',
+            default => 'AIR',
+        };
+        $serviceClass = \App\Support\ServiceType::route($preregistration->service_type) === 'SEA' ? 'service-sea' : 'service-air';
+        $serviceMark = \App\Support\ServiceType::routeMark($preregistration->service_type);
         $weight = number_format((float) ($preregistration->verified_weight_lbs ?? $preregistration->intake_weight_lbs ?? 0), 2);
         $cubicFeetValue = $preregistration->cubic_feet !== null ? number_format((float) $preregistration->cubic_feet, 2) : null;
         $descriptionValue = !empty($preregistration->description) ? mb_strtoupper(trim($preregistration->description)) : '—';

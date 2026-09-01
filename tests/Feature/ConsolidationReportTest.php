@@ -67,4 +67,40 @@ class ConsolidationReportTest extends TestCase
             ->assertDontSee('Escaneado')
             ->assertDontSee('api.qrserver.com');
     }
+
+    public function test_cubic_foot_package_goes_into_maritime_sack(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+        $agency = Agency::create([
+            'name' => 'Agencia CFT Saco',
+            'code' => 'R002',
+            'phone' => '555-0102',
+            'is_active' => true,
+            'is_main' => false,
+        ]);
+        $package = Preregistration::create([
+            'intake_type' => 'DROP_OFF',
+            'warehouse_code' => '008888',
+            'label_name' => 'Cliente Pie Cubico',
+            'service_type' => 'CFT',
+            'dimension' => '12 x 12 x 12',
+            'intake_weight_lbs' => 8,
+            'status' => 'RECEIVED_MIAMI',
+            'agency_id' => $agency->id,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('consolidations.store'), [
+                'service_type' => 'SEA',
+                'preregistration_ids' => [$package->id],
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('consolidations', [
+            'service_type' => 'SEA',
+        ]);
+        $this->assertDatabaseHas('consolidation_items', [
+            'preregistration_id' => $package->id,
+        ]);
+    }
 }

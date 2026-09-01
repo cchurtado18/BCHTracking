@@ -1,7 +1,7 @@
 <div class="label-sheet">
     <div class="label-header">
         <div class="company-block">
-            <div class="company">BCH Tracking</div>
+            <div class="company">PrimeTrack Group</div>
             <div class="company-address">8307 NW 68TH ST 33166</div>
             <div class="company-city">Miami, Florida</div>
         </div>
@@ -50,7 +50,7 @@
         // Para que la etiqueta no crezca, mostramos dimensión/pie³ como sublínea dentro de la celda de "PESO".
         $dimension = !empty($preregistration->dimension) ? mb_strtoupper(trim($preregistration->dimension)) : null;
         $cubicFeet = $preregistration->cubic_feet !== null ? number_format((float) $preregistration->cubic_feet, 2) : null;
-        $serviceMark = strtoupper((string) ($preregistration->service_type ?? 'AIR')) === 'SEA' ? 'M' : 'A';
+        $serviceMark = \App\Support\ServiceType::routeMark($preregistration->service_type);
         $boxSizeLine = null;
         if ($dimension) {
             $boxSizeLine = $dimension;
@@ -70,7 +70,7 @@
         <div class="kv-col">
             <div class="field">Servicio</div>
             <div class="value label-service label-service-{{ strtolower($preregistration->service_type ?? 'air') }}">
-                {{ $preregistration->service_type === 'AIR' ? 'AIR' : 'SEA' }}
+                {{ $preregistration->service_type === 'CFT' ? 'CFT' : ($preregistration->service_type === 'SEA' ? 'SEA' : 'AIR') }}
             </div>
         </div>
         <div class="kv-col">

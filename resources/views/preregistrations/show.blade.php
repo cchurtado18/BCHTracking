@@ -44,68 +44,67 @@
     ];
 @endphp
 <div class="preregs-page preregs-show-page">
-    {{-- ===== Banner ===== --}}
-    <header class="prd-hero">
-        <div class="prd-hero-top">
-            <div class="prd-hero-identity">
-                <a href="{{ route('preregistrations.index', session('preregistrations_index_filters', [])) }}" class="prd-back">← Volver al listado</a>
-                <div class="prd-title-row">
-                    <h1 class="prd-title">Envío #{{ $preregistration->id }}</h1>
-                    <span class="prd-status">{{ $statusLabel }}</span>
-                </div>
-                <p class="prd-subtitle">{{ $preregistration->label_name }}@if($preregistration->agency) · {{ $preregistration->agency->name }}@endif</p>
-            </div>
-            <div class="prd-hero-actions">
-                <div class="prd-action-group">
-                    @if($preregistration->status === 'RECEIVED_MIAMI' && !$preregistration->consolidationItem)
-                    <form action="{{ route('preregistrations.create-single-consolidation', $preregistration->id) }}" method="POST" class="prd-inline">
-                        @csrf
-                        <button type="submit" class="prd-btn prd-btn-primary">Enviar solo este paquete</button>
-                    </form>
-                    @endif
-                    @if($preregistration->intake_type === 'DROP_OFF')
-                        @if($preregistration->receipt_note_id)
-                            <a href="{{ route('receipt-notes.print', $preregistration->receipt_note_id) }}" target="_blank" class="prd-btn prd-btn-secondary">Ver comprobante REC</a>
-                        @else
-                            <button type="button" class="prd-btn prd-btn-secondary" onclick="document.getElementById('rn-quick-modal').style.display='flex';document.getElementById('rn-quick-delivered-by').focus();">Comprobante recepción</button>
-                        @endif
-                    @endif
-                    <a href="{{ route('preregistrations.edit', $preregistration->id) }}" class="prd-btn prd-btn-secondary">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="prd-btn-icon"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-                        Editar
-                    </a>
-                </div>
-                @if($preregistration->warehouse_code)
-                <div class="prd-action-group prd-action-print">
-                    @if(!empty($dropoffLabelIds))
-                    @php $dropoffIdsParam = implode(',', $dropoffLabelIds); @endphp
-                    <a href="{{ route('preregistrations.dropoff-labels', ['ids' => $dropoffIdsParam]) }}" target="_blank" class="prd-btn prd-btn-ghost" title="Papel 4×6">Etiquetas 4×6 ({{ count($dropoffLabelIds) }})</a>
-                    <a href="{{ route('preregistrations.dropoff-labels', ['ids' => $dropoffIdsParam, 'format' => 'narrow']) }}" target="_blank" class="prd-btn prd-btn-ghost">2.25×4</a>
-                    @else
-                    <a href="{{ route('preregistrations.label', $preregistration->id) }}" target="_blank" class="prd-btn prd-btn-ghost" title="Papel 4×6">Etiqueta 4×6</a>
-                    <a href="{{ route('preregistrations.label', ['id' => $preregistration->id, 'format' => 'narrow']) }}" target="_blank" class="prd-btn prd-btn-ghost">2.25×4</a>
-                    @endif
-                </div>
+    <x-module-banner
+        section="General"
+        current="Detalle"
+        title="Envío #{{ $preregistration->id }}"
+        subtitle="{{ $preregistration->label_name }}{{ $preregistration->agency ? ' · '.$preregistration->agency->name : '' }} · {{ $statusLabel }}"
+        back-href="{{ route('preregistrations.index', session('preregistrations_index_filters', [])) }}"
+        back-label="Volver a preregistros"
+    >
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
+        </x-slot:icon>
+        <x-slot:actions>
+            @if($preregistration->status === 'RECEIVED_MIAMI' && !$preregistration->consolidationItem)
+            <form action="{{ route('preregistrations.create-single-consolidation', $preregistration->id) }}" method="POST">
+                @csrf
+                <button type="submit" class="mb-btn mb-btn-primary">Enviar solo este paquete</button>
+            </form>
+            @endif
+            @if($preregistration->intake_type === 'DROP_OFF')
+                @if($preregistration->receipt_note_id)
+                    <a href="{{ route('receipt-notes.print', $preregistration->receipt_note_id) }}" target="_blank" class="mb-btn mb-btn-secondary">Ver comprobante REC</a>
+                @else
+                    <button type="button" class="mb-btn mb-btn-secondary" onclick="document.getElementById('rn-quick-modal').style.display='flex';document.getElementById('rn-quick-delivered-by').focus();">Comprobante recepción</button>
                 @endif
-                @if(in_array($preregistration->status, ['RECEIVED_MIAMI', 'CANCELLED']))
-                <form action="{{ route('preregistrations.destroy', $preregistration->id) }}" method="POST" class="prd-inline" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este preregistro? Esta acción no se puede deshacer.');">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="prd-btn prd-btn-danger">Eliminar</button>
-                </form>
+            @endif
+            <a href="{{ route('preregistrations.edit', $preregistration->id) }}" class="mb-btn mb-btn-secondary">Editar</a>
+            @if($preregistration->warehouse_code)
+                @if(!empty($dropoffLabelIds))
+                @php $dropoffIdsParam = implode(',', $dropoffLabelIds); @endphp
+                <a href="{{ route('preregistrations.dropoff-labels', ['ids' => $dropoffIdsParam]) }}" target="_blank" class="mb-btn mb-btn-secondary">Etiquetas 4×6 ({{ count($dropoffLabelIds) }})</a>
+                @else
+                <a href="{{ route('preregistrations.label', $preregistration->id) }}" target="_blank" class="mb-btn mb-btn-secondary">Etiqueta 4×6</a>
                 @endif
-            </div>
-        </div>
-    </header>
+            @endif
+            @if(in_array($preregistration->status, ['RECEIVED_MIAMI', 'CANCELLED']))
+            <form action="{{ route('preregistrations.destroy', $preregistration->id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este preregistro? Esta acción no se puede deshacer.');">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="mb-btn mb-btn-danger">Eliminar</button>
+            </form>
+            @endif
+        </x-slot:actions>
+        <x-slot:strip>
+            <span class="mb-strip-label">Paquete</span>
+            <span class="mb-pill">Código <strong>{{ $preregistration->warehouse_code ?: '—' }}</strong></span>
+            @if($preregistration->tracking_external)
+            <span class="mb-pill">{{ $preregistration->tracking_external }}</span>
+            @endif
+            <span class="mb-pill">{{ \App\Support\ServiceType::label($preregistration->service_type) }}</span>
+            <span class="mb-pill">{{ $statusLabel }}</span>
+        </x-slot:strip>
+    </x-module-banner>
 
     {{-- ===== Franja de datos clave ===== --}}
     <div class="prd-metrics">
         <div class="prd-metric prd-metric-accent">
-            <span class="prd-metric-label">Warehouse</span>
+            <span class="prd-metric-label">Código</span>
             <span class="prd-metric-value prd-mono">{{ $preregistration->warehouse_code ?: '—' }}</span>
         </div>
         <div class="prd-metric">
-            <span class="prd-metric-label">Tracking ID</span>
+            <span class="prd-metric-label">Tracking</span>
             <span class="prd-metric-value prd-mono">{{ $preregistration->tracking_external ?: '—' }}</span>
         </div>
         <div class="prd-metric">
@@ -115,7 +114,7 @@
         <div class="prd-metric">
             <span class="prd-metric-label">Servicio</span>
             <span class="prd-metric-value prd-metric-service">
-                <span class="prd-chip prd-chip-{{ strtolower($preregistration->service_type ?? '') }}">{{ $preregistration->service_type == 'AIR' ? 'Aéreo' : 'Marítimo' }}</span>
+                <span class="prd-chip prd-chip-{{ strtolower($preregistration->service_type ?? '') }}">{{ \App\Support\ServiceType::label($preregistration->service_type) }}</span>
                 {{ $preregistration->agency?->name ?: '—' }}
             </span>
         </div>
@@ -130,7 +129,7 @@
         <header class="prd-card-head">
             <h2 class="prd-card-title">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="prd-card-icon"><path d="M3 17 9 11l4 4 8-8M17 7h4v4"/></svg>
-                Timeline Operativo
+                Seguimiento
             </h2>
         </header>
         <div class="prd-card-body">
@@ -173,7 +172,7 @@
                             <span class="prd-field-value prd-mono">{{ $preregistration->tracking_external ?? '—' }}</span>
                         </div>
                         <div class="prd-field">
-                            <span class="prd-field-label">Warehouse code</span>
+                            <span class="prd-field-label">Código</span>
                             <span class="prd-field-value prd-mono">{{ $preregistration->warehouse_code ?? '—' }}</span>
                         </div>
                         <div class="prd-field">
@@ -308,13 +307,13 @@
                             <span class="prd-field-value">{{ $preregistration->delivery->delivered_to ?: '—' }}</span>
                         </div>
                         <div class="prd-field prd-field-span">
-                            <span class="prd-field-label">Nota de salida</span>
+                            <span class="prd-field-label">Hoja de salida</span>
                             <span class="prd-field-value">
                                 @if($preregistration->delivery->deliveryNote)
                                 <span class="prd-mono">{{ $preregistration->delivery->deliveryNote->code }}</span>
-                                <a href="{{ route('deliveries.print-report', ['delivery_note_id' => $preregistration->delivery->delivery_note_id]) }}" target="_blank" class="prd-inline-link">Ver nota</a>
+                                <a href="{{ route('salidas.print-report', ['delivery_note_id' => $preregistration->delivery->delivery_note_id]) }}" target="_blank" class="prd-inline-link">Ver hoja</a>
                                 @else
-                                Sin nota
+                                Sin hoja
                                 @endif
                             </span>
                         </div>
@@ -502,29 +501,6 @@
 .preregs-show-page { padding: 1.25rem 1rem 2rem; max-width: 92rem; margin: 0 auto; width: 100%; box-sizing: border-box; }
 @media (min-width: 768px) { .preregs-show-page { padding: 1.5rem 1.5rem 2.5rem; } }
 
-/* ===== Banner verde ===== */
-.prd-hero {
-    background: linear-gradient(135deg, #047857 0%, #059669 55%, #10b981 100%);
-    color: #fff;
-    border-radius: 1rem;
-    padding: 1.35rem 1.5rem 3.4rem;
-    box-shadow: 0 10px 30px rgba(5, 150, 105, 0.28);
-}
-.prd-hero-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; }
-.prd-back { color: rgba(255,255,255,0.75); text-decoration: none; font-size: 0.8125rem; font-weight: 600; }
-.prd-back:hover { color: #fff; }
-.prd-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65rem; margin-top: 0.45rem; }
-.prd-title { margin: 0; font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; color: #fff; }
-.prd-subtitle { margin: 0.3rem 0 0; color: rgba(255,255,255,0.85); font-size: 0.925rem; }
-.prd-status {
-    display: inline-flex; align-items: center; padding: 0.28rem 0.7rem;
-    border-radius: 999px; font-size: 0.75rem; font-weight: 700;
-    background: #d1fae5; border: 1px solid #a7f3d0; color: #047857;
-}
-
-.prd-hero-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-start; justify-content: flex-end; max-width: 100%; }
-.prd-action-group { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
-.prd-action-print { padding-left: 0.55rem; border-left: 1px solid rgba(255,255,255,0.3); }
 .prd-inline { display: inline; margin: 0; }
 
 .prd-btn {
@@ -534,8 +510,8 @@
 }
 .prd-btn-icon { width: 0.85rem; height: 0.85rem; }
 .prd-btn-sm { padding: 0.38rem 0.7rem; font-size: 0.78rem; }
-.prd-btn-primary { background: #fff; color: #047857; border-color: #fff; }
-.prd-btn-primary:hover { background: #ecfdf5; }
+.prd-btn-primary { background: #fff; color: #0A2D6F; border-color: #fff; }
+.prd-btn-primary:hover { background: #F4F8FD; }
 .prd-btn-secondary { background: rgba(255,255,255,0.14); color: #fff; border-color: rgba(255,255,255,0.4); }
 .prd-btn-secondary:hover { background: rgba(255,255,255,0.24); }
 .prd-btn-ghost { background: transparent; color: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.35); }
@@ -548,23 +524,24 @@
 /* ===== Franja de datos clave ===== */
 .prd-metrics {
     display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem;
-    margin: -2.4rem 0.75rem 1.15rem; position: relative; z-index: 2;
+    margin: 0 0 1.15rem;
 }
-@media (min-width: 1000px) { .prd-metrics { grid-template-columns: 1fr 1.35fr 1fr 1.25fr 1fr; margin-left: 1rem; margin-right: 1rem; } }
+@media (min-width: 1000px) { .prd-metrics { grid-template-columns: 1fr 1.35fr 1fr 1.25fr 1fr; } }
 .prd-metric {
     background: #fff; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0.85rem 1rem;
     box-shadow: 0 6px 18px rgba(15,23,42,0.08);
 }
-.prd-metric-accent { border-left: 3px solid #10b981; }
-.prd-metric-accent .prd-metric-value { color: #059669; }
+.prd-metric-accent { border-left: 3px solid #1E4FA8; }
+.prd-metric-accent .prd-metric-value { color: #0A2D6F; }
 .prd-metric-label { display: block; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: #64748b; margin-bottom: 0.3rem; }
 .prd-metric-value { font-size: 1.05rem; font-weight: 800; color: #0f172a; line-height: 1.25; word-break: break-word; }
 .prd-metric-service { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; font-size: 0.92rem; }
 .prd-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.02em; }
 
 .prd-chip { display: inline-flex; align-items: center; padding: 0.16rem 0.5rem; border-radius: 999px; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; border: 1px solid transparent; }
-.prd-chip-air { background: #d1fae5; color: #047857; border-color: #a7f3d0; }
+.prd-chip-air { background: #E8EEF8; color: #0A2D6F; border-color: #C5D4EB; }
 .prd-chip-sea { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
+.prd-chip-cft { background: #E8F6EE; color: #16794C; border-color: #b7e0c8; }
 
 /* ===== Timeline horizontal ===== */
 .prd-timeline-card { margin-bottom: 1rem; }
@@ -578,24 +555,24 @@
     background: #e2e8f0; z-index: 0;
 }
 .prd-htl-step:first-child::before { display: none; }
-.prd-htl-step.is-done::before { background: #10b981; }
+.prd-htl-step.is-done::before { background: #1E4FA8; }
 .prd-htl-icon {
     position: relative; z-index: 1; width: 1.9rem; height: 1.9rem; border-radius: 999px;
     display: flex; align-items: center; justify-content: center;
     background: #fff; border: 2px solid #e2e8f0; color: #cbd5e1;
 }
 .prd-htl-icon svg { width: 0.9rem; height: 0.9rem; }
-.prd-htl-step.is-done .prd-htl-icon { background: #10b981; border-color: #a7f3d0; color: #fff; }
+.prd-htl-step.is-done .prd-htl-icon { background: #1E4FA8; border-color: #C5D4EB; color: #fff; }
 .prd-htl-step.is-current .prd-htl-icon {
-    background: #d1fae5; border-color: #10b981; color: #047857;
+    background: #E8EEF8; border-color: #1E4FA8; color: #0A2D6F;
     box-shadow: 0 0 0 4px rgba(16,185,129,0.16);
 }
 .prd-htl-title { display: block; font-size: 0.8rem; font-weight: 700; color: #b6c2d1; line-height: 1.2; }
 .prd-htl-step.is-done .prd-htl-title { color: #0f172a; }
-.prd-htl-step.is-current .prd-htl-title { color: #047857; }
+.prd-htl-step.is-current .prd-htl-title { color: #0A2D6F; }
 .prd-htl-meta { display: block; font-size: 0.68rem; font-weight: 600; color: #b6c2d1; margin-top: -0.2rem; word-break: break-word; padding: 0 0.25rem; }
 .prd-htl-step.is-done .prd-htl-meta { color: #64748b; }
-.prd-htl-step.is-current .prd-htl-meta { color: #059669; }
+.prd-htl-step.is-current .prd-htl-meta { color: #0A2D6F; }
 @media (max-width: 700px) {
     .prd-htl { overflow-x: auto; padding-bottom: 0.5rem; }
     .prd-htl-step { min-width: 92px; }
@@ -617,7 +594,7 @@
     display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;
 }
 .prd-card-title { margin: 0; font-size: 0.95rem; font-weight: 750; color: #0f172a; display: inline-flex; align-items: center; gap: 0.5rem; }
-.prd-card-icon { width: 1rem; height: 1rem; color: #059669; flex-shrink: 0; }
+.prd-card-icon { width: 1rem; height: 1rem; color: #0A2D6F; flex-shrink: 0; }
 .prd-card-body { padding: 1.1rem 1.15rem 1.2rem; }
 
 /* ===== Datos del envío ===== */
@@ -629,7 +606,7 @@
 .prd-field-label { font-size: 0.66rem; font-weight: 700; color: #94a3b8; letter-spacing: 0.07em; text-transform: uppercase; }
 .prd-field-value { font-size: 0.92rem; font-weight: 650; color: #0f172a; word-break: break-word; }
 .prd-field-intake { display: inline-flex; align-items: center; gap: 0.45rem; }
-.prd-intake-dot { width: 0.5rem; height: 0.5rem; border-radius: 999px; background: #10b981; flex-shrink: 0; }
+.prd-intake-dot { width: 0.5rem; height: 0.5rem; border-radius: 999px; background: #1E4FA8; flex-shrink: 0; }
 
 /* ===== Evidencia ===== */
 .prd-head-actions { display: flex; gap: 0.4rem; }
@@ -639,8 +616,8 @@
 }
 .prd-icon-btn svg { width: 1rem; height: 1rem; }
 .prd-icon-btn:hover { background: #f8fafc; color: #0f172a; }
-.prd-icon-btn-primary { background: #059669; border-color: #059669; color: #fff; }
-.prd-icon-btn-primary:hover { background: #047857; color: #fff; }
+.prd-icon-btn-primary { background: #0A2D6F; border-color: #0A2D6F; color: #fff; }
+.prd-icon-btn-primary:hover { background: #0A2D6F; color: #fff; }
 .prd-icon-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .prd-help { margin: 0 0 0.65rem; color: #64748b; font-size: 0.8125rem; line-height: 1.4; }
@@ -670,11 +647,11 @@
 }
 .prd-side-link {
     display: block; margin-top: 0.9rem; padding-top: 0.8rem; border-top: 1px solid #f1f5f9;
-    color: #059669; font-weight: 700; font-size: 0.84rem; text-decoration: none; text-align: center;
+    color: #0A2D6F; font-weight: 700; font-size: 0.84rem; text-decoration: none; text-align: center;
 }
-.prd-side-link:hover { color: #047857; text-decoration: underline; }
-.prd-inline-link { color: #059669; font-weight: 700; font-size: 0.84rem; text-decoration: none; margin-left: 0.5rem; }
-.prd-inline-link:hover { color: #047857; text-decoration: underline; }
+.prd-side-link:hover { color: #0A2D6F; text-decoration: underline; }
+.prd-inline-link { color: #0A2D6F; font-weight: 700; font-size: 0.84rem; text-decoration: none; margin-left: 0.5rem; }
+.prd-inline-link:hover { color: #0A2D6F; text-decoration: underline; }
 
 /* ===== Administración ===== */
 .prd-card-admin { background: #f6fdf9; border-color: #bbf0d8; }
@@ -697,7 +674,7 @@
 }
 .rn-quick-modal-head {
     padding: 1rem 1.25rem;
-    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+    background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%);
     color: #fff; display: flex; justify-content: space-between; align-items: center;
 }
 .rn-quick-modal-title { margin: 0; font-size: 1rem; font-weight: 700; }
@@ -712,7 +689,7 @@
     width: 100%; padding: 0.55rem 0.75rem; font-size: 0.875rem;
     border: 1px solid #d1d5db; border-radius: 0.5rem; background: #fff; color: #111827;
 }
-.rn-quick-modal-row input:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105,0.15); }
+.rn-quick-modal-row input:focus { outline: none; border-color: #0A2D6F; box-shadow: 0 0 0 3px rgba(5, 150, 105,0.15); }
 .rn-quick-modal-foot {
     padding: 0.85rem 1.25rem; background: #f8fafc; border-top: 1px solid #e5e7eb;
     display: flex; justify-content: flex-end; gap: 0.5rem; flex-wrap: wrap;
@@ -745,7 +722,7 @@
         </div>
         <div class="rn-quick-modal-foot">
             <button type="button" class="prd-btn prd-btn-outline" onclick="document.getElementById('rn-quick-modal').style.display='none';">Cancelar</button>
-            <button type="submit" class="prd-btn" style="color:#fff;background:#059669;border-color:#059669;">Generar e imprimir</button>
+            <button type="submit" class="prd-btn" style="color:#fff;background:#0A2D6F;border-color:#0A2D6F;">Generar e imprimir</button>
         </div>
     </form>
 </div>

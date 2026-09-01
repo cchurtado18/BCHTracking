@@ -29,12 +29,10 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $user = Auth::user();
-        if ($user->isAgencyUser()) {
-            return redirect()->intended(route('packages.index'));
+        if ($user->isAgencyUser() || ! $user->is_admin) {
+            return redirect()->route('packages.index');
         }
-        if (! $user->is_admin) {
-            return redirect()->intended(route('packages.index'));
-        }
+
         return redirect()->intended(route('dashboard'));
     }
 

@@ -14,7 +14,7 @@ class StoreConsolidationScanRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'service_type' => 'required|in:AIR,SEA',
+            'service_type' => 'required|'.\App\Support\ServiceType::routeRule(),
             'notes' => 'nullable|string|max:1000',
             'entry_codes' => 'required|array|min:1',
             'entry_codes.*' => 'required|string|max:191',

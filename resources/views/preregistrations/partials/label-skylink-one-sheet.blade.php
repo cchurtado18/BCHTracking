@@ -24,9 +24,13 @@
     $bultoBadge = ($preregistration->bultos_total && $preregistration->bultos_total > 1)
         ? (($preregistration->bulto_index ?? 1) . ' de ' . $preregistration->bultos_total)
         : null;
-    $serviceLabel = $preregistration->service_type === 'SEA' ? 'SEA' : 'AIR';
-    $serviceClass = $preregistration->service_type === 'SEA' ? 'service-sea' : 'service-air';
-    $serviceMark = $preregistration->service_type === 'SEA' ? 'M' : 'A';
+    $serviceLabel = match ($preregistration->service_type) {
+        'SEA' => 'SEA',
+        'CFT' => 'CFT',
+        default => 'AIR',
+    };
+    $serviceClass = \App\Support\ServiceType::route($preregistration->service_type) === 'SEA' ? 'service-sea' : 'service-air';
+    $serviceMark = \App\Support\ServiceType::routeMark($preregistration->service_type);
     $weight = number_format((float) ($preregistration->verified_weight_lbs ?? $preregistration->intake_weight_lbs ?? 0), 2);
     $cubicFeetValue = $preregistration->cubic_feet !== null ? number_format((float) $preregistration->cubic_feet, 2) : null;
     $descriptionValue = !empty($preregistration->description) ? mb_strtoupper(trim($preregistration->description)) : '—';

@@ -4,15 +4,18 @@
 
 @section('content')
 <div class="reporte-solicitar-page">
-    <header class="reporte-solicitar-hero">
-        <div class="reporte-solicitar-hero-inner">
-            <div class="reporte-solicitar-hero-text">
-                <h1 class="reporte-solicitar-hero-title">Reporte de paquetes (PDF)</h1>
-                <p class="reporte-solicitar-hero-subtitle">Indique los filtros que necesita y genere el reporte por subagencia y periodo. Luego podrá imprimirlo o guardarlo como PDF.</p>
-            </div>
-            <a href="{{ route('packages.index') }}" class="reporte-solicitar-hero-btn">← Volver a paquetes</a>
-        </div>
-    </header>
+    <x-module-banner
+        section="General"
+        current="Reporte PDF"
+        title="Reporte de paquetes (PDF)"
+        subtitle="Indique los filtros y genere el reporte por subagencia y periodo. Luego podrá imprimirlo o guardarlo como PDF."
+        back-href="{{ route('packages.index') }}"
+        back-label="Volver a paquetes"
+    >
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+        </x-slot:icon>
+    </x-module-banner>
 
     <div class="reporte-solicitar-card">
         <div class="reporte-solicitar-card-header">
@@ -54,6 +57,7 @@
                             <option value="">Todos</option>
                             <option value="AIR">Aéreo</option>
                             <option value="SEA">Marítimo</option>
+                            <option value="CFT">Pie cúbico</option>
                         </select>
                     </div>
                 </div>
@@ -74,7 +78,7 @@
 .reporte-solicitar-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
 
 .reporte-solicitar-hero {
-    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+    background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%);
     border-radius: 1rem;
     padding: 1.75rem 1.5rem;
     margin-bottom: 1.5rem;
@@ -85,9 +89,9 @@
 .reporte-solicitar-hero-subtitle { margin: 0.35rem 0 0; font-size: 0.9375rem; color: rgba(255,255,255,0.9); max-width: 52ch; }
 .reporte-solicitar-hero-btn {
     display: inline-flex; align-items: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600;
-    color: #047857; background: #fff; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none;
+    color: #0A2D6F; background: #fff; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none;
 }
-.reporte-solicitar-hero-btn:hover { background: #ecfdf5; color: #059669; }
+.reporte-solicitar-hero-btn:hover { background: #F4F8FD; color: #0A2D6F; }
 
 .reporte-solicitar-card {
     background: #fff;
@@ -98,7 +102,7 @@
     max-width: 42rem;
 }
 .reporte-solicitar-card-header {
-    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+    background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%);
     padding: 0.75rem 1.5rem;
 }
 .reporte-solicitar-card-title { margin: 0; font-size: 1rem; font-weight: 600; color: #fff; }
@@ -113,7 +117,7 @@
     border: 1px solid #d1d5db; border-radius: 0.5rem; background: #fff; color: #111827;
 }
 .reporte-solicitar-input:focus, .reporte-solicitar-select:focus {
-    outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
+    outline: none; border-color: #0A2D6F; box-shadow: 0 0 0 3px rgba(30, 79, 168, 0.15);
 }
 .reporte-solicitar-fixed-value { margin: 0; padding: 0.5rem 0.75rem; background: #f3f4f6; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; color: #111827; }
 .reporte-solicitar-code { color: #6b7280; font-weight: 400; }
@@ -121,9 +125,9 @@
 .reporte-solicitar-actions { margin-top: 1.5rem; }
 .reporte-solicitar-btn {
     display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem; font-size: 0.9375rem; font-weight: 600;
-    border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; background: #059669; color: #fff; border-color: #059669;
+    border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; background: #0A2D6F; color: #fff; border-color: #0A2D6F;
 }
-.reporte-solicitar-btn:hover { background: #047857; border-color: #047857; color: #fff; }
+.reporte-solicitar-btn:hover { background: #0A2D6F; border-color: #0A2D6F; color: #fff; }
 .reporte-solicitar-note { margin: 1rem 0 0; font-size: 0.8125rem; color: #6b7280; }
 </style>
 @endsection

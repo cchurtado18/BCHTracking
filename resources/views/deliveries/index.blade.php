@@ -1,238 +1,102 @@
 @extends('layouts.app')
 
-@section('title', 'Entregas')
-
-@push('styles')
-<style>
-.delivery-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
-
-.delivery-hero {
-    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
-    border-radius: 1rem; padding: 1.75rem 1.5rem; margin-bottom: 1.5rem;
-    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
-}
-.delivery-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-.delivery-hero-title { margin: 0; font-size: 1.75rem; font-weight: 700; color: #fff; letter-spacing: -0.02em; }
-.delivery-hero-subtitle { margin: 0.35rem 0 0; font-size: 0.9375rem; color: rgba(255,255,255,0.9); max-width: 52ch; }
-
-.delivery-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 1.5rem; overflow: hidden; }
-.delivery-card-header { padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb; background: #fafafa; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
-.delivery-card-title { margin: 0; font-size: 0.9375rem; font-weight: 600; color: #374151; }
-.delivery-card-body { padding: 1.25rem; }
-.delivery-card-footer { padding: 0.75rem 1.25rem; border-top: 1px solid #e5e7eb; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; font-size: 0.875rem; color: #6b7280; }
-.delivery-card-badge { font-size: 0.8125rem; color: #6b7280; }
-
-.delivery-agency-form { margin: 0; }
-.delivery-agency-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem; }
-.delivery-agency-row .delivery-label { flex: 0 0 auto; margin-bottom: 0; font-size: 0.875rem; font-weight: 600; color: #374151; }
-.delivery-select-agency { min-width: 280px; max-width: 100%; }
-@media (max-width: 639px) { .delivery-select-agency { min-width: 100%; } }
-
-.delivery-label { display: block; font-size: 0.75rem; font-weight: 600; color: #6b7280; margin-bottom: 0.35rem; }
-.delivery-input, .delivery-select { display: block; width: 100%; padding: 0.5rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.5rem; background: #fff; color: #111827; }
-.delivery-input:focus, .delivery-select:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15); }
-.delivery-filters-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
-
-.delivery-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; }
-.delivery-btn-primary { background: #059669; color: #fff; border-color: #059669; }
-.delivery-btn-primary:hover { background: #047857; border-color: #047857; color: #fff; }
-.delivery-btn-secondary { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
-.delivery-btn-secondary:hover { background: #e5e7eb; color: #111827; }
-.delivery-btn-outline-primary { background: #fff; color: #059669; border-color: #059669; }
-.delivery-btn-outline-primary:hover { background: #d1fae5; color: #047857; }
-.delivery-btn-sm { padding: 0.35rem 0.65rem; font-size: 0.8125rem; }
-
-.delivery-empty-state { text-align: center; padding: 2.5rem 1.5rem; }
-.delivery-empty-state-prompt { padding: 2rem 1rem; }
-.delivery-empty-state-title { margin: 0 0 0.5rem; font-size: 1.125rem; font-weight: 600; color: #374151; }
-.delivery-empty-state-text { margin: 0; font-size: 0.9375rem; color: #6b7280; max-width: 42ch; margin-left: auto; margin-right: auto; }
-
-.delivery-service-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin-bottom: 1rem; }
-.delivery-service-filter-label { font-size: 0.875rem; font-weight: 600; color: #374151; }
-.delivery-service-filter-link { display: inline-block; padding: 0.4rem 0.75rem; font-size: 0.875rem; border-radius: 0.5rem; border: 1px solid #d1d5db; background: #fff; color: #374151; text-decoration: none; }
-.delivery-service-filter-link:hover { background: #f3f4f6; border-color: #059669; color: #059669; }
-.delivery-service-filter-link.active { background: #059669; border-color: #059669; color: #fff; }
-.delivery-service-filter-link.active:hover { background: #047857; border-color: #047857; color: #fff; }
-
-.delivery-table-header { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); }
-.delivery-table-header .delivery-card-title { color: #fff; }
-.delivery-table-header .delivery-card-badge { color: rgba(255,255,255,0.9); }
-.delivery-hint { font-size: 0.875rem; color: #6b7280; margin: 0 0 1rem; }
-.delivery-muted { color: #6b7280; font-size: 0.875rem; }
-.delivery-table-wrap { overflow-x: auto; }
-.delivery-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-.delivery-table thead tr { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); }
-.delivery-table th { text-align: left; padding: 0.75rem 1rem; font-weight: 600; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.2); white-space: nowrap; }
-.delivery-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
-.delivery-table tbody tr:hover { background: #f9fafb; }
-.delivery-code { font-family: ui-monospace, monospace; font-weight: 600; color: #111827; }
-.delivery-name-cell { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.delivery-tracking-cell { max-width: 120px; }
-.delivery-num { font-weight: 500; color: #374151; }
-.delivery-th-actions { text-align: right; }
-.delivery-actions { text-align: right; white-space: nowrap; display: inline-flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; }
-.delivery-badge { display: inline-block; padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem; }
-.delivery-badge-pickup { background: #dbeafe; color: #1d4ed8; }
-.delivery-badge-delivery { background: #d1fae5; color: #047857; }
-.delivery-badge-air { background: #dbeafe; color: #1d4ed8; }
-.delivery-badge-sea { background: #d1fae5; color: #047857; }
-.delivery-empty { text-align: center; padding: 3rem 1rem !important; }
-.delivery-empty-text { margin: 0; color: #6b7280; }
-.delivery-pagination-info { font-weight: 500; }
-.delivery-pagination-links { display: flex; align-items: center; }
-.delivery-pagination-links nav { display: flex; gap: 0.25rem; flex-wrap: wrap; }
-.delivery-pagination-links a, .delivery-pagination-links span { display: inline-block; padding: 0.35rem 0.65rem; font-size: 0.8125rem; border-radius: 0.375rem; border: 1px solid #e5e7eb; background: #fff; color: #374151; text-decoration: none; }
-.delivery-pagination-links a:hover { background: #f3f4f6; color: #059669; }
-.delivery-pagination-links .disabled span { background: #f9fafb; color: #9ca3af; }
-.delivery-pagination-links .active span { background: #059669; color: #fff; border-color: #059669; }
-.delivery-notes-search-form { margin: 0; }
-.delivery-notes-search-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.65rem; }
-.delivery-notes-search-input { flex: 1 1 240px; min-width: 200px; max-width: 420px; }
-</style>
-@endpush
-
+@section('title', 'Salidas PrimeTrack')
 
 @section('content')
-<div class="delivery-page">
-    {{-- Hero --}}
-    <header class="delivery-hero">
-        <div class="delivery-hero-inner">
-            <div class="delivery-hero-text">
-                <h1 class="delivery-hero-title">Entregas</h1>
-                <p class="delivery-hero-subtitle">Busque la agencia a la cual desea hacer entrega. Si tiene paquetes listos para retiro se mostrarán aquí; si no, se indicará que no hay paquetes.</p>
-            </div>
-        </div>
-    </header>
+<div class="inv-page">
+    <x-module-banner section="Operaciones" current="Salidas" title="{{ auth()->user()?->isAgencyUser() ? 'Mis entregas' : 'Salidas PrimeTrack' }}" subtitle="{{ auth()->user()?->isAgencyUser() ? 'Hojas de salida de su cuenta. Consulte quién retiró y los paquetes entregados.' : 'Hojas de salida (SLO-) registradas. Cree una nueva hoja para elegir agencia, registrar quién retira y escanear los paquetes.' }}" :hide-back="(bool) auth()->user()?->isAgencyUser()">
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h11.25v10.5H3.75V6.75Zm11.25 3h3.19a1.5 1.5 0 0 1 1.22.63l1.59 2.24v4.63H15V9.75ZM7.5 18.75a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm12 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"/></svg>
+        </x-slot:icon>
+        <x-slot:actions>
+            @unless(auth()->user()?->isAgencyUser())
+            <a href="{{ route('salidas.create') }}" class="mb-btn mb-btn-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                Crear hoja de salida
+            </a>
+            @endunless
+        </x-slot:actions>
+    </x-module-banner>
 
-    {{-- Buscar agencia para entrega --}}
-    <div class="delivery-card delivery-agency-card">
-        <div class="delivery-card-header">
-            <h2 class="delivery-card-title">¿Para qué agencia es la entrega?</h2>
-        </div>
-        <div class="delivery-card-body">
-            <form method="GET" action="{{ route('deliveries.index') }}" class="delivery-agency-form" id="deliveryAgencyForm">
-                <div class="delivery-agency-row">
-                    <label for="agency_id" class="delivery-label">Agencia</label>
-                    <select name="agency_id" id="agency_id" class="delivery-select delivery-select-agency">
-                        <option value="">Seleccione la agencia…</option>
-                        @foreach($agenciesForSelect as $opt)
-                        <option value="{{ $opt->id }}" {{ (string) $agencyId === (string) $opt->id ? 'selected' : '' }}>{{ $opt->name }}</option>
-                        @endforeach
-                    </select>
-                    <button type="submit" class="delivery-btn delivery-btn-primary">Ver paquetes</button>
-                    @if($agencyId)
-                    <a href="{{ route('deliveries.index', ['clear_agency' => 1]) }}" class="delivery-btn delivery-btn-secondary">Limpiar</a>
-                    @endif
-                </div>
-            </form>
-        </div>
-    </div>
-
-    @if($selectedAgency)
-    {{-- Resultado: paquetes listos o mensaje de vacío --}}
-    <div class="delivery-card">
-        <div class="delivery-card-header delivery-table-header">
-            <h2 class="delivery-card-title">Paquetes listos para retiro — {{ $selectedAgency->name }}</h2>
-            @if($availableTotal > 0)
-            <a href="{{ route('deliveries.batch', array_filter(['agency_id' => $selectedAgency->id, 'service_type' => $serviceType])) }}" class="delivery-btn delivery-btn-primary delivery-btn-sm">Generar reporte de entrega</a>
-            @endif
-        </div>
-        <div class="delivery-card-body">
-            @if(($availableAir + $availableSea) === 0)
-            <div class="delivery-empty-state">
-                <p class="delivery-empty-state-title">Esta agencia no tiene paquetes listos para retirar</p>
-                <p class="delivery-empty-state-text">No hay paquetes en estado «Listo para retiro» para {{ $selectedAgency->name }}. Seleccione otra agencia o espere a que los paquetes estén listos.</p>
-            </div>
-            @else
-            <div class="delivery-service-filter">
-                <span class="delivery-service-filter-label">Servicio:</span>
-                <a href="{{ route('deliveries.index', ['agency_id' => $selectedAgency->id]) }}" class="delivery-service-filter-link {{ !$serviceType ? 'active' : '' }}">Todos ({{ $availableAir + $availableSea }})</a>
-                <a href="{{ route('deliveries.index', ['agency_id' => $selectedAgency->id, 'service_type' => 'AIR']) }}" class="delivery-service-filter-link {{ $serviceType === 'AIR' ? 'active' : '' }}">Aéreo ({{ $availableAir }})</a>
-                <a href="{{ route('deliveries.index', ['agency_id' => $selectedAgency->id, 'service_type' => 'SEA']) }}" class="delivery-service-filter-link {{ $serviceType === 'SEA' ? 'active' : '' }}">Marítimo ({{ $availableSea }})</a>
-            </div>
-            <p class="delivery-hint">{{ $availableTotal }} {{ $availableTotal === 1 ? 'paquete listo' : 'paquetes listos' }}@if($serviceType) — {{ $serviceType === 'AIR' ? 'Aéreo' : 'Marítimo' }}@else ({{ $availableAir }} aéreo, {{ $availableSea }} marítimo)@endif. Use «Generar reporte de entrega» para escanear y registrar la entrega.</p>
-            <div class="delivery-table-wrap">
-                <table class="delivery-table">
-                    <thead>
-                        <tr>
-                            <th>Cliente (etiqueta)</th>
-                            <th>Warehouse</th>
-                            <th>Tracking</th>
-                            <th>Servicio</th>
-                            <th>Peso (lbs)</th>
-                            <th>Agencia</th>
-                            <th>Listo desde</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($availablePackages as $p)
-                        <tr>
-                            <td class="delivery-name-cell" title="{{ $p->label_name }}">{{ Str::limit($p->label_name, 25) }}</td>
-                            <td><span class="delivery-code">{{ $p->warehouse_code ?? '—' }}</span></td>
-                            <td class="delivery-code delivery-tracking-cell" title="{{ $p->tracking_external }}">{{ Str::limit($p->tracking_external, 18) }}</td>
-                            <td>
-                                <span class="delivery-badge delivery-badge-{{ strtolower($p->service_type ?? '') }}">{{ $p->service_type == 'AIR' ? 'Aéreo' : 'Marítimo' }}</span>
-                            </td>
-                            <td class="delivery-num">{{ $p->verified_weight_lbs ?? $p->intake_weight_lbs ?? '—' }}</td>
-                            <td class="delivery-muted delivery-name-cell" title="{{ $p->agency->name ?? '' }}">{{ Str::limit($p->agency->name ?? '—', 20) }}</td>
-                            <td class="delivery-muted">{{ $p->ready_at ? $p->ready_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') : '—' }}</td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            @endif
-        </div>
-    </div>
-    @else
-    <div class="delivery-card">
-        <div class="delivery-card-body">
-            <div class="delivery-empty-state delivery-empty-state-prompt">
-                <p class="delivery-empty-state-title">Seleccione una agencia</p>
-                <p class="delivery-empty-state-text">Elija la agencia en el selector de arriba y pulse «Ver paquetes» para ver si tiene paquetes listos para retirar.</p>
-            </div>
-        </div>
-    </div>
+    @if(session('success'))
+    <div class="inv-alert inv-alert-success">{{ session('success') }}</div>
+    @endif
+    @if(session('error'))
+    <div class="inv-alert inv-alert-danger">{{ session('error') }}</div>
     @endif
 
-    {{-- Entregas realizadas (por nota de entrega) --}}
-    <div class="delivery-card delivery-table-card">
-        <div class="delivery-card-header delivery-table-header">
-            <h2 class="delivery-card-title">Entregas realizadas (por nota de entrega)</h2>
-            @if($selectedAgency)
-            <span class="delivery-card-badge">Filtrado por {{ $selectedAgency->name }}</span>
-            @else
-            <span class="delivery-card-badge">{{ $deliveryNotes->total() }} {{ $deliveryNotes->total() === 1 ? 'nota' : 'notas' }}</span>
-            @endif
+    <div class="inv-kpis">
+        <div class="inv-kpi-card">
+            <span class="inv-kpi-label">Hojas</span>
+            <span class="inv-kpi-value">{{ number_format($statsTotal) }}</span>
+            <span class="inv-kpi-note">Registradas{{ $selectedAgency ? ' para este cliente' : '' }}</span>
         </div>
-        <div class="delivery-card-body" style="padding-bottom: 0.75rem; border-bottom: 1px solid #e5e7eb;">
-            <form method="GET" action="{{ route('deliveries.index') }}" class="delivery-notes-search-form">
-                @if($agencyId)
-                <input type="hidden" name="agency_id" value="{{ $agencyId }}">
-                @endif
-                @if($serviceType)
-                <input type="hidden" name="service_type" value="{{ $serviceType }}">
-                @endif
-                <div class="delivery-notes-search-row">
-                    <label for="delivery_notes_q" class="delivery-label">Buscar nota</label>
-                    <input type="search" name="q" id="delivery_notes_q" value="{{ $searchQuery ?? '' }}" class="delivery-input delivery-notes-search-input" placeholder="Código BCH, warehouse, tracking, cliente o quien retira" autocomplete="off">
-                    <button type="submit" class="delivery-btn delivery-btn-primary">Buscar</button>
-                    @if(!empty($searchQuery))
-                    <a href="{{ route('deliveries.index', array_filter(['agency_id' => $agencyId, 'service_type' => $serviceType])) }}" class="delivery-btn delivery-btn-secondary">Limpiar</a>
-                    @endif
-                </div>
-            </form>
+        <div class="inv-kpi-card">
+            <span class="inv-kpi-label">Este mes</span>
+            <span class="inv-kpi-value">{{ number_format($statsMonth) }}</span>
+            <span class="inv-kpi-note">Hojas con entregas</span>
         </div>
-        <div class="delivery-table-wrap">
-            <table class="delivery-table">
+        <div class="inv-kpi-card">
+            <span class="inv-kpi-label">Paquetes</span>
+            <span class="inv-kpi-value">{{ number_format($statsPackagesMonth) }}</span>
+            <span class="inv-kpi-note">Entregados este mes</span>
+        </div>
+        @unless(auth()->user()?->isAgencyUser())
+        <div class="inv-kpi-card inv-kpi-card--green">
+            <span class="inv-kpi-label">Listos</span>
+            <span class="inv-kpi-value inv-text-green">{{ number_format($statsReady) }}</span>
+            <span class="inv-kpi-note">Pendientes de salida</span>
+        </div>
+        @endunless
+    </div>
+
+    <div class="inv-card inv-filters-card">
+        <form method="GET" action="{{ route('salidas.index') }}" class="inv-filters-form">
+            <div class="inv-field inv-field-wide">
+                <label class="inv-label" for="delivery_notes_q">Buscar</label>
+                <input type="search" name="q" id="delivery_notes_q" class="inv-input" value="{{ $searchQuery ?? '' }}" placeholder="Código SLO, warehouse, tracking, cliente o quien retira" autocomplete="off">
+            </div>
+            @unless(auth()->user()?->isAgencyUser())
+            <div class="inv-field">
+                <label class="inv-label" for="agency_id">Cliente</label>
+                <select name="agency_id" id="agency_id" class="inv-input">
+                    <option value="">Todos</option>
+                    @foreach($agenciesForSelect as $opt)
+                    <option value="{{ $opt->id }}" @selected((string) $agencyId === (string) $opt->id)>{{ $opt->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @endunless
+            <div class="inv-filters-actions">
+                <button class="inv-btn inv-btn-primary" type="submit">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+                    Filtrar
+                </button>
+                <a href="{{ route('salidas.index') }}" class="inv-clear-link">Limpiar</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="inv-card">
+        <div class="inv-table-head">
+            <span class="inv-table-head-note">Total: {{ number_format($deliveryNotes->total()) }} {{ $deliveryNotes->total() === 1 ? 'hoja' : 'hojas' }}</span>
+            @unless(auth()->user()?->isAgencyUser())
+            <a href="{{ route('salidas.create') }}" class="inv-btn inv-btn-primary inv-btn-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                Crear hoja de salida
+            </a>
+            @endunless
+        </div>
+        <div class="inv-table-scroll">
+            <table class="inv-table">
                 <thead>
                     <tr>
-                        <th>Código nota</th>
+                        <th>Código</th>
+                        <th>Cliente</th>
                         <th>Fecha</th>
-                        <th>Paquetes</th>
+                        <th class="inv-num">Paq.</th>
                         <th>Retirado por</th>
-                        <th>Agencia</th>
-                        <th class="delivery-th-actions">Opciones</th>
+                        <th class="inv-th-actions">Opciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -240,32 +104,43 @@
                     @php
                         $firstDelivery = $note->firstDelivery;
                         $agencyName = $note->agency?->name ?? $firstDelivery?->preregistration?->agency?->name ?? '—';
+                        $agencyCode = $note->agency?->code ?? $firstDelivery?->preregistration?->agency?->code;
                     @endphp
                     <tr>
-                        <td><span class="delivery-code">{{ $note->code }}</span></td>
-                        <td class="delivery-muted">{{ $firstDelivery?->delivered_at?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') ?? ($note->created_at ? $note->created_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') : '—') }}</td>
-                        <td class="delivery-num">{{ $note->deliveries_count }}</td>
-                        <td class="delivery-name-cell" title="{{ $firstDelivery?->delivered_to }}">{{ $firstDelivery?->delivered_to ?? '—' }}</td>
-                        <td class="delivery-muted delivery-name-cell" title="{{ $agencyName }}">{{ Str::limit($agencyName, 20) }}</td>
-                        <td class="delivery-actions">
-                            <a href="{{ route('deliveries.print-report', ['delivery_note_id' => $note->id]) }}" target="_blank" class="delivery-btn delivery-btn-sm delivery-btn-outline-primary" title="Ver / imprimir nota">Ver</a>
+                        <td><span class="inv-folio">{{ $note->code }}</span></td>
+                        <td>
+                            <div class="inv-client">{{ $agencyName }}</div>
+                            @if($agencyCode)
+                            <div class="inv-muted">{{ $agencyCode }}</div>
+                            @endif
+                        </td>
+                        <td class="inv-nowrap">{{ $firstDelivery?->delivered_at?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') ?? ($note->created_at ? $note->created_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') : '—') }}</td>
+                        <td class="inv-num"><span class="inv-paq">{{ $note->deliveries_count }}</span></td>
+                        <td>{{ $firstDelivery?->delivered_to ?? '—' }}</td>
+                        <td class="inv-actions">
+                            <a href="{{ route('salidas.print-report', ['delivery_note_id' => $note->id]) }}" target="_blank" class="inv-icon-btn" title="Ver / imprimir hoja">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+                            </a>
                             @if(auth()->user()?->is_admin)
-                            <a href="{{ route('deliveries.notes.edit', $note) }}" class="delivery-btn delivery-btn-sm delivery-btn-secondary" title="Editar nota (admin)">Editar</a>
+                            <a href="{{ route('salidas.hojas.edit', $note) }}" class="inv-icon-btn" title="Editar hoja (admin)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/></svg>
+                            </a>
                             @endif
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="delivery-empty">
-                            <p class="delivery-empty-text">
-                                @if(!empty($searchQuery))
-                                    No hay notas que coincidan con «{{ $searchQuery }}».
-                                @elseif($selectedAgency)
-                                    No hay notas de entrega para esta agencia.
-                                @else
-                                    No hay notas de entrega.
-                                @endif
-                            </p>
+                        <td colspan="6" class="inv-empty">
+                            @if(!empty($searchQuery))
+                                No hay hojas que coincidan con «{{ $searchQuery }}».
+                            @elseif($selectedAgency)
+                                No hay hojas de salida para este cliente.
+                            @else
+                                Aún no hay hojas de salida registradas.
+                            @endif
+                            @unless(auth()->user()?->isAgencyUser())
+                            <a href="{{ route('salidas.create') }}">Crear hoja de salida</a>
+                            @endunless
                         </td>
                     </tr>
                     @endforelse
@@ -273,25 +148,85 @@
             </table>
         </div>
         @if($deliveryNotes->total() > 0)
-        <div class="delivery-card-footer">
-            <span class="delivery-pagination-info">{{ $deliveryNotes->firstItem() }} – {{ $deliveryNotes->lastItem() }} de {{ $deliveryNotes->total() }}</span>
+        <div class="inv-card-footer">
+            <span class="inv-muted">{{ $deliveryNotes->firstItem() }} – {{ $deliveryNotes->lastItem() }} de {{ $deliveryNotes->total() }}</span>
             @if($deliveryNotes->hasPages())
-            <div class="delivery-pagination-links">{{ $deliveryNotes->links() }}</div>
+            <div class="inv-pager-wrap">{{ $deliveryNotes->links('vendor.pagination.primetrack') }}</div>
             @endif
         </div>
         @endif
     </div>
-
 </div>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    var form = document.getElementById('deliveryAgencyForm');
-    var select = document.getElementById('agency_id');
-    if (form && select) {
-        select.addEventListener('change', function() {
-            if (select.value) form.submit();
-        });
-    }
-});
-</script>
+
+<style>
+.inv-page {
+    --inv-navy: #0A2D6F;
+    --inv-blue: #1E4FA8;
+    --inv-green: #16794C;
+    --inv-line: #E8EEF8;
+    --inv-border: #C5D4EB;
+    --inv-soft: #F4F8FD;
+    --inv-muted: #5E6168;
+    padding: 1.15rem 0 2.25rem;
+    max-width: 96rem;
+    margin: 0 auto;
+    width: 100%;
+}
+.inv-alert { padding: 0.85rem 1.05rem; border-radius: 0.7rem; margin-bottom: 1rem; font-size: 0.875rem; }
+.inv-alert-success { background: #EFFAF4; border: 1px solid #A7DFC3; color: #116039; font-weight: 600; }
+.inv-alert-danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+.inv-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1.15rem; }
+.inv-kpi-card {
+    background: #fff; border: 1px solid var(--inv-line); border-radius: 0.85rem;
+    padding: 0.9rem 1.05rem; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    display: flex; flex-direction: column; gap: 0.28rem;
+}
+.inv-kpi-card--green { border-color: #A7DFC3; background: linear-gradient(180deg, #fff 40%, #F2FBF6 140%); }
+.inv-kpi-label { font-size: 0.66rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: #94a3b8; }
+.inv-kpi-value { font-size: 1.35rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.inv-kpi-note { font-size: 0.7rem; color: #94a3b8; }
+.inv-card { background: #fff; border: 1px solid var(--inv-line); border-radius: 0.85rem; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04); overflow: hidden; margin-bottom: 1.15rem; }
+.inv-filters-card { padding: 0.9rem 1.1rem; overflow: visible; }
+.inv-filters-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.7rem; }
+.inv-field { display: flex; flex-direction: column; gap: 0.28rem; min-width: 9rem; flex: 1; max-width: 18rem; }
+.inv-field-wide { max-width: 28rem; flex: 2; }
+.inv-label { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: #94a3b8; }
+.inv-input { padding: 0.52rem 0.7rem; font-size: 0.85rem; border: 1px solid #D8DCE2; border-radius: 0.55rem; background: #fff; color: #0f172a; width: 100%; box-sizing: border-box; }
+.inv-input:focus { outline: none; border-color: var(--inv-blue); box-shadow: 0 0 0 3px rgba(30, 79, 168, 0.15); }
+.inv-filters-actions { display: flex; align-items: center; gap: 0.65rem; }
+.inv-clear-link { font-size: 0.8rem; font-weight: 700; color: #64748b; text-decoration: none; }
+.inv-clear-link:hover { color: var(--inv-navy); text-decoration: underline; }
+.inv-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.58rem 1.05rem; font-size: 0.875rem; font-weight: 700; border-radius: 0.6rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; }
+.inv-btn-primary { background: var(--inv-navy); color: #fff; border-color: var(--inv-navy); box-shadow: 0 5px 14px rgba(10, 45, 111, 0.25); }
+.inv-btn-primary:hover { background: var(--inv-blue); border-color: var(--inv-blue); color: #fff; }
+.inv-btn-sm { padding: 0.42rem 0.85rem; font-size: 0.8rem; }
+.inv-table-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.7rem; padding: 0.85rem 1.1rem; border-bottom: 1px solid var(--inv-line); }
+.inv-table-head-note { font-size: 0.85rem; font-weight: 700; color: #334155; }
+.inv-table-scroll { overflow-x: auto; }
+.inv-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.inv-table thead th { background: linear-gradient(135deg, var(--inv-navy), var(--inv-blue)); color: #fff; text-align: left; padding: 0.62rem 0.85rem; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+.inv-table thead th.inv-num { text-align: right; }
+.inv-table td { padding: 0.66rem 0.85rem; border-bottom: 1px solid #f4f7fb; color: #334155; vertical-align: middle; }
+.inv-table tbody tr:last-child td { border-bottom: none; }
+.inv-table tbody tr:hover td { background: var(--inv-soft); }
+.inv-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.inv-th-actions, .inv-actions { text-align: right; white-space: nowrap; }
+.inv-nowrap { white-space: nowrap; }
+.inv-muted { color: #94a3b8; font-size: 0.75rem; }
+.inv-empty { padding: 1.4rem 1rem; text-align: center; color: #94a3b8; font-size: 0.85rem; }
+.inv-empty a { color: var(--inv-navy); font-weight: 700; }
+.inv-folio { font-weight: 800; color: #0f172a; font-variant-numeric: tabular-nums; }
+.inv-client { font-weight: 700; color: #0f172a; }
+.inv-paq { display: inline-flex; align-items: center; justify-content: center; min-width: 1.65rem; height: 1.65rem; padding: 0 0.35rem; border-radius: 999px; background: #EAF1FC; color: var(--inv-blue); font-size: 0.75rem; font-weight: 800; }
+.inv-icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 0.5rem; border: 1px solid #d1d9e6; background: #fff; color: #475569; text-decoration: none; margin-left: 0.2rem; }
+.inv-icon-btn:hover { background: var(--inv-soft); color: var(--inv-navy); border-color: var(--inv-border); }
+.inv-text-green { color: var(--inv-green); }
+.inv-card-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem 1.1rem; border-top: 1px solid var(--inv-line); }
+.inv-pager-wrap .pt-pager { display: flex; align-items: center; gap: 0.3rem; }
+.inv-pager-wrap .pt-pager-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 2rem; height: 2rem; padding: 0 0.45rem; border-radius: 0.45rem; border: 1px solid #d1d9e6; background: #fff; color: #334155; text-decoration: none; font-size: 0.8rem; font-weight: 700; }
+.inv-pager-wrap .pt-pager-btn-active { background: var(--inv-navy); color: #fff; border-color: var(--inv-navy); }
+.inv-pager-wrap .pt-pager-btn-disabled { opacity: 0.4; }
+.inv-pager-wrap .pt-pager-ellipsis { color: #94a3b8; padding: 0 0.2rem; }
+@media (max-width: 900px) { .inv-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .inv-field, .inv-field-wide { max-width: none; } }
+</style>
 @endsection

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Etiqueta Saco - {{ $consolidation->code }} - BCH Tracking</title>
+    <title>Etiqueta Saco - {{ $consolidation->code }} - PrimeTrack Group</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -25,12 +25,12 @@
         .label-sheet .label-header {
             margin-bottom: 10px;
             padding-bottom: 8px;
-            border-bottom: 2px solid #059669;
+            border-bottom: 2px solid #0A2D6F;
         }
         .label-sheet .label-header .company {
             font-size: 14px;
             font-weight: 700;
-            color: #059669;
+            color: #0A2D6F;
             letter-spacing: 0.02em;
         }
         .label-sheet .saco-code {
@@ -66,7 +66,7 @@
             margin-bottom: 0;
         }
         .no-print button {
-            background: #059669;
+            background: #0A2D6F;
             color: white;
             border: none;
             padding: 12px 24px;
@@ -75,7 +75,7 @@
             cursor: pointer;
             font-weight: 600;
         }
-        .no-print button:hover { background: #047857; }
+        .no-print button:hover { background: #0A2D6F; }
         .no-print a {
             display: inline-block;
             margin-left: 12px;
@@ -103,26 +103,26 @@
             padding: 10px 12px;
             font-size: 13px;
             font-weight: 600;
-            color: #047857;
-            background: #ecfdf5;
+            color: #0A2D6F;
+            background: #F4F8FD;
             border: 1px solid rgba(5, 150, 105, 0.4);
             border-radius: 8px;
             text-decoration: none;
             transition: background 0.15s, border-color 0.15s, color 0.15s;
         }
         .edit-prompt-btn:hover {
-            background: #d1fae5;
-            border-color: #059669;
-            color: #047857;
+            background: #E8EEF8;
+            border-color: #0A2D6F;
+            color: #0A2D6F;
         }
         .edit-prompt-btn--primary {
             color: #fff;
-            background: #059669;
-            border-color: #059669;
+            background: #0A2D6F;
+            border-color: #0A2D6F;
         }
         .edit-prompt-btn--primary:hover {
-            background: #047857;
-            border-color: #047857;
+            background: #0A2D6F;
+            border-color: #0A2D6F;
             color: #fff;
         }
 
@@ -159,7 +159,7 @@
 <body>
     <div class="no-print">
         @if(session('success'))
-        <p style="margin-bottom: 12px; padding: 10px; background: #d1fae5; color: #065f46; border-radius: 6px; font-size: 14px;">{{ session('success') }}</p>
+        <p style="margin-bottom: 12px; padding: 10px; background: #E8EEF8; color: #0A2D6F; border-radius: 6px; font-size: 14px;">{{ session('success') }}</p>
         @endif
         <button type="button" onclick="window.print();" class="no-print-btn">🖨️ Imprimir etiqueta del saco</button>
         <p class="no-print-hint">Papel <strong>4×6&nbsp;pulgadas</strong>, escala <strong>100&nbsp;%</strong>, sin márgenes. En la impresora térmica, el driver debe coincidir con ese tamaño.</p>
@@ -181,13 +181,13 @@
 
     <div class="label-sheet">
         <div class="label-header">
-            <div class="company">BCH Tracking - Saco</div>
+            <div class="company">PrimeTrack Group - Saco</div>
         </div>
         <div class="field">Código del saco</div>
         <div class="saco-code">{{ $consolidation->code }}</div>
 
         <div class="field">Tipo de servicio</div>
-        <div class="value">{{ $consolidation->service_type === 'AIR' ? 'Aéreo' : 'Marítimo' }}</div>
+        <div class="value">{{ \App\Support\ServiceType::label($consolidation->service_type) }}</div>
 
         <div class="field">Items en el saco</div>
         <div class="value">{{ $consolidation->items->count() }}</div>

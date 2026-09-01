@@ -4,24 +4,18 @@
 
 @section('content')
 <div class="rnb-page">
-    <header class="rnb-hero">
-        <div class="rnb-hero-inner">
-            <div>
-                <p class="rnb-kicker">Recepción</p>
-                <h1 class="rnb-title">{{ $receiptNote ? 'Nota ' . $receiptNote->code : 'Nueva nota de recepción' }}</h1>
-                <p class="rnb-sub">
-                    @if($receiptNote)
-                        Agregue los bultos que entregó el cliente. Cuando termine pulse «Imprimir comprobante».
-                    @else
-                        Paso 1: capture los datos del cliente que entrega los paquetes.
-                    @endif
-                </p>
-            </div>
-            <div class="rnb-hero-actions">
-                <a href="{{ route('receipt-notes.index') }}" class="rnb-btn rnb-btn-glass">← Listado</a>
-            </div>
-        </div>
-    </header>
+    <x-module-banner
+        section="Operaciones"
+        current="Comprobante"
+        title="{{ $receiptNote ? 'Nota '.$receiptNote->code : 'Nueva nota de recepción' }}"
+        subtitle="{{ $receiptNote ? 'Agregue los bultos que entregó el cliente. Cuando termine, imprima el comprobante.' : 'Paso 1: capture los datos del cliente que entrega los paquetes Drop Off.' }}"
+        back-href="{{ route('receipt-notes.index') }}"
+        back-label="Volver a comprobantes"
+    >
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2Z"/></svg>
+        </x-slot:icon>
+    </x-module-banner>
 
     @if ($errors->any())
     <div class="rnb-alert rnb-alert-err">
@@ -147,7 +141,7 @@
                                     <td class="rnb-muted">{{ ($pre->bultos_total && $pre->bultos_total > 1 && $pre->bulto_index) ? $pre->bulto_index.'/'.$pre->bultos_total : '—' }}</td>
                                     <td>{{ \Illuminate\Support\Str::limit($pre->label_name, 24) }}</td>
                                     <td class="rnb-num">{{ $pre->intake_weight_lbs ?? '—' }}</td>
-                                    <td><span class="rnb-badge rnb-badge-{{ strtolower($pre->service_type ?? '') }}">{{ $pre->service_type == 'AIR' ? 'Aéreo' : 'Marítimo' }}</span></td>
+                                    <td><span class="rnb-badge rnb-badge-{{ strtolower($pre->service_type ?? '') }}">{{ \App\Support\ServiceType::label($pre->service_type) }}</span></td>
                                     <td class="rnb-row-actions">
                                         <form action="{{ route('receipt-notes.remove-item', [$receiptNote->id, $pre->id]) }}" method="POST" onsubmit="return confirm('¿Quitar este bulto de la nota?');">
                                             @csrf
@@ -195,7 +189,7 @@
                                 <td class="rnb-code rnb-muted">{{ \Illuminate\Support\Str::limit($pre->tracking_external, 18) ?: '—' }}</td>
                                 <td>{{ \Illuminate\Support\Str::limit($pre->label_name, 22) }}</td>
                                 <td class="rnb-num">{{ $pre->intake_weight_lbs ?? '—' }}</td>
-                                <td><span class="rnb-badge rnb-badge-{{ strtolower($pre->service_type ?? '') }}">{{ $pre->service_type == 'AIR' ? 'Aéreo' : 'Marítimo' }}</span></td>
+                                <td><span class="rnb-badge rnb-badge-{{ strtolower($pre->service_type ?? '') }}">{{ \App\Support\ServiceType::label($pre->service_type) }}</span></td>
                                 <td class="rnb-muted">{{ \Illuminate\Support\Str::limit($pre->agency?->name ?? '—', 18) }}</td>
                                 <td class="rnb-muted">{{ $pre->created_at?->timezone(config('app.display_timezone'))->format('d/m/Y') }}</td>
                                 <td class="rnb-row-actions">
@@ -237,7 +231,7 @@
 .rnb-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
 
 .rnb-hero {
-    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+    background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%);
     border-radius: 1rem; padding: 1.5rem 1.5rem; margin-bottom: 1.5rem;
     box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
 }
@@ -253,12 +247,12 @@
     border-radius: 0.5rem; border: 1px solid transparent;
     cursor: pointer; text-decoration: none; transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.rnb-btn-primary { background: #059669; color: #fff; border-color: #059669; font-weight: 600; }
-.rnb-btn-primary:hover { background: #047857; border-color: #047857; color: #fff; }
+.rnb-btn-primary { background: #0A2D6F; color: #fff; border-color: #0A2D6F; font-weight: 600; }
+.rnb-btn-primary:hover { background: #0A2D6F; border-color: #0A2D6F; color: #fff; }
 .rnb-btn-secondary { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
 .rnb-btn-secondary:hover { background: #e5e7eb; color: #111827; }
-.rnb-btn-outline-primary { background: #fff; color: #059669; border-color: #059669; }
-.rnb-btn-outline-primary:hover { background: #d1fae5; color: #047857; }
+.rnb-btn-outline-primary { background: #fff; color: #0A2D6F; border-color: #0A2D6F; }
+.rnb-btn-outline-primary:hover { background: #E8EEF8; color: #0A2D6F; }
 .rnb-btn-glass { background: rgba(255,255,255,0.18); color: #fff; border-color: rgba(255,255,255,0.4); }
 .rnb-btn-glass:hover { background: rgba(255,255,255,0.28); color: #fff; }
 .rnb-btn-danger { background: #fff; color: #b91c1c; border-color: #fecaca; }
@@ -269,7 +263,7 @@
 .rnb-card-h {
     padding: 0.85rem 1.25rem; font-size: 0.8125rem; font-weight: 700;
     letter-spacing: 0.04em; text-transform: uppercase; color: #fff;
-    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+    background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%);
 }
 .rnb-card-h-row { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; text-transform: none; letter-spacing: 0; font-size: 0.875rem; }
 .rnb-card-b { padding: 1.25rem 1.5rem; }
@@ -289,7 +283,7 @@
 }
 .rnb-textarea { resize: vertical; min-height: 64px; }
 .rnb-input:focus, .rnb-select:focus, .rnb-textarea:focus {
-    outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
+    outline: none; border-color: #0A2D6F; box-shadow: 0 0 0 3px rgba(30, 79, 168, 0.15);
 }
 
 .rnb-scan-input {
@@ -302,7 +296,7 @@
     box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
     transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
-.rnb-scan-input:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 4px rgba(5, 150, 105,0.14); }
+.rnb-scan-input:focus { outline: none; border-color: #0A2D6F; box-shadow: 0 0 0 4px rgba(5, 150, 105,0.14); }
 .rnb-hint { margin: 0.75rem 0 0; font-size: 0.75rem; color: #6b7280; line-height: 1.45; }
 
 .rnb-info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem 1.25rem; }
@@ -311,8 +305,8 @@
 
 .rnb-table-wrap { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 0.5rem; }
 .rnb-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-.rnb-table thead { background: #ecfdf5; }
-.rnb-table th { padding: 0.55rem 0.75rem; text-align: left; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #047857; border-bottom: 1px solid #d1fae5; }
+.rnb-table thead { background: #F4F8FD; }
+.rnb-table th { padding: 0.55rem 0.75rem; text-align: left; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #0A2D6F; border-bottom: 1px solid #E8EEF8; }
 .rnb-table td { padding: 0.65rem 0.75rem; border-top: 1px solid #f1f5f9; vertical-align: middle; }
 .rnb-table tbody tr:hover { background: #f8fafc; }
 .rnb-row-actions { text-align: right; }
@@ -321,7 +315,7 @@
 .rnb-muted { color: #6b7280; }
 .rnb-badge { display: inline-block; padding: 0.18rem 0.55rem; font-size: 0.75rem; font-weight: 600; border-radius: 9999px; }
 .rnb-badge-air { background: #dbeafe; color: #1d4ed8; }
-.rnb-badge-sea { background: #d1fae5; color: #047857; }
+.rnb-badge-sea { background: #E8EEF8; color: #0A2D6F; }
 
 .rnb-empty { text-align: center; padding: 1.5rem 1rem; border: 2px dashed #e5e7eb; border-radius: 0.5rem; background: #fafafa; }
 .rnb-empty-title { margin: 0; font-size: 0.9375rem; font-weight: 600; color: #374151; }

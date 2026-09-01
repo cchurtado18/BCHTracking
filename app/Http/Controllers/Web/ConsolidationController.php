@@ -9,6 +9,7 @@ use App\Models\Consolidation;
 use App\Models\ConsolidationItem;
 use App\Models\Preregistration;
 use App\Services\ConsolidationService;
+use App\Support\ServiceType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -77,7 +78,9 @@ class ConsolidationController extends Controller
 
         $availableByServiceType = [
             'AIR' => $availablePreregistrations->get('AIR', collect()),
-            'SEA' => $availablePreregistrations->get('SEA', collect()),
+            'SEA' => $availablePreregistrations->get('SEA', collect())
+                ->concat($availablePreregistrations->get('CFT', collect()))
+                ->values(),
         ];
 
         return view('consolidations.create-select', compact('availableByServiceType'));
@@ -106,7 +109,7 @@ class ConsolidationController extends Controller
         if (is_array($ids)) {
             foreach ($ids as $preregId) {
                 $pre = Preregistration::find($preregId);
-                if ($pre && $pre->status === 'RECEIVED_MIAMI' && $pre->service_type === $consolidation->service_type && ! $pre->consolidationItem) {
+                if ($pre && $pre->status === 'RECEIVED_MIAMI' && ServiceType::matchesRoute($pre->service_type, $consolidation->service_type) && ! $pre->consolidationItem) {
                     ConsolidationItem::create([
                         'consolidation_id' => $consolidation->id,
                         'preregistration_id' => $pre->id,
@@ -136,9 +139,9 @@ class ConsolidationController extends Controller
         $sackService = $request->validated()['service_type'];
         foreach ($codes as $code) {
             $anyMatch = $this->findPreregistrationByCodeAnyService($code);
-            if ($anyMatch && $anyMatch->service_type !== $sackService) {
-                $sackLabel = $sackService === 'AIR' ? 'aéreo' : 'marítimo';
-                $pkgLabel = $anyMatch->service_type === 'AIR' ? 'aéreo' : 'marítimo';
+            if ($anyMatch && ! ServiceType::matchesRoute($anyMatch->service_type, $sackService)) {
+                $sackLabel = ServiceType::routeLabelLower($sackService);
+                $pkgLabel = ServiceType::routeLabelLower($anyMatch->service_type);
 
                 return redirect()->route('consolidations.create-scan')
                     ->withInput($request->except('entry_codes'))
@@ -217,7 +220,7 @@ class ConsolidationController extends Controller
 
         return Preregistration::query()
             ->where('status', 'RECEIVED_MIAMI')
-            ->where('service_type', $serviceType)
+            ->whereIn('service_type', ServiceType::servicesForRoute($serviceType))
             ->whereDoesntHave('consolidationItem')
             ->orderBy('created_at', 'desc')
             ->get()
@@ -260,7 +263,7 @@ class ConsolidationController extends Controller
         $scanLookup = collect();
         if ($consolidation->status === 'OPEN') {
             $availablePreregistrations = Preregistration::where('status', 'RECEIVED_MIAMI')
-                ->where('service_type', $consolidation->service_type)
+                ->whereIn('service_type', ServiceType::servicesForRoute($consolidation->service_type))
                 ->whereDoesntHave('consolidationItem')
                 ->orderBy('created_at', 'desc')
                 ->get();
@@ -323,7 +326,7 @@ class ConsolidationController extends Controller
         if ($pre->consolidationItem) {
             return back()->with('error', 'El preregistro ya está en otro saco.');
         }
-        if ($pre->service_type !== $consolidation->service_type) {
+        if (! ServiceType::matchesRoute($pre->service_type, $consolidation->service_type)) {
             return back()->with('error', 'El tipo de servicio no coincide.');
         }
         ConsolidationItem::create([
@@ -369,9 +372,9 @@ class ConsolidationController extends Controller
         }
 
         $anyMatch = $this->findPreregistrationByCodeAnyService($code);
-        if ($anyMatch && $anyMatch->service_type !== $consolidation->service_type) {
-            $sackLabel = $consolidation->service_type === 'AIR' ? 'aéreo' : 'marítimo';
-            $pkgLabel = $anyMatch->service_type === 'AIR' ? 'aéreo' : 'marítimo';
+        if ($anyMatch && ! ServiceType::matchesRoute($anyMatch->service_type, $consolidation->service_type)) {
+            $sackLabel = ServiceType::routeLabelLower($consolidation->service_type);
+            $pkgLabel = ServiceType::routeLabelLower($anyMatch->service_type);
 
             return redirect()->route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'scan'])
                 ->with('error', "El código {$code} corresponde a un paquete {$pkgLabel} en preregistro, no {$sackLabel}.");

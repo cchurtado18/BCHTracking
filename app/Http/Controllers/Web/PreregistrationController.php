@@ -113,12 +113,13 @@ class PreregistrationController extends Controller
         $statsTotal = $statsQuery->count();
         $statsAir = (clone $statsQuery)->where('service_type', 'AIR')->count();
         $statsSea = (clone $statsQuery)->where('service_type', 'SEA')->count();
+        $statsCft = (clone $statsQuery)->where('service_type', 'CFT')->count();
         $statsReceived = (clone $statsQuery)->where('status', 'RECEIVED_MIAMI')->count();
         $statsReady = (clone $statsQuery)->where('status', 'READY')->count();
 
         $agenciesForFilter = Agency::where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
-        return view('preregistrations.index', compact('preregistrations', 'statsTotal', 'statsAir', 'statsSea', 'statsReceived', 'statsReady', 'agenciesForFilter'));
+        return view('preregistrations.index', compact('preregistrations', 'statsTotal', 'statsAir', 'statsSea', 'statsCft', 'statsReceived', 'statsReady', 'agenciesForFilter'));
     }
 
     public function create(Request $request)
@@ -130,6 +131,22 @@ class PreregistrationController extends Controller
         }
 
         $agencies = Agency::where('is_active', true)->orderBy('name')->get();
+        $slo = $agencies->first(fn (Agency $a) => $a->isRootAccount());
+        $sloClients = $slo
+            ? $agencies->filter(fn (Agency $a) => $a->isDirectClient() && (int) $a->parent_agency_id === (int) $slo->id)->values()
+            : collect();
+        $partnerAgencies = $agencies->filter(fn (Agency $a) => ! $a->isDirectClient())->values();
+        $partnerAgenciesJson = $partnerAgencies->map(fn (Agency $a) => [
+            'id' => $a->id,
+            'code' => $a->code,
+            'name' => $a->name,
+            'is_slo' => $a->isRootAccount(),
+        ])->values();
+        $sloClientsJson = $sloClients->map(fn (Agency $a) => [
+            'id' => $a->id,
+            'code' => $a->code,
+            'name' => $a->name,
+        ])->values();
         $dropoffContinuation = false;
         $dropoffStep = 1;
         $dropoffTotal = 1;
@@ -155,6 +172,11 @@ class PreregistrationController extends Controller
         return response()
             ->view('preregistrations.create', compact(
                 'agencies',
+                'partnerAgencies',
+                'partnerAgenciesJson',
+                'sloClients',
+                'sloClientsJson',
+                'slo',
                 'dropoffContinuation',
                 'dropoffStep',
                 'dropoffTotal',
@@ -418,8 +440,13 @@ class PreregistrationController extends Controller
             $photo->url = asset('storage/'.$photo->path);
         });
         $agencies = Agency::where('is_active', true)->orderBy('name')->get();
+        $slo = $agencies->first(fn (Agency $a) => $a->isRootAccount());
+        $sloClients = $slo
+            ? $agencies->filter(fn (Agency $a) => $a->isDirectClient() && (int) $a->parent_agency_id === (int) $slo->id)->values()
+            : collect();
+        $partnerAgencies = $agencies->filter(fn (Agency $a) => ! $a->isDirectClient())->values();
 
-        return view('preregistrations.edit', compact('preregistration', 'agencies'));
+        return view('preregistrations.edit', compact('preregistration', 'agencies', 'partnerAgencies', 'sloClients', 'slo'));
     }
 
     public function update(Request $request, string $id)
@@ -433,7 +460,7 @@ class PreregistrationController extends Controller
         $data = $request->validate([
             'agency_id' => 'required|exists:agencies,id',
             'label_name' => 'sometimes|string|max:255',
-            'service_type' => 'sometimes|in:AIR,SEA',
+            'service_type' => 'sometimes|'.\App\Support\ServiceType::rule(),
             'intake_weight_lbs' => 'sometimes|numeric|min:0|max:999999.99',
             'tracking_external' => $trackingRules,
             'dimension' => 'nullable|string|max:100',
@@ -449,6 +476,13 @@ class PreregistrationController extends Controller
             if (! $preregistration->warehouse_code) {
                 $data['warehouse_code'] = $this->warehouseService->generateWarehouseCode();
             }
+        }
+
+        $assigned = Agency::find((int) $data['agency_id']);
+        if ($assigned && $assigned->isRootAccount()) {
+            return redirect()->back()->withInput()->withErrors([
+                'agency_id' => 'Si el paquete es de SkyLink One, seleccione un cliente propio de SLO.',
+            ]);
         }
 
         $preregistration->update($data);

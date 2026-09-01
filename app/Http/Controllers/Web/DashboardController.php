@@ -12,7 +12,7 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        if (auth()->user() && ! auth()->user()->is_admin && ! auth()->user()->isAgencyUser()) {
+        if (! auth()->user()?->is_admin) {
             return redirect()->route('packages.index');
         }
 
@@ -62,7 +62,7 @@ class DashboardController extends Controller
         if (auth()->user() && auth()->user()->isAgencyUser()) {
             $agencyId = (int) auth()->user()->agency_id;
         }
-        $serviceType = in_array($serviceTypeRaw, ['AIR', 'SEA'], true) ? $serviceTypeRaw : null;
+        $serviceType = \App\Support\ServiceType::isValid($serviceTypeRaw) ? strtoupper((string) $serviceTypeRaw) : null;
         $isFiltered = $this->normalizeDate($dateFromRaw) !== null
             || $this->normalizeDate($dateToRaw) !== null
             || $agencyId !== null
@@ -315,6 +315,57 @@ class DashboardController extends Controller
             ];
         }
 
+        $pipelineBase = Preregistration::query();
+        if ($agencyId) {
+            $pipelineBase->where('agency_id', $agencyId);
+        }
+        if ($serviceType) {
+            $pipelineBase->where('service_type', $serviceType);
+        }
+        $packagesIndex = $isAgencyUser ? 'packages.index' : 'preregistrations.index';
+        $pipeline = [
+            [
+                'key' => 'RECEIVED_MIAMI',
+                'step' => '01',
+                'label' => 'Miami',
+                'hint' => 'Ingreso al almacén',
+                'count' => (clone $pipelineBase)->where('status', 'RECEIVED_MIAMI')->count(),
+                'url' => route($packagesIndex, ['status' => 'RECEIVED_MIAMI']),
+            ],
+            [
+                'key' => 'IN_TRANSIT',
+                'step' => '02',
+                'label' => 'Tránsito',
+                'hint' => 'En ruta a Nicaragua',
+                'count' => (clone $pipelineBase)->where('status', 'IN_TRANSIT')->count(),
+                'url' => route($packagesIndex, ['status' => 'IN_TRANSIT']),
+            ],
+            [
+                'key' => 'IN_WAREHOUSE_NIC',
+                'step' => '03',
+                'label' => 'Almacén NIC',
+                'hint' => 'Llegó a destino',
+                'count' => (clone $pipelineBase)->where('status', 'IN_WAREHOUSE_NIC')->count(),
+                'url' => route($packagesIndex, ['status' => 'IN_WAREHOUSE_NIC']),
+            ],
+            [
+                'key' => 'READY',
+                'step' => '04',
+                'label' => 'Listo',
+                'hint' => 'Pendiente de retiro',
+                'count' => (clone $pipelineBase)->where('status', 'READY')->count(),
+                'url' => route($packagesIndex, ['status' => 'READY']),
+            ],
+            [
+                'key' => 'DELIVERED',
+                'step' => '05',
+                'label' => 'Entregado',
+                'hint' => 'Cerrado en ventanilla',
+                'count' => (clone $pipelineBase)->where('status', 'DELIVERED')->count(),
+                'url' => route($packagesIndex, ['status' => 'DELIVERED']),
+            ],
+        ];
+
         return view('dashboard', compact(
             'dateFrom',
             'dateTo',
@@ -353,7 +404,9 @@ class DashboardController extends Controller
             'heatmapWeeks',
             'heatmapMax',
             'recentRecords',
-            'displayTz'
+            'displayTz',
+            'pipeline',
+            'isAgencyUser'
         ));
     }
 
@@ -424,7 +477,7 @@ class DashboardController extends Controller
         if (auth()->user() && auth()->user()->isAgencyUser()) {
             $agencyId = (int) auth()->user()->agency_id;
         }
-        $serviceType = in_array($serviceTypeRaw, ['AIR', 'SEA'], true) ? $serviceTypeRaw : null;
+        $serviceType = \App\Support\ServiceType::isValid($serviceTypeRaw) ? strtoupper((string) $serviceTypeRaw) : null;
 
         $query = Preregistration::query();
         if ($dateFrom !== null && $dateTo !== null) {

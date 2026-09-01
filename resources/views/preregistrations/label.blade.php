@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Etiqueta - {{ $preregistration->warehouse_code }} - BCH Tracking</title>
+    <title>Etiqueta - {{ $preregistration->warehouse_code }} - PrimeTrack Group</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -388,7 +388,7 @@
 <body>
     <div class="no-print">
         @if(session('success'))
-        <p style="margin-bottom: 12px; padding: 10px; background: #d1fae5; color: #065f46; border-radius: 6px; font-size: 14px;">{{ session('success') }}</p>
+        <p style="margin-bottom: 12px; padding: 10px; background: #E8EEF8; color: #0A2D6F; border-radius: 6px; font-size: 14px;">{{ session('success') }}</p>
         @endif
         @if(session('warning'))
         <p style="margin-bottom: 12px; padding: 10px; background: #fef3c7; color: #92400e; border-radius: 6px; font-size: 14px;">{{ session('warning') }}</p>
@@ -397,7 +397,7 @@
         <p class="no-print-hint">En impresión: papel <strong>4×6 pulgadas</strong> (10×15&nbsp;cm), escala <strong>100&nbsp;%</strong>, márgenes <strong>ninguno</strong> y desactive <strong>«Ajustar al área imprimible» / «Fit to page»</strong>. Si la impresora imprime cortado o en blanco, en preferencias del driver elija el mismo tamaño de etiqueta.</p>
         @if(!empty($dropoffNextStep) && !empty($dropoffTotal))
         <p style="margin-top: 14px;">
-            <a href="{{ route('preregistrations.create') }}" style="display: inline-block; padding: 8px 14px; background: #059669; color: #fff; border-radius: 6px; font-weight: 600; text-decoration: none;">Continuar con el siguiente bulto ({{ $dropoffNextStep }}/{{ $dropoffTotal }})</a>
+            <a href="{{ route('preregistrations.create') }}" style="display: inline-block; padding: 8px 14px; background: #0A2D6F; color: #fff; border-radius: 6px; font-weight: 600; text-decoration: none;">Continuar con el siguiente bulto ({{ $dropoffNextStep }}/{{ $dropoffTotal }})</a>
         </p>
         <p style="margin-top: 6px; font-size: 13px; color: #6b7280;">Después de imprimir esta etiqueta, completa los datos del bulto {{ $dropoffNextStep }}.</p>
         @endif

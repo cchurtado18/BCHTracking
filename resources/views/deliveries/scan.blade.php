@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Escanear Entrega')
+@section('title', 'Escanear salida')
 
 @section('content')
 @php
@@ -10,15 +10,18 @@
     $scanDeliveryNote = $scanDeliveryNote ?? null;
 @endphp
 <div class="py-6">
-    <div class="mb-6 flex justify-between items-center">
-        <div>
-            <h1 class="text-3xl font-bold text-gray-900">Escanear entrega</h1>
-            <p class="mt-2 text-sm text-gray-600">Indique una sola vez quién retira; luego escanee warehouse (6 dígitos) o tracking de cada paquete.</p>
-        </div>
-        <a href="{{ route('deliveries.index') }}" class="text-gray-600 hover:text-gray-900">
-            ← Volver
-        </a>
-    </div>
+    <x-module-banner
+        section="Operaciones"
+        current="Escanear salida"
+        title="Escanear salida"
+        subtitle="Indique una sola vez quién retira; luego escanee warehouse (6 dígitos) o tracking de cada paquete."
+        back-href="{{ route('salidas.index') }}"
+        back-label="Volver a Salidas"
+    >
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.5h16.5v15H3.75V4.5Zm4.5 4.5h3m-3 3h7.5"/></svg>
+        </x-slot:icon>
+    </x-module-banner>
 
     @if(session('success'))
     <div class="mb-4 rounded-md bg-green-50 p-4 text-sm text-green-800 border border-green-200">{{ session('success') }}</div>
@@ -32,18 +35,13 @@
         <div class="bg-amber-50 border border-amber-200 shadow rounded-lg p-6">
             <h2 class="text-lg font-semibold text-amber-900 mb-2">1. Datos de quien retira (una sola vez)</h2>
             <p class="text-sm text-amber-800 mb-4">Después de guardar, podrá escanear varios paquetes seguidos sin volver a escribir nombre, cédula ni teléfono.</p>
-            <form action="{{ route('deliveries.scan-retirer-session') }}" method="POST">
+            <form action="{{ route('salidas.scan-retirer-session') }}" method="POST">
                 @csrf
                 <div class="space-y-4">
                     <div>
                         <label for="delivered_to" class="block text-sm font-medium text-gray-700">Nombre completo *</label>
                         <input type="text" name="delivered_to" id="delivered_to" value="{{ old('delivered_to') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm @error('delivered_to') border-red-500 @enderror" required autofocus placeholder="Nombre completo">
                         @error('delivered_to')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                    </div>
-                    <div>
-                        <label for="invoice_number" class="block text-sm font-medium text-gray-700">Nº factura (opcional)</label>
-                        <input type="text" name="invoice_number" id="invoice_number" value="{{ old('invoice_number') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm @error('invoice_number') border-red-500 @enderror" placeholder="Ej. 17751">
-                        @error('invoice_number')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
@@ -59,52 +57,47 @@
                     </div>
                 </div>
                 <div class="mt-6 flex justify-end">
-                    <button type="submit" id="btn-scan-retirer-submit" class="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 font-medium disabled:opacity-60 disabled:cursor-not-allowed">
+                    <button type="submit" id="btn-scan-retirer-submit" class="bg-[#0A2D6F] text-white px-4 py-2 rounded-md hover:bg-[#0A2D6F] font-medium disabled:opacity-60 disabled:cursor-not-allowed">
                         Guardar y escanear
                     </button>
                 </div>
             </form>
         </div>
         @else
-        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-emerald-900">
+        <div class="bg-[#F4F8FD] border border-[#C5D4EB] rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-[#0A2D6F]">
             <div>
                 <span class="font-semibold">Quien retira:</span> {{ $scanRetirerSession['delivered_to'] ?? '—' }}
                 @if($scanDeliveryNote)
-                <span class="text-emerald-600 mx-1">·</span>
+                <span class="text-[#0A2D6F] mx-1">·</span>
                 <span class="font-semibold">Nota:</span> <span class="font-mono">{{ $scanDeliveryNote->code }}</span>
                 @endif
-                @if(filled($scanRetirerSession['invoice_number'] ?? null))
-                <span class="text-emerald-600 mx-1">·</span>
-                <span class="font-semibold">Nº factura:</span> {{ $scanRetirerSession['invoice_number'] }}
-                @endif
                 @if(filled($scanRetirerSession['retirer_id_number'] ?? null))
-                <span class="text-emerald-600 mx-1">·</span>
+                <span class="text-[#0A2D6F] mx-1">·</span>
                 <span class="font-semibold">Cédula:</span> {{ $scanRetirerSession['retirer_id_number'] }}
                 @endif
                 @if(filled($scanRetirerSession['retirer_phone'] ?? null))
-                <span class="text-emerald-600 mx-1">·</span>
+                <span class="text-[#0A2D6F] mx-1">·</span>
                 <span class="font-semibold">Tel.:</span> {{ $scanRetirerSession['retirer_phone'] }}
                 @endif
             </div>
             <div class="flex flex-wrap items-center gap-3 shrink-0">
                 @if($scanDeliveryNote)
-                <a href="{{ route('deliveries.print-report', ['delivery_note_id' => $scanDeliveryNote->id]) }}" target="_blank" class="text-sm font-medium text-emerald-800 underline hover:text-emerald-950">Imprimir nota</a>
+                <a href="{{ route('salidas.print-report', ['delivery_note_id' => $scanDeliveryNote->id]) }}" target="_blank" class="text-sm font-medium text-[#0A2D6F] underline hover:text-[#1E4FA8]">Imprimir hoja</a>
                 @endif
-                <form action="{{ route('deliveries.scan-clear-retirer-session') }}" method="POST">
+                <form action="{{ route('salidas.scan-clear-retirer-session') }}" method="POST">
                     @csrf
-                    <button type="submit" class="text-sm font-medium text-emerald-800 underline hover:text-emerald-950">Cambiar persona que retira</button>
+                    <button type="submit" class="text-sm font-medium text-[#0A2D6F] underline hover:text-[#1E4FA8]">Cambiar persona que retira</button>
                 </form>
             </div>
         </div>
 
         <div class="bg-white shadow rounded-lg p-6">
             <h2 class="text-lg font-semibold text-gray-900 mb-4">2. Escanear warehouse o tracking</h2>
-            <form action="{{ route('deliveries.process-scan') }}" method="POST" id="delivery-standalone-scan-form">
+            <form action="{{ route('salidas.process-scan') }}" method="POST" id="delivery-standalone-scan-form">
                 @csrf
                 <input type="hidden" name="delivered_to" value="{{ $scanRetirerSession['delivered_to'] ?? '' }}">
                 <input type="hidden" name="retirer_id_number" value="{{ $scanRetirerSession['retirer_id_number'] ?? '' }}">
                 <input type="hidden" name="retirer_phone" value="{{ $scanRetirerSession['retirer_phone'] ?? '' }}">
-                <input type="hidden" name="invoice_number" value="{{ $scanRetirerSession['invoice_number'] ?? '' }}">
                 @if(!empty($scanRetirerSession['delivery_note_id']))
                 <input type="hidden" name="delivery_note_id" value="{{ $scanRetirerSession['delivery_note_id'] }}">
                 @endif
@@ -146,16 +139,16 @@
         </div>
 
         @if($scannedDeliveries->isNotEmpty())
-        <div class="bg-white shadow rounded-lg overflow-hidden border-2 border-emerald-600">
-            <div class="px-4 py-3 bg-emerald-700 text-white flex items-center justify-between gap-2">
+        <div class="bg-white shadow rounded-lg overflow-hidden border-2 border-[#0A2D6F]">
+            <div class="px-4 py-3 bg-[#0A2D6F] text-white flex items-center justify-between gap-2">
                 <h2 class="text-base font-semibold">Escaneados hoy</h2>
                 <span class="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-full bg-white/20 font-bold">{{ $scannedDeliveries->count() }}</span>
             </div>
             <ol class="divide-y divide-gray-100 max-h-96 overflow-y-auto m-0 p-0 list-none">
                 @foreach($scannedDeliveries as $i => $delivery)
                     @php $pkg = $delivery->preregistration; @endphp
-                    <li class="px-4 py-3 flex items-center gap-3 {{ $i === 0 ? 'bg-emerald-50' : '' }}">
-                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold {{ $i === 0 ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-800' }}">{{ $scannedDeliveries->count() - $i }}</span>
+                    <li class="px-4 py-3 flex items-center gap-3 {{ $i === 0 ? 'bg-[#F4F8FD]' : '' }}">
+                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold {{ $i === 0 ? 'bg-[#0A2D6F] text-white' : 'bg-[#E8EEF8] text-[#0A2D6F]' }}">{{ $scannedDeliveries->count() - $i }}</span>
                         <div class="min-w-0 flex-1">
                             <div class="font-semibold text-gray-900 truncate">{{ $pkg?->label_name ?: 'Sin nombre' }}</div>
                             <div class="mt-0.5 flex flex-wrap gap-x-3 gap-y-1 text-xs font-mono text-gray-600">

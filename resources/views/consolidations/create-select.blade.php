@@ -4,18 +4,21 @@
 
 @section('content')
 <div class="cons-page">
-    <header class="cons-hero">
-        <div class="cons-hero-inner">
-            <div class="cons-hero-text">
-                <h1 class="cons-hero-title">Crear saco — selección en tabla</h1>
-                <p class="cons-hero-subtitle">Marca los preregistros en Miami que van en este saco. Para armar por pistola use el modo escaneo desde la pantalla anterior.</p>
-            </div>
-            <div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;">
-                <a href="{{ route('consolidations.create') }}" class="cons-hero-btn" style="background:rgba(255,255,255,0.2);color:#fff;border-color:rgba(255,255,255,0.4);">← Otros modos</a>
-                <a href="{{ route('consolidations.index') }}" class="cons-hero-btn">Lista de sacos</a>
-            </div>
-        </div>
-    </header>
+    <x-module-banner
+        section="Operaciones"
+        current="Selección en tabla"
+        title="Crear saco — selección"
+        subtitle="Marque los preregistros en Miami que van en este saco. Para armar por pistola use el modo escaneo."
+        back-href="{{ route('consolidations.create') }}"
+        back-label="Otros modos"
+    >
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 8.25h16.5M3.75 15.75h16.5M7.5 3.75v16.5m9-16.5v16.5"/></svg>
+        </x-slot:icon>
+        <x-slot:actions>
+            <a href="{{ route('consolidations.index') }}" class="mb-btn mb-btn-secondary">Lista de sacos</a>
+        </x-slot:actions>
+    </x-module-banner>
 
     <form action="{{ route('consolidations.store') }}" method="POST" id="consolidationForm">
         @csrf
@@ -150,9 +153,9 @@
                                             <td class="cons-td-check">
                                                 <input type="checkbox" name="preregistration_ids[]" value="{{ $preregistration->id }}" class="prereg-checkbox" data-weight="{{ $preregistration->intake_weight_lbs }}">
                                             </td>
-                                            <td class="cons-td-name">{{ $preregistration->label_name }}</td>
+                                            <td class="cons-td-name">{{ $preregistration->label_name }}@if(\App\Support\ServiceType::isCft($preregistration->service_type)) <span class="cons-cft-tag">Pie cúbico</span>@endif</td>
                                             <td class="cons-td-code">{{ $preregistration->warehouse_code ?? $preregistration->tracking_external ?? 'N/A' }}</td>
-                                            <td class="cons-td-weight">{{ $preregistration->intake_weight_lbs }} lbs</td>
+                                            <td class="cons-td-weight">{{ \App\Support\ServiceType::isCft($preregistration->service_type) && $preregistration->cubic_feet !== null ? number_format((float) $preregistration->cubic_feet, 2).' pie³' : ($preregistration->intake_weight_lbs.' lbs') }}</td>
                                             <td class="cons-td-date">{{ $preregistration->created_at->format('d/m/Y') }}</td>
                                         </tr>
                                         @endforeach
@@ -183,7 +186,7 @@
 .cons-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
 
 .cons-hero {
-    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+    background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%);
     border-radius: 1rem;
     padding: 1.75rem 1.5rem;
     margin-bottom: 1.5rem;
@@ -194,9 +197,9 @@
 .cons-hero-subtitle { margin: 0.35rem 0 0; font-size: 0.9375rem; color: rgba(255,255,255,0.9); max-width: 42ch; }
 .cons-hero-btn {
     display: inline-flex; align-items: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600;
-    color: #047857; background: #fff; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none;
+    color: #0A2D6F; background: #fff; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none;
 }
-.cons-hero-btn:hover { background: #ecfdf5; color: #059669; }
+.cons-hero-btn:hover { background: #F4F8FD; color: #0A2D6F; }
 
 .cons-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
 @media (min-width: 1024px) { .cons-grid { grid-template-columns: 360px 1fr; } }
@@ -219,7 +222,7 @@
     gap: 0.5rem;
 }
 .cons-card-header.cons-table-header {
-    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+    background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%);
 }
 .cons-table-header .cons-card-title { color: #fff; }
 .cons-list-header { flex-wrap: wrap; }
@@ -242,8 +245,8 @@
 .cons-textarea { resize: vertical; min-height: 80px; }
 .cons-select:focus, .cons-input:focus, .cons-textarea:focus {
     outline: none;
-    border-color: #059669;
-    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
+    border-color: #0A2D6F;
+    box-shadow: 0 0 0 3px rgba(30, 79, 168, 0.15);
 }
 
 .cons-selected-wrap { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #e5e7eb; }
@@ -253,7 +256,7 @@
     border: 1px solid rgba(5, 150, 105, 0.3);
     border-radius: 0.5rem;
     font-size: 0.875rem;
-    color: #047857;
+    color: #0A2D6F;
     margin-bottom: 1rem;
 }
 .cons-selected-label { font-weight: 600; }
@@ -265,8 +268,8 @@
     border-radius: 0.5rem; border: 1px solid transparent;
     cursor: pointer; text-decoration: none;
 }
-.cons-btn-primary { background: #059669; color: #fff; border-color: #059669; font-weight: 600; }
-.cons-btn-primary:hover { background: #047857; border-color: #047857; color: #fff; }
+.cons-btn-primary { background: #0A2D6F; color: #fff; border-color: #0A2D6F; font-weight: 600; }
+.cons-btn-primary:hover { background: #0A2D6F; border-color: #0A2D6F; color: #fff; }
 .cons-btn-secondary { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
 .cons-btn-secondary:hover { background: #e5e7eb; color: #111827; }
 .cons-btn-outline-light {
@@ -275,8 +278,8 @@
     border-color: rgba(255,255,255,0.4);
 }
 .cons-btn-outline-light:hover { background: rgba(255,255,255,0.3); color: #fff; }
-.cons-btn-outline-primary { background: #fff; color: #059669; border-color: #059669; }
-.cons-btn-outline-primary:hover { background: #d1fae5; color: #047857; }
+.cons-btn-outline-primary { background: #fff; color: #0A2D6F; border-color: #0A2D6F; }
+.cons-btn-outline-primary:hover { background: #E8EEF8; color: #0A2D6F; }
 .cons-btn-sm { padding: 0.35rem 0.65rem; font-size: 0.8125rem; }
 
 .cons-filters { margin-bottom: 1.25rem; padding: 1rem; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.5rem; }
@@ -289,7 +292,7 @@
 .cons-service-title { font-size: 0.9375rem; font-weight: 600; color: #374151; margin: 0 0 0.75rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .cons-badge { display: inline-block; padding: 0.2rem 0.5rem; font-size: 0.75rem; font-weight: 600; border-radius: 9999px; }
 .cons-badge-air { background: #dbeafe; color: #1d4ed8; }
-.cons-badge-sea { background: #d1fae5; color: #047857; }
+.cons-badge-sea { background: #E8EEF8; color: #0A2D6F; }
 
 .cons-table-wrap { max-height: 24rem; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 0.5rem; }
 .cons-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
@@ -299,7 +302,7 @@
     padding: 0.65rem 0.75rem;
     font-weight: 600;
     color: #fff;
-    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+    background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%);
     border-bottom: 1px solid rgba(255,255,255,0.2);
 }
 .cons-th-check { width: 2.5rem; }
@@ -322,7 +325,7 @@
 }
 .cons-empty-state-text { margin: 0 0 0.25rem; font-size: 0.9375rem; font-weight: 500; color: #6b7280; }
 .cons-empty-state-hint { margin: 0 0 1rem; font-size: 0.8125rem; color: #9ca3af; }
-.cons-empty-state .cons-btn { margin-top: 0.5rem; }
+.cons-cft-tag { display: inline-block; margin-left: 0.35rem; padding: 0.1rem 0.4rem; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; color: #16794C; background: #E8F6EE; border-radius: 0.3rem; }
 </style>
 
 @push('scripts')
@@ -331,6 +334,12 @@
         const serviceTypeSelect = document.getElementById('service_type');
         const availableAir = document.getElementById('available-air');
         const availableSea = document.getElementById('available-sea');
+        const listMap = { AIR: 'air-list', SEA: 'sea-list' };
+        const countMap = { AIR: 'air-count', SEA: 'sea-count' };
+        const totals = {
+            AIR: {{ $availableByServiceType['AIR']->count() }},
+            SEA: {{ $availableByServiceType['SEA']->count() }}
+        };
         const filterDateFrom = document.getElementById('filter_date_from');
         const filterDateTo = document.getElementById('filter_date_to');
         const clearFiltersBtn = document.getElementById('clearFiltersBtn');
@@ -340,13 +349,8 @@
 
         function updateVisibility() {
             const selectedType = serviceTypeSelect.value;
-            if (selectedType === 'AIR') {
-                availableAir.style.display = 'block';
-                availableSea.style.display = 'none';
-            } else {
-                availableAir.style.display = 'none';
-                availableSea.style.display = 'block';
-            }
+            availableAir.style.display = selectedType === 'AIR' ? 'block' : 'none';
+            availableSea.style.display = selectedType === 'SEA' ? 'block' : 'none';
             updateSelectedCount();
         }
 
@@ -354,7 +358,7 @@
             const dateFrom = filterDateFrom.value;
             const dateTo = filterDateTo.value;
             const currentType = serviceTypeSelect.value;
-            const listId = currentType === 'AIR' ? 'air-list' : 'sea-list';
+            const listId = listMap[currentType] || 'air-list';
             const items = document.querySelectorAll(`#${listId} .prereg-item`);
 
             items.forEach(item => {
@@ -369,13 +373,13 @@
 
         function updateCounts() {
             const currentType = serviceTypeSelect.value;
-            const listId = currentType === 'AIR' ? 'air-list' : 'sea-list';
+            const listId = listMap[currentType] || 'air-list';
             const visibleItems = Array.from(document.querySelectorAll(`#${listId} .prereg-item`)).filter(function(item) {
                 return item.style.display !== 'none';
             });
-            const countElement = currentType === 'AIR' ? document.getElementById('air-count') : document.getElementById('sea-count');
+            const countElement = document.getElementById(countMap[currentType] || 'air-count');
             if (countElement) {
-                const total = currentType === 'AIR' ? {{ $availableByServiceType['AIR']->count() }} : {{ $availableByServiceType['SEA']->count() }};
+                const total = totals[currentType] || 0;
                 const visible = visibleItems.length;
                 countElement.textContent = visible + ' visible(s) de ' + total;
             }
@@ -383,14 +387,14 @@
 
         function updateSelectedCount() {
             const currentType = serviceTypeSelect.value;
-            const listId = currentType === 'AIR' ? 'air-list' : 'sea-list';
+            const listId = listMap[currentType] || 'air-list';
             const checkboxes = document.querySelectorAll(`#${listId} .prereg-checkbox:checked`);
             selectedCountSpan.textContent = checkboxes.length;
         }
 
         selectAllBtn.addEventListener('click', function() {
             const currentType = serviceTypeSelect.value;
-            const listId = currentType === 'AIR' ? 'air-list' : 'sea-list';
+            const listId = listMap[currentType] || 'air-list';
             const visibleItems = Array.from(document.querySelectorAll(`#${listId} .prereg-item`)).filter(function(item) {
                 return item.style.display !== 'none';
             });

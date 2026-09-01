@@ -4,29 +4,32 @@
 
 @section('content')
 <div class="agency-page agency-show-page">
-    <header class="agency-hero">
-        <div class="agency-hero-inner">
-            <div class="agency-hero-text">
-                <h1 class="agency-hero-title">{{ $agency->name }}</h1>
-                <p class="agency-hero-subtitle">Código: {{ $agency->code }}</p>
-            </div>
-            <div class="agency-hero-actions">
-                <a href="{{ route('agencies.edit', $agency->id) }}" class="agency-hero-btn">Editar</a>
-                @if(!$agency->is_main)
-                    @if(($agency->preregistrations_count ?? 0) > 0)
-                    <span class="agency-btn agency-btn-disabled" title="No se puede eliminar: tiene {{ $agency->preregistrations_count }} paquete(s) asignado(s).">Eliminar</span>
-                    @else
-                    <form action="{{ route('agencies.destroy', $agency->id) }}" method="POST" class="agency-form-inline" onsubmit="return confirm('¿Eliminar la subagencia «{{ addslashes($agency->name) }}»? Esta acción no se puede deshacer.');">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="agency-btn agency-btn-danger">Eliminar</button>
-                    </form>
-                    @endif
+    <x-module-banner
+        section="Administración"
+        current="Ficha"
+        title="{{ $agency->name }}"
+        subtitle="{{ $agency->typeLabel() }} · Código {{ $agency->code }}. Datos de la cuenta, destinatarios y accesos."
+        back-href="{{ route('agencies.index') }}"
+        back-label="Volver a clientes"
+    >
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
+        </x-slot:icon>
+        <x-slot:actions>
+            <a href="{{ route('agencies.edit', $agency->id) }}" class="mb-btn mb-btn-primary">Editar</a>
+            @if(!$agency->is_main)
+                @if(($agency->preregistrations_count ?? 0) > 0)
+                <span class="mb-btn mb-btn-secondary" style="opacity:.5;cursor:not-allowed;" title="No se puede eliminar: tiene {{ $agency->preregistrations_count }} paquete(s) asignado(s).">Eliminar</span>
+                @else
+                <form action="{{ route('agencies.destroy', $agency->id) }}" method="POST" onsubmit="return confirm('¿Eliminar la subagencia «{{ addslashes($agency->name) }}»? Esta acción no se puede deshacer.');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="mb-btn mb-btn-danger">Eliminar</button>
+                </form>
                 @endif
-                <a href="{{ route('agencies.index') }}" class="agency-hero-btn agency-hero-btn-outline">← Volver</a>
-            </div>
-        </div>
-    </header>
+            @endif
+        </x-slot:actions>
+    </x-module-banner>
 
     <div class="agency-show-grid">
         {{-- Información --}}
@@ -49,7 +52,7 @@
                         <dt class="agency-dt">Pertenece a</dt>
                         <dd class="agency-dd">
                             <a href="{{ route('agencies.show', $agency->parent->id) }}" class="agency-link">{{ $agency->parent->name }}</a>
-                            <span class="agency-muted"> (agencia principal)</span>
+                            <span class="agency-muted"> ({{ $agency->parent->typeLabel() }})</span>
                         </dd>
                     </div>
                     @endif
@@ -142,14 +145,67 @@
             </div>
         </div>
 
-        {{-- Subagencias (solo cuando es agencia principal: SkyLink One o CH Logistics) --}}
-        @if($agency->is_main)
-        <div class="agency-card agency-card-subagencias">
+        @auth
+        @if(auth()->user()->is_admin)
+        {{-- Contabilidad (solo lectura) --}}
+        <div class="agency-card">
             <div class="agency-card-header agency-table-header">
-                <h2 class="agency-card-title">Subagencias ({{ $agency->children->count() }})</h2>
+                <h2 class="agency-card-title">Contabilidad</h2>
             </div>
             <div class="agency-card-body">
-                <p class="agency-hint">Subagencias que pertenecen a <strong>{{ $agency->name }}</strong>. Desde aquí puede ver cada una o agregar clientes a una subagencia (el cliente quedará asignado a esa subagencia).</p>
+                <dl class="agency-dl">
+                    <div class="agency-dl-row">
+                        <dt>Saldo pendiente (CxC)</dt>
+                        <dd>
+                            <strong>${{ number_format($openBalance, 2) }}</strong>
+                            @if($openBalance > 0)
+                            · <a href="{{ route('accounting.receivables.show', $agency->id) }}" class="agency-link">Ver estado de cuenta</a>
+                            @endif
+                        </dd>
+                    </div>
+                    <div class="agency-dl-row">
+                        <dt>Crédito máximo</dt>
+                        <dd>{{ $agency->credit_limit_usd !== null ? '$'.number_format((float) $agency->credit_limit_usd, 2) : 'Sin límite definido' }}</dd>
+                    </div>
+                    <div class="agency-dl-row">
+                        <dt>Días de crédito</dt>
+                        <dd>{{ $agency->credit_days !== null ? $agency->credit_days.' días' : '—' }}</dd>
+                    </div>
+                    <div class="agency-dl-row">
+                        <dt>RUC / fiscal</dt>
+                        <dd>{{ $agency->tax_id ?? '—' }}</dd>
+                    </div>
+                    <div class="agency-dl-row">
+                        <dt>Contacto de cobranza</dt>
+                        <dd>{{ $agency->billing_contact_name ?? '—' }}{{ $agency->billing_contact_phone ? ' · '.$agency->billing_contact_phone : '' }}</dd>
+                    </div>
+                    <div class="agency-dl-row">
+                        <dt>Correo de facturación</dt>
+                        <dd>{{ $agency->billingEmail() ?? '—' }}</dd>
+                    </div>
+                    <div class="agency-dl-row">
+                        <dt>Tarifas vigentes</dt>
+                        <dd>
+                            @forelse($currentRates as $rate)
+                            <span class="agency-code">{{ \App\Support\ServiceType::label($rate->service_type) }}: ${{ number_format((float) $rate->price_per_lb, 2) }}/{{ \App\Support\ServiceType::unit($rate->service_type) }}</span>{{ $loop->last ? '' : ' · ' }}
+                            @empty
+                            <span class="agency-muted">Sin tarifa. <a href="{{ route('accounting.rates.show', $agency) }}" class="agency-link">Definir precios</a></span>
+                            @endforelse
+                        </dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+        @endif
+        @endauth
+
+        @if($agency->canHaveChildren())
+        <div class="agency-card agency-card-subagencias">
+            <div class="agency-card-header agency-table-header">
+                <h2 class="agency-card-title">Cuentas hijas ({{ $agency->children->count() }})</h2>
+            </div>
+            <div class="agency-card-body">
+                <p class="agency-hint">Subagencias y clientes que pertenecen a <strong>{{ $agency->name }}</strong>.</p>
                 @if($agency->children->isNotEmpty())
                 <ul class="agency-subagencias-list">
                     @foreach($agency->children as $child)
@@ -157,7 +213,7 @@
                         <div class="agency-subagencia-info">
                             <a href="{{ route('agencies.show', $child->id) }}" class="agency-subagencia-name">{{ $child->name }}</a>
                             <span class="agency-code agency-subagencia-code">{{ $child->code }}</span>
-                            <span class="agency-muted">· {{ $child->clients_count }} {{ $child->clients_count === 1 ? 'cliente' : 'clientes' }}</span>
+                            <span class="agency-muted">· {{ $child->typeLabel() }} · {{ $child->clients_count }} {{ $child->clients_count === 1 ? 'destinatario' : 'destinatarios' }}</span>
                         </div>
                         <div class="agency-subagencia-actions">
                             <a href="{{ route('agencies.show', $child->id) }}" class="agency-btn agency-btn-sm agency-btn-outline-secondary">Ver</a>
@@ -167,7 +223,7 @@
                     @endforeach
                 </ul>
                 @else
-                <p class="agency-muted">No hay subagencias registradas para esta agencia principal. Cree subagencias desde <a href="{{ route('agencies.index') }}" class="agency-link">Agencias</a> (Nueva Agencia) y seleccione «{{ $agency->name }}» como agencia principal.</p>
+                <p class="agency-muted">No hay cuentas hijas. Cree una desde <a href="{{ route('agencies.create') }}" class="agency-link">Clientes</a> y seleccione «{{ $agency->name }}» como padre.</p>
                 @endif
             </div>
         </div>
@@ -176,7 +232,7 @@
         {{-- Clientes (de esta agencia o subagencia) --}}
         <div class="agency-card">
             <div class="agency-card-header agency-table-header">
-                <h2 class="agency-card-title">Clientes ({{ $agency->clients->count() }})</h2>
+                <h2 class="agency-card-title">Destinatarios ({{ $agency->clients->count() }})</h2>
                 <a href="{{ route('agency-clients.create', $agency->id) }}" class="agency-btn agency-btn-sm agency-btn-primary">+ Agregar</a>
             </div>
             <div class="agency-card-body">
@@ -218,7 +274,7 @@
 <style>
 .agency-show-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
 .agency-show-page .agency-hero {
-    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+    background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%);
     border-radius: 1rem; padding: 1.75rem 1.5rem; margin-bottom: 1.5rem;
     box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
 }
@@ -226,13 +282,13 @@
 .agency-show-page .agency-hero-subtitle { color: rgba(255,255,255,0.9); margin: 0.35rem 0 0; font-size: 0.9375rem; }
 .agency-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
 .agency-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-.agency-hero-btn { display: inline-flex; align-items: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600; background: #fff; color: #047857; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none; }
-.agency-hero-btn:hover { background: #ecfdf5; color: #059669; }
+.agency-hero-btn { display: inline-flex; align-items: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600; background: #fff; color: #0A2D6F; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none; }
+.agency-hero-btn:hover { background: #F4F8FD; color: #0A2D6F; }
 .agency-hero-btn-outline { background: transparent; color: rgba(255,255,255,0.95); border-color: rgba(255,255,255,0.6); }
 .agency-hero-btn-outline:hover { background: rgba(255,255,255,0.15); color: #fff; }
 .agency-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; }
-.agency-btn-primary { background: #059669; color: #fff; border-color: #059669; }
-.agency-btn-primary:hover { background: #047857; color: #fff; }
+.agency-btn-primary { background: #0A2D6F; color: #fff; border-color: #0A2D6F; }
+.agency-btn-primary:hover { background: #0A2D6F; color: #fff; }
 .agency-btn-secondary { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
 .agency-btn-secondary:hover { background: #e5e7eb; color: #111827; }
 .agency-btn-danger { background: #dc2626; color: #fff; border-color: #dc2626; }
@@ -241,18 +297,18 @@
 .agency-btn-sm { padding: 0.35rem 0.65rem; font-size: 0.8125rem; }
 .agency-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 1.5rem; overflow: hidden; }
 .agency-card-header { padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb; background: #fafafa; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
-.agency-card-header.agency-table-header { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); }
+.agency-card-header.agency-table-header { background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%); }
 .agency-card-header.agency-table-header .agency-card-title { color: #fff; }
 .agency-card-title { margin: 0; font-size: 0.9375rem; font-weight: 600; color: #374151; }
 .agency-card-body { padding: 1.25rem; }
 .agency-badge { display: inline-block; padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem; }
-.agency-badge-success { background: #d1fae5; color: #047857; }
+.agency-badge-success { background: #E8EEF8; color: #0A2D6F; }
 .agency-badge-danger { background: #fee2e2; color: #b91c1c; }
 .agency-code { font-family: ui-monospace, monospace; font-weight: 600; color: #111827; }
 .agency-muted { color: #6b7280; font-size: 0.875rem; }
 .agency-field-error { color: #dc2626; font-size: 0.875rem; margin-top: 0.25rem; }
 .agency-input { padding: 0.5rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.5rem; background: #fff; width: 100%; }
-.agency-input:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15); }
+.agency-input:focus { outline: none; border-color: #0A2D6F; box-shadow: 0 0 0 3px rgba(30, 79, 168, 0.15); }
 .agency-alert { padding: 0.5rem 0.75rem; border-radius: 0.5rem; margin-top: 0.5rem; font-size: 0.875rem; border: 1px solid; }
 .agency-show-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
 @media (min-width: 992px) { .agency-show-grid { grid-template-columns: 1fr 1fr; } }
@@ -267,7 +323,7 @@
 .agency-users-list { list-style: none; padding: 0; margin: 0; }
 .agency-user-item { padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; background: #fafafa; margin-bottom: 0.5rem; font-size: 0.875rem; }
 .agency-user-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5rem; }
-.agency-link { color: #059669; text-decoration: none; font-weight: 500; }
+.agency-link { color: #0A2D6F; text-decoration: none; font-weight: 500; }
 .agency-link:hover { text-decoration: underline; }
 .agency-reset-form { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #e5e7eb; }
 .agency-reset-label { font-size: 0.75rem; font-weight: 600; color: #6b7280; margin-bottom: 0.5rem; }
@@ -290,7 +346,7 @@
 .agency-subagencia-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; margin-bottom: 0.5rem; background: #fafafa; }
 .agency-subagencia-info { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; min-width: 0; }
 .agency-subagencia-name { font-weight: 600; color: #111827; text-decoration: none; }
-.agency-subagencia-name:hover { color: #059669; text-decoration: underline; }
+.agency-subagencia-name:hover { color: #0A2D6F; text-decoration: underline; }
 .agency-subagencia-code { font-size: 0.8125rem; }
 .agency-subagencia-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; flex-shrink: 0; }
 </style>

@@ -24,7 +24,13 @@ class TimeEntryTest extends TestCase
         ]);
         $user = User::factory()->create(['agency_id' => $agency->id]);
 
-        $this->actingAs($user)->get(route('time-entries.index'))->assertForbidden();
+        $this->actingAs($user)
+            ->get(route('time-entries.index'))
+            ->assertRedirect(route('packages.index'));
+
+        $this->actingAs($user)
+            ->post(route('time-entries.clock-in'))
+            ->assertRedirect(route('packages.index'));
     }
 
     public function test_central_user_can_clock_in_and_clock_out(): void

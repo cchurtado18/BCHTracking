@@ -29,6 +29,12 @@ class AuthController extends Controller
         }
 
         $user = Auth::user();
+        if (! $user?->is_admin) {
+            Auth::logout();
+            throw ValidationException::withMessages([
+                'email' => ['Solo un administrador puede generar tokens de API.'],
+            ]);
+        }
         $deviceName = $request->input('device_name', $request->userAgent() ?? 'api-client');
         $token = $user->createToken($deviceName)->plainTextToken;
 

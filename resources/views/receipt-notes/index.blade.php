@@ -4,17 +4,14 @@
 
 @section('content')
 <div class="rn-page">
-    <header class="rn-hero">
-        <div class="rn-hero-inner">
-            <div class="rn-hero-text">
-                <h1 class="rn-hero-title">Comprobantes de recepción</h1>
-                <p class="rn-hero-subtitle">Notas REC-XXXXX generadas al recibir paquetes Drop Off en Miami. Cada nota agrupa los bultos entregados por un mismo cliente.</p>
-            </div>
-            <div class="rn-hero-actions">
-                <a href="{{ route('receipt-notes.batch') }}" class="rn-btn rn-btn-primary-light">+ Nueva nota de recepción</a>
-            </div>
-        </div>
-    </header>
+    <x-module-banner section="Operaciones" current="Comprobantes" title="Comprobantes de recepción" subtitle="Notas REC-XXXXX generadas al recibir paquetes Drop Off en Miami. Cada nota agrupa los bultos entregados por un mismo cliente.">
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M7.5 3.75h9a1.5 1.5 0 0 1 1.5 1.5v13.5a1.5 1.5 0 0 1-1.5 1.5h-9a1.5 1.5 0 0 1-1.5-1.5V5.25a1.5 1.5 0 0 1 1.5-1.5Zm1.5 4.5h6"/></svg>
+        </x-slot:icon>
+        <x-slot:actions>
+            <a href="{{ route('receipt-notes.batch') }}" class="mb-btn mb-btn-primary">Nueva nota de recepción</a>
+        </x-slot:actions>
+    </x-module-banner>
 
     <div class="rn-card">
         <div class="rn-card-header">
@@ -110,7 +107,7 @@
 .rn-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
 
 .rn-hero {
-    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+    background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%);
     border-radius: 1rem; padding: 1.75rem 1.5rem; margin-bottom: 1.5rem;
     box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
 }
@@ -119,9 +116,9 @@
 .rn-hero-subtitle { margin: 0.35rem 0 0; font-size: 0.9375rem; color: rgba(255,255,255,0.9); max-width: 52ch; }
 .rn-hero-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .rn-btn-primary-light {
-    background: #fff; color: #047857; border-color: #fff; font-weight: 600;
+    background: #fff; color: #0A2D6F; border-color: #fff; font-weight: 600;
 }
-.rn-btn-primary-light:hover { background: #ecfdf5; color: #059669; }
+.rn-btn-primary-light:hover { background: #F4F8FD; color: #0A2D6F; }
 
 .rn-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 1.5rem; overflow: hidden; }
 .rn-card-header { padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb; background: #fafafa; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
@@ -139,7 +136,7 @@
     border: 1px solid #d1d5db; border-radius: 0.5rem; background: #fff; color: #111827;
 }
 .rn-input:focus, .rn-select:focus {
-    outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
+    outline: none; border-color: #0A2D6F; box-shadow: 0 0 0 3px rgba(30, 79, 168, 0.15);
 }
 
 .rn-btn {
@@ -148,17 +145,17 @@
     border-radius: 0.5rem; border: 1px solid transparent;
     cursor: pointer; text-decoration: none; transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.rn-btn-primary { background: #059669; color: #fff; border-color: #059669; font-weight: 600; }
-.rn-btn-primary:hover { background: #047857; border-color: #047857; color: #fff; }
+.rn-btn-primary { background: #0A2D6F; color: #fff; border-color: #0A2D6F; font-weight: 600; }
+.rn-btn-primary:hover { background: #0A2D6F; border-color: #0A2D6F; color: #fff; }
 .rn-btn-secondary { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
 .rn-btn-secondary:hover { background: #e5e7eb; color: #111827; }
-.rn-btn-outline-primary { background: #fff; color: #059669; border-color: #059669; }
-.rn-btn-outline-primary:hover { background: #d1fae5; color: #047857; }
+.rn-btn-outline-primary { background: #fff; color: #0A2D6F; border-color: #0A2D6F; }
+.rn-btn-outline-primary:hover { background: #E8EEF8; color: #0A2D6F; }
 .rn-btn-sm { padding: 0.35rem 0.7rem; font-size: 0.8125rem; }
 
 .rn-table-wrap { overflow-x: auto; }
 .rn-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-.rn-table thead { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); }
+.rn-table thead { background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%); }
 .rn-table th { padding: 0.65rem 0.85rem; text-align: left; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #fff; }
 .rn-table td { padding: 0.7rem 0.85rem; border-top: 1px solid #e5e7eb; vertical-align: middle; }
 .rn-table tbody tr:hover { background: #f9fafb; }

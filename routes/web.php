@@ -1,8 +1,18 @@
 <?php
 
+use App\Http\Controllers\Web\AccountingCreditNoteController;
+use App\Http\Controllers\Web\AccountingExpenseController;
+use App\Http\Controllers\Web\AccountingInvoiceController;
+use App\Http\Controllers\Web\AccountingPaymentController;
+use App\Http\Controllers\Web\AccountingProfitabilityController;
+use App\Http\Controllers\Web\AccountingRateCardController;
+use App\Http\Controllers\Web\AccountingReceivableController;
+use App\Http\Controllers\Web\AccountingReportController;
+use App\Http\Controllers\Web\AccountingSettingController;
 use App\Http\Controllers\Web\AdminPreregistrationResetController;
 use App\Http\Controllers\Web\AgencyClientController;
 use App\Http\Controllers\Web\AgencyController;
+use App\Http\Controllers\Web\AlertController;
 use App\Http\Controllers\Web\ApiTokenController;
 use App\Http\Controllers\Web\AuditLogController;
 use App\Http\Controllers\Web\ConsolidationController;
@@ -23,9 +33,14 @@ Route::get('/tracking', [TrackingController::class, 'index'])->name('tracking.in
 
 require __DIR__.'/auth.php';
 
+// Voucher de factura con enlace firmado (para envío por correo al cliente)
+Route::get('/factura/{invoice}/voucher', [AccountingInvoiceController::class, 'publicVoucher'])
+    ->middleware('signed')
+    ->name('accounting.invoices.public-voucher');
+
 // Panel: requiere autenticación
 Route::middleware(['auth'])->group(function () {
-    // Dashboard y reporte: administrador o usuario de agencia (usuario regular central no tiene acceso)
+    // Panel operativo: solo administrador. El resto se redirige a paquetes.
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::middleware('central')->group(function () {
         Route::get('/reporte-paquetes/solicitar', [DashboardController::class, 'reporteSolicitar'])->name('reporte.solicitar');
@@ -50,12 +65,79 @@ Route::middleware(['auth'])->group(function () {
         });
         Route::get('auditoria', [AuditLogController::class, 'index'])->name('audit.index');
         Route::get('auditoria/{id}', [AuditLogController::class, 'show'])->name('audit.show');
+        Route::get('alertas', [AlertController::class, 'index'])->name('alerts.index');
+        Route::post('alertas/revisar', [AlertController::class, 'dispatch'])->name('alerts.dispatch');
+        Route::post('alertas/{alert}/revisada', [AlertController::class, 'dismiss'])->name('alerts.dismiss');
         Route::get('admin/time-entries', [TimeEntryAdminController::class, 'index'])->name('time-entries.admin.index');
         Route::post('preregistrations/{id}/admin/reset-to-miami', [AdminPreregistrationResetController::class, 'resetToMiami'])
             ->name('preregistrations.admin.reset-to-miami');
         Route::post('preregistrations/{id}/admin/intake-type', [AdminPreregistrationResetController::class, 'updateIntakeType'])
             ->name('preregistrations.admin.intake-type');
         Route::resource('users', UserController::class)->except(['show']);
+
+        Route::get('api-tokens', [ApiTokenController::class, 'index'])->name('api-tokens.index');
+        Route::post('api-tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store');
+        Route::delete('api-tokens/{tokenId}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
+
+        Route::prefix('contabilidad/facturas')->name('accounting.invoices.')->group(function () {
+            Route::get('/nueva', [AccountingInvoiceController::class, 'create'])->name('create');
+            Route::post('/nueva', [AccountingInvoiceController::class, 'startCreate'])->name('start-create');
+            Route::get('/desde-nota/{deliveryNote}', [AccountingInvoiceController::class, 'createFromNote'])->name('create-from-note');
+            Route::post('/desde-nota/{deliveryNote}', [AccountingInvoiceController::class, 'storeFromNote'])->name('store-from-note');
+            Route::post('/{invoice}/anular', [AccountingInvoiceController::class, 'void'])->name('void');
+            Route::post('/{invoice}/enviar', [AccountingInvoiceController::class, 'sendEmail'])->name('send');
+            Route::delete('/{invoice}', [AccountingInvoiceController::class, 'destroy'])->name('destroy');
+        });
+
+        Route::prefix('contabilidad/tarifas')->name('accounting.rates.')->group(function () {
+            Route::get('/', [AccountingRateCardController::class, 'index'])->name('index');
+            Route::post('/', [AccountingRateCardController::class, 'store'])->name('store');
+            Route::get('/historico', [AccountingRateCardController::class, 'history'])->name('history');
+            Route::get('/{agency}', [AccountingRateCardController::class, 'show'])->name('show');
+        });
+
+        Route::prefix('contabilidad/cobros')->name('accounting.payments.')->group(function () {
+            Route::get('/', [AccountingPaymentController::class, 'index'])->name('index');
+            Route::get('/nuevo', [AccountingPaymentController::class, 'create'])->name('create');
+            Route::post('/', [AccountingPaymentController::class, 'store'])->name('store');
+            Route::get('/{payment}', [AccountingPaymentController::class, 'show'])->name('show');
+            Route::post('/{payment}/cancelar', [AccountingPaymentController::class, 'void'])->name('void');
+        });
+
+        Route::prefix('contabilidad/cxc')->name('accounting.receivables.')->group(function () {
+            Route::get('/', [AccountingReceivableController::class, 'index'])->name('index');
+            Route::get('/{agency}', [AccountingReceivableController::class, 'show'])->name('show');
+        });
+
+        Route::prefix('contabilidad/notas-credito')->name('accounting.credit-notes.')->group(function () {
+            Route::get('/', [AccountingCreditNoteController::class, 'index'])->name('index');
+            Route::get('/nueva', [AccountingCreditNoteController::class, 'create'])->name('create');
+            Route::post('/', [AccountingCreditNoteController::class, 'store'])->name('store');
+            Route::get('/{creditNote}', [AccountingCreditNoteController::class, 'show'])->name('show');
+            Route::post('/{creditNote}/anular', [AccountingCreditNoteController::class, 'void'])->name('void');
+        });
+
+        Route::get('contabilidad/rentabilidad', [AccountingProfitabilityController::class, 'index'])->name('accounting.profitability.index');
+        Route::get('contabilidad/rentabilidad/cliente/{agency}', [AccountingProfitabilityController::class, 'show'])->name('accounting.profitability.show');
+
+        Route::prefix('contabilidad/gastos')->name('accounting.expenses.')->group(function () {
+            Route::get('/', [AccountingExpenseController::class, 'index'])->name('index');
+            Route::post('/', [AccountingExpenseController::class, 'store'])->name('store');
+            Route::post('/categorias', [AccountingExpenseController::class, 'storeCategory'])->name('store-category');
+            Route::delete('/{expense}', [AccountingExpenseController::class, 'destroy'])->name('destroy');
+        });
+
+        Route::get('contabilidad/reportes', [AccountingReportController::class, 'index'])->name('accounting.reports.index');
+
+        Route::get('contabilidad/parametros', [AccountingSettingController::class, 'edit'])->name('accounting.settings.edit');
+        Route::put('contabilidad/parametros', [AccountingSettingController::class, 'update'])->name('accounting.settings.update');
+    });
+
+    Route::prefix('contabilidad/facturas')->name('accounting.invoices.')->group(function () {
+        Route::get('/', [AccountingInvoiceController::class, 'index'])->name('index');
+        Route::get('/{invoice}/voucher', [AccountingInvoiceController::class, 'voucher'])->name('voucher');
+        Route::get('/{invoice}/pdf', [AccountingInvoiceController::class, 'pdf'])->name('pdf');
+        Route::get('/{invoice}', [AccountingInvoiceController::class, 'show'])->name('show');
     });
 
     // Usuario central: preregistros, consolidaciones, comprobantes recepción, escaneo NIC
@@ -107,8 +189,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{id}/reprint-label', [PackageController::class, 'reprintLabel'])->name('reprint-label');
     });
 
-    Route::prefix('deliveries')->name('deliveries.')->group(function () {
+    Route::prefix('salidas')->name('salidas.')->group(function () {
         Route::get('/', [DeliveryController::class, 'index'])->name('index');
+        Route::get('/nueva', [DeliveryController::class, 'create'])->name('create');
         Route::get('/batch', [DeliveryController::class, 'batch'])->name('batch');
         Route::post('/batch/retirer-session', [DeliveryController::class, 'storeBatchRetirerSession'])->name('batch-retirer-session');
         Route::post('/batch/clear-retirer-session', [DeliveryController::class, 'clearBatchRetirerSession'])->name('batch-clear-retirer-session');
@@ -117,17 +200,18 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/scan/retirer-session', [DeliveryController::class, 'storeScanRetirerSession'])->name('scan-retirer-session');
         Route::post('/scan/clear-retirer-session', [DeliveryController::class, 'clearScanRetirerSession'])->name('scan-clear-retirer-session');
         Route::post('/scan', [DeliveryController::class, 'processScan'])->name('process-scan');
-        Route::middleware('admin')->prefix('notes')->name('notes.')->group(function () {
+        Route::middleware('admin')->prefix('hojas')->name('hojas.')->group(function () {
             Route::get('/{deliveryNote}', [DeliveryController::class, 'editNote'])->name('edit');
             Route::put('/{deliveryNote}', [DeliveryController::class, 'updateNote'])->name('update');
-            Route::delete('/{deliveryNote}/deliveries/{delivery}', [DeliveryController::class, 'removeFromNote'])->name('remove-delivery');
+            Route::delete('/{deliveryNote}/paquetes/{delivery}', [DeliveryController::class, 'removeFromNote'])->name('remove-package');
         });
         Route::get('/{id}', [DeliveryController::class, 'show'])->name('show');
     });
 
-    Route::get('api-tokens', [ApiTokenController::class, 'index'])->name('api-tokens.index');
-    Route::post('api-tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store');
-    Route::delete('api-tokens/{tokenId}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
+    Route::redirect('/deliveries', '/salidas', 301);
+    Route::get('/deliveries/{path}', function (string $path) {
+        return redirect('/salidas/'.$path, 301);
+    })->where('path', '.*');
 
     Route::middleware('central.worker')->prefix('time-entries')->name('time-entries.')->group(function () {
         Route::get('/', [TimeEntryController::class, 'index'])->name('index');

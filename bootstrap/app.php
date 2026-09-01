@@ -11,11 +11,17 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
+        $schedule->command('alerts:dispatch')->everyFifteenMinutes()->withoutOverlapping(10);
+    })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'central' => \App\Http\Middleware\EnsureCentralUser::class,
             'central.worker' => \App\Http\Middleware\EnsureCentralWorker::class,
+        ]);
+        $middleware->web(append: [
+            \App\Http\Middleware\DispatchDuePackageAlerts::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

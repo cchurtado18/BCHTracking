@@ -26,43 +26,145 @@
             }
         @endphp
         <style>
-            body { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+            :root {
+                --pt-navy: #0A2D6F;
+                --pt-blue: #1E4FA8;
+                --pt-muted: #5E6168;
+                --pt-line: #E8EBEF;
+                --pt-form: #D8DCE2;
+                --pt-soft: #F4F8FD;
+            }
+            * { box-sizing: border-box; }
+            body {
+                margin: 0;
+                font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+                color: #0f172a;
+            }
             .guest-page {
                 min-height: 100vh;
                 display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 1.5rem 1.1rem;
+                background-color: var(--pt-navy);
+                background-image:
+                    radial-gradient(ellipse 80% 60% at 12% 18%, rgba(30, 79, 168, 0.55) 0%, transparent 55%),
+                    radial-gradient(ellipse 70% 50% at 92% 88%, rgba(10, 45, 111, 0.15) 0%, transparent 50%),
+                    linear-gradient(165deg, #0A2D6F 0%, #123A86 42%, #1E4FA8 100%),
+                    url("{{ asset('images/login-bg-texture.png') }}");
+                background-size: auto, auto, auto, 420px;
+                background-blend-mode: normal, normal, normal, overlay;
+            }
+            .guest-shell {
+                width: 100%;
+                max-width: 56rem;
+                display: grid;
+                grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+                background: #fff;
+                border-radius: 1.35rem;
+                overflow: hidden;
+                box-shadow: 0 24px 64px rgba(4, 16, 48, 0.35);
+                min-height: 32rem;
+            }
+            .guest-brand {
+                position: relative;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                padding: 2.1rem 1.85rem 1.7rem;
+                color: #fff;
+                background:
+                    radial-gradient(circle at 80% 0%, rgba(255,255,255,0.12) 0%, transparent 42%),
+                    linear-gradient(180deg, #123A86 0%, #0A2D6F 100%);
+            }
+            .guest-brand::after {
+                content: "";
+                position: absolute;
+                inset: auto -2rem -4rem auto;
+                width: 14rem;
+                height: 14rem;
+                border-radius: 50%;
+                border: 1px solid rgba(255,255,255,0.12);
+                pointer-events: none;
+            }
+            .guest-brand-mark a {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                background: #fff;
+                border-radius: 1rem;
+                padding: 0.55rem 0.85rem;
+                line-height: 0;
+            }
+            .guest-brand-mark img {
+                height: 5.75rem;
+                width: auto;
+                max-width: 100%;
+                object-fit: contain;
+            }
+            .guest-brand-copy h2 {
+                margin: 2.4rem 0 0.45rem;
+                font-size: 1.55rem;
+                font-weight: 800;
+                letter-spacing: -0.03em;
+                line-height: 1.2;
+            }
+            .guest-brand-copy p {
+                margin: 0;
+                max-width: 18rem;
+                font-size: 0.9rem;
+                line-height: 1.5;
+                color: rgba(255,255,255,0.78);
+            }
+            .guest-brand-foot {
+                margin-top: 2rem;
+                font-size: 0.72rem;
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                color: rgba(255,255,255,0.5);
+                font-weight: 700;
+            }
+            .guest-panel {
+                background: #fff;
+                display: flex;
                 flex-direction: column;
                 justify-content: center;
-                align-items: center;
-                padding: 1.5rem 1rem;
-                /* Fondo: foto logística + degradado suave para que el texto se lea bien */
-                background-image:
-                    linear-gradient(160deg, rgba(15, 23, 42, 0.55) 0%, rgba(15, 23, 42, 0.40) 45%, rgba(15, 23, 42, 0.20) 100%),
-                    url("{{ asset('images/login-warehouse.jpg') }}");
-                background-size: cover;
-                background-position: center center;
-                background-repeat: no-repeat;
-                gap: 0;
             }
-            .guest-logo-wrap { margin-bottom: 1.5rem; text-align: center; }
-            .guest-logo-wrap a { display: inline-block; line-height: 0; padding: 0.5rem; }
-            .guest-logo-wrap img { height: 8rem; width: auto; max-width: 420px; object-fit: contain; display: block; }
-            @media (min-width: 480px) {
-                .guest-logo-wrap img { height: 10rem; max-width: 520px; }
+            .guest-slot { padding: 2rem 2.1rem 2.25rem; height: 100%; }
+            @media (max-width: 800px) {
+                .guest-shell { grid-template-columns: 1fr; min-height: 0; }
+                .guest-brand {
+                    padding: 1.35rem 1.4rem 1.2rem;
+                    align-items: center;
+                    text-align: center;
+                }
+                .guest-brand-copy h2 { margin-top: 0.85rem; font-size: 1.25rem; }
+                .guest-brand-copy p { max-width: none; font-size: 0.84rem; }
+                .guest-brand-mark img { height: 4.6rem; }
+                .guest-brand-foot { margin-top: 1rem; }
+                .guest-slot { padding: 1.35rem 1.25rem 1.6rem; }
             }
-            .guest-card { width: 100%; max-width: 32rem; background: #fff; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.08), 0 10px 20px -5px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; overflow: hidden; }
-            .guest-slot { padding: 0; }
         </style>
     </head>
-    <body class="font-sans text-gray-900 antialiased" style="margin:0;">
+    <body class="font-sans antialiased">
         <div class="guest-page">
-            <div class="guest-logo-wrap">
-                <a href="{{ route('tracking.index') }}" title="BCH Tracking">
-                    <img src="{{ asset('images/bch-tracking-logo.png') }}" alt="BCH Tracking" loading="eager">
-                </a>
-            </div>
-            <div class="guest-card">
-                <div class="guest-slot">
-                    {{ $slot }}
+            <div class="guest-shell">
+                <aside class="guest-brand">
+                    <div class="guest-brand-mark">
+                        <a href="{{ route('tracking.index') }}" title="PrimeTrack Group">
+                            <img src="{{ asset('images/primetrack-group-logo.png') }}?v=2" alt="PrimeTrack Group" loading="eager">
+                        </a>
+                    </div>
+                    <div class="guest-brand-copy">
+                        <h2>Panel de operaciones</h2>
+                        <p>Acceda a envíos, rastreo y cobranza desde un solo lugar.</p>
+                    </div>
+                    <div class="guest-brand-foot">PrimeTrack Group</div>
+                </aside>
+                <div class="guest-panel">
+                        <div class="guest-slot">
+                        {{ $slot }}
+                    </div>
                 </div>
             </div>
         </div>

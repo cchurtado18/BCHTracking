@@ -1,5 +1,5 @@
 {{--
-    Partial: comprobante de entrega "Salida Producto" – BCH TRACKING.
+    Partial: comprobante de entrega "Salida Producto" – PRIMETRACK GROUP.
     Una sola página tamaño carta. Si los items no caben, la tabla continúa
     en una página adicional manteniendo juntos los bloques de retirante/firmas.
 
@@ -12,8 +12,10 @@
 
     $deliveriesAir = $deliveries->filter(fn($d) => optional($d->preregistration)->service_type === 'AIR');
     $deliveriesSea = $deliveries->filter(fn($d) => optional($d->preregistration)->service_type === 'SEA');
+    $deliveriesCft = $deliveries->filter(fn($d) => optional($d->preregistration)->service_type === 'CFT');
     $groupedAir = $deliveriesAir->groupBy(fn($d) => optional($d->preregistration)->warehouse_code ?? '—');
     $groupedSea = $deliveriesSea->groupBy(fn($d) => optional($d->preregistration)->warehouse_code ?? '—');
+    $groupedCft = $deliveriesCft->groupBy(fn($d) => optional($d->preregistration)->warehouse_code ?? '—');
 
     $calcLine = function ($group) {
         $first = optional($group->first())->preregistration;
@@ -46,6 +48,7 @@
 
     $linesAir = $groupedAir->map($calcLine)->values();
     $linesSea = $groupedSea->map($calcLine)->values();
+    $linesCft = $groupedCft->map($calcLine)->values();
 
     $totalAirCant   = $linesAir->sum('cant');
     $totalAirPeso   = $linesAir->sum('peso');
@@ -57,21 +60,25 @@
     $totalSeaPiezas = $linesSea->sum('piezas');
     $totalSeaCft    = $linesSea->sum('cft');
     $totalSeaHasCft = $linesSea->contains(fn($l) => $l['has_cft'] === true);
-    $grandCant   = $totalAirCant + $totalSeaCant;
-    $grandPeso   = $totalAirPeso + $totalSeaPeso;
-    $grandPiezas = $totalAirPiezas + $totalSeaPiezas;
-    $grandCft    = $totalAirCft + $totalSeaCft;
-    $grandHasCft = $totalAirHasCft || $totalSeaHasCft;
+    $totalCftCant   = $linesCft->sum('cant');
+    $totalCftPeso   = $linesCft->sum('peso');
+    $totalCftPiezas = $linesCft->sum('piezas');
+    $totalCftCft    = $linesCft->sum('cft');
+    $totalCftHasCft = $linesCft->contains(fn($l) => $l['has_cft'] === true);
+    $grandCant   = $totalAirCant + $totalSeaCant + $totalCftCant;
+    $grandPeso   = $totalAirPeso + $totalSeaPeso + $totalCftPeso;
+    $grandPiezas = $totalAirPiezas + $totalSeaPiezas + $totalCftPiezas;
+    $grandCft    = $totalAirCft + $totalSeaCft + $totalCftCft;
+    $grandHasCft = $totalAirHasCft || $totalSeaHasCft || $totalCftHasCft;
 
     $docNumber = $deliveryNote
         ? $deliveryNote->code
         : 'S' . str_pad((string) (\Carbon\Carbon::parse($date)->format('His')), 5, '0', STR_PAD_LEFT);
 
-    // OC # = número de factura ingresado en la entrega.
-    // Todos los deliveries de una misma nota comparten la misma factura.
+    // REF: factura PrimeTrack vinculada a la hoja; si no hay, el número legado de la entrega.
     $firstDelivery = $deliveries->first();
-    $invoiceNumber = $firstDelivery?->invoice_number;
-    $ocNumber = filled($invoiceNumber) ? $invoiceNumber : '';
+    $linkedFolio = $deliveryNote?->accountingInvoice?->folio;
+    $ocNumber = filled($linkedFolio) ? $linkedFolio : (filled($firstDelivery?->invoice_number) ? $firstDelivery->invoice_number : '');
     $printDateLong = \Carbon\Carbon::now()->locale('es')->isoFormat('D [de] MMMM [de] YYYY');
     $printDateFooter = \Carbon\Carbon::now()->format('d/m/Y H:i');
     $documentDate = \Carbon\Carbon::parse($date)->format('d/m/Y');
@@ -85,7 +92,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ ($deliveryNote ? 'Nota '.$deliveryNote->code : 'Comprobante de entrega') . ' - BCH TRACKING' }}</title>
+    <title>{{ ($deliveryNote ? 'Nota '.$deliveryNote->code : 'Comprobante de entrega') . ' - PRIMETRACK GROUP' }}</title>
     <style>
         /* === Tamaño carta (Letter): 8.5in x 11in = 21.59cm x 27.94cm === */
         @page { size: letter portrait; margin: 0.5in 0.5in 0.5in 0.5in; }
@@ -208,14 +215,14 @@
 <body>
     <div class="no-print">
         <button type="button" onclick="window.print()" class="btn-print">Imprimir / Guardar PDF</button>
-        <a href="{{ route('deliveries.index', session('deliveries_index_agency_id') ? ['agency_id' => session('deliveries_index_agency_id')] : []) }}" class="btn-back">← Volver a Entregas</a>
+        <a href="{{ route('salidas.index', session('deliveries_index_agency_id') ? ['agency_id' => session('deliveries_index_agency_id')] : []) }}" class="btn-back">← Volver a Salidas</a>
         <p class="print-hint">Imprimir en tamaño Carta (Letter, 8.5" × 11"), una hoja por cara. En el diálogo de impresión: márgenes «Predeterminados» y desmarque «Encabezados y pies de página».</p>
     </div>
 
     <section class="doc-sheet">
         <div class="doc-main">
         <div class="doc-top-row">
-            <div class="doc-branch">BCH TRACKING</div>
+            <div class="doc-branch">PRIMETRACK GROUP</div>
             <div class="doc-print-date">{{ $printDateLong }}</div>
         </div>
 
@@ -293,7 +300,33 @@
                 </tr>
                 @endif
 
-                @if($linesAir->isEmpty() && $linesSea->isEmpty())
+                @if($linesCft->isNotEmpty())
+                <tr class="group-header"><td colspan="6">PIE CUBICO</td></tr>
+                @foreach($linesCft as $line)
+                @php
+                    $p = $line['first'];
+                    $descRaw = $p && $p->description ? \Illuminate\Support\Str::limit($p->description, 30, '') : 'A/V';
+                    $desc = 'PIE CUBICO - ' . strtoupper($descRaw) . ' - ' . ($p->label_name ?? '—');
+                @endphp
+                <tr>
+                    <td class="col-code">{{ $line['code'] }}</td>
+                    <td>{{ $desc }}</td>
+                    <td class="num">{{ $line['cant'] }}</td>
+                    <td class="num">{{ number_format($line['peso'], 2) }}</td>
+                    <td class="num">{{ number_format($line['piezas'], 2) }}</td>
+                    <td class="num">{{ $line['has_cft'] ? number_format($line['cft'], 2) : '—' }}</td>
+                </tr>
+                @endforeach
+                <tr class="group-total">
+                    <td colspan="2">TOTAL&nbsp;&nbsp;PIE CUBICO</td>
+                    <td class="num">{{ $totalCftCant }}</td>
+                    <td class="num">{{ number_format($totalCftPeso, 2) }}</td>
+                    <td class="num">{{ number_format($totalCftPiezas, 2) }}</td>
+                    <td class="num">{{ $totalCftHasCft ? number_format($totalCftCft, 2) : '—' }}</td>
+                </tr>
+                @endif
+
+                @if($linesAir->isEmpty() && $linesSea->isEmpty() && $linesCft->isEmpty())
                 <tr><td colspan="6" style="text-align:center; color:#6b7280;">No hay ítems.</td></tr>
                 @endif
 

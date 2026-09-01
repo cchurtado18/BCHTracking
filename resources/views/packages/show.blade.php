@@ -43,50 +43,47 @@
     ];
 @endphp
 <div class="packages-page packages-show-page">
-    {{-- ===== Banner ===== --}}
-    <header class="prd-hero">
-        <div class="prd-hero-top">
-            <div class="prd-hero-identity">
-                <a href="{{ route('packages.index', session('packages_index_filters', [])) }}" class="prd-back">← Volver al listado</a>
-                <div class="prd-title-row">
-                    <h1 class="prd-title">Paquete #{{ $package->id }}</h1>
-                    <span class="prd-status">{{ $statusLabel }}</span>
-                    @if(in_array($package->status, ['RECEIVED_MIAMI', 'IN_TRANSIT']))
-                    <span class="prd-status prd-status-soft">Preregistro</span>
-                    @endif
-                </div>
-                <p class="prd-subtitle">{{ $package->label_name }}@if($package->agency) · {{ $package->agency->name }}@endif</p>
-            </div>
-            <div class="prd-hero-actions">
-                <div class="prd-action-group">
-                    @if($package->status == 'IN_WAREHOUSE_NIC')
-                    <a href="{{ route('packages.process', $package->id) }}" class="prd-btn prd-btn-secondary">Procesar paquete</a>
-                    @endif
-                    @if(!$isAgencyUser)
-                    <a href="{{ route('preregistrations.edit', $package->id) }}" class="prd-btn prd-btn-secondary">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="prd-btn-icon"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-                        Editar
-                    </a>
-                    @endif
-                    @if($package->warehouse_code && !$isAgencyUser)
-                    <a href="{{ route('preregistrations.label', $package->id) }}" target="_blank" class="prd-btn prd-btn-primary">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="prd-btn-icon"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6Z"/></svg>
-                        Imprimir etiqueta
-                    </a>
-                    @endif
-                </div>
-            </div>
-        </div>
-    </header>
+    <x-module-banner
+        section="General"
+        current="Detalle"
+        title="Paquete #{{ $package->id }}"
+        subtitle="{{ $package->label_name }}{{ $package->agency ? ' · '.$package->agency->name : '' }} · {{ $statusLabel }}"
+        back-href="{{ route('packages.index', session('packages_index_filters', [])) }}"
+        back-label="Volver a paquetes"
+        :hide-back="$isAgencyUser"
+    >
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
+        </x-slot:icon>
+        <x-slot:actions>
+            @if($package->status == 'IN_WAREHOUSE_NIC' && ! $isAgencyUser)
+            <a href="{{ route('packages.process', $package->id) }}" class="mb-btn mb-btn-secondary">Procesar paquete</a>
+            @endif
+            @if(!$isAgencyUser)
+            <a href="{{ route('preregistrations.edit', $package->id) }}" class="mb-btn mb-btn-secondary">Editar</a>
+            @endif
+            @if($package->warehouse_code && !$isAgencyUser)
+            <a href="{{ route('preregistrations.label', $package->id) }}" target="_blank" class="mb-btn mb-btn-primary">Imprimir etiqueta</a>
+            @endif
+        </x-slot:actions>
+        <x-slot:strip>
+            <span class="mb-strip-label">Paquete</span>
+            <span class="mb-pill">Código <strong>{{ $package->warehouse_code ?: '—' }}</strong></span>
+            <span class="mb-pill">{{ $statusLabel }}</span>
+            @if(! $isAgencyUser && in_array($package->status, ['RECEIVED_MIAMI', 'IN_TRANSIT']))
+            <span class="mb-pill">Preregistro</span>
+            @endif
+        </x-slot:strip>
+    </x-module-banner>
 
     {{-- ===== Franja de datos clave ===== --}}
     <div class="prd-metrics">
         <div class="prd-metric prd-metric-accent">
-            <span class="prd-metric-label">Warehouse</span>
+            <span class="prd-metric-label">Código</span>
             <span class="prd-metric-value prd-mono">{{ $package->warehouse_code ?: '—' }}</span>
         </div>
         <div class="prd-metric">
-            <span class="prd-metric-label">Tracking ID</span>
+            <span class="prd-metric-label">Tracking</span>
             <span class="prd-metric-value prd-mono">{{ $package->tracking_external ?: '—' }}</span>
         </div>
         <div class="prd-metric">
@@ -96,7 +93,7 @@
         <div class="prd-metric">
             <span class="prd-metric-label">Servicio</span>
             <span class="prd-metric-value prd-metric-service">
-                <span class="prd-chip prd-chip-{{ strtolower($package->service_type ?? '') }}">{{ $package->service_type == 'AIR' ? 'Aéreo' : 'Marítimo' }}</span>
+                <span class="prd-chip prd-chip-{{ strtolower($package->service_type ?? '') }}">{{ \App\Support\ServiceType::label($package->service_type) }}</span>
                 {{ $package->agency?->name ?: '—' }}
             </span>
         </div>
@@ -111,7 +108,7 @@
         <header class="prd-card-head">
             <h2 class="prd-card-title">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="prd-card-icon"><path d="M3 17 9 11l4 4 8-8M17 7h4v4"/></svg>
-                Timeline Operativo
+                Seguimiento
             </h2>
         </header>
         <div class="prd-card-body">
@@ -154,7 +151,7 @@
                             <span class="prd-field-value prd-mono">{{ $package->tracking_external ?? '—' }}</span>
                         </div>
                         <div class="prd-field">
-                            <span class="prd-field-label">Código para escanear</span>
+                            <span class="prd-field-label">Código</span>
                             <span class="prd-field-value prd-mono">{{ $package->warehouse_code ?? $package->tracking_external ?? '—' }}</span>
                         </div>
                         <div class="prd-field">
@@ -167,6 +164,7 @@
                             <span class="prd-field-value">{{ number_format((float) $package->verified_weight_lbs, 2) }} lbs</span>
                         </div>
                         @endif
+                        @unless($isAgencyUser)
                         <div class="prd-field">
                             <span class="prd-field-label">Método ingreso</span>
                             <span class="prd-field-value prd-field-intake">
@@ -180,6 +178,7 @@
                             <span class="prd-field-value">{{ $package->label_print_count }} vez(es)@if($package->label_last_printed_at) · {{ $package->label_last_printed_at->timezone($displayTz)->format('d/m/Y H:i') }}@endif</span>
                         </div>
                         @endif
+                        @endunless
                     </div>
                 </div>
             </section>
@@ -232,13 +231,13 @@
                                 <span class="prd-field-value">{{ $package->delivery->delivered_to ?: '—' }}</span>
                             </div>
                             <div class="prd-field prd-field-span">
-                                <span class="prd-field-label">Nota de entrega</span>
+                                <span class="prd-field-label">Hoja de salida</span>
                                 <span class="prd-field-value">
                                     @if($package->delivery->deliveryNote)
                                     <span class="prd-mono">{{ $package->delivery->deliveryNote->code }}</span>
-                                    <a href="{{ route('deliveries.print-report', ['delivery_note_id' => $package->delivery->delivery_note_id]) }}" target="_blank" class="prd-side-link">Ver nota</a>
+                                    <a href="{{ route('salidas.print-report', ['delivery_note_id' => $package->delivery->delivery_note_id]) }}" target="_blank" class="prd-side-link">Ver hoja</a>
                                     @else
-                                    Sin nota vinculada
+                                    Sin hoja vinculada
                                     @endif
                                 </span>
                             </div>
@@ -321,60 +320,26 @@
 .packages-show-page { padding: 1.25rem 1rem 2rem; max-width: 92rem; margin: 0 auto; width: 100%; box-sizing: border-box; }
 @media (min-width: 768px) { .packages-show-page { padding: 1.5rem 1.5rem 2.5rem; } }
 
-/* ===== Banner verde ===== */
-.prd-hero {
-    background: linear-gradient(135deg, #047857 0%, #059669 55%, #10b981 100%);
-    color: #fff;
-    border-radius: 1rem;
-    padding: 1.35rem 1.5rem 3.4rem;
-    box-shadow: 0 10px 30px rgba(5, 150, 105, 0.28);
-}
-.prd-hero-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; }
-.prd-back { color: rgba(255,255,255,0.75); text-decoration: none; font-size: 0.8125rem; font-weight: 600; }
-.prd-back:hover { color: #fff; }
-.prd-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65rem; margin-top: 0.45rem; }
-.prd-title { margin: 0; font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; color: #fff; }
-.prd-subtitle { margin: 0.3rem 0 0; color: rgba(255,255,255,0.85); font-size: 0.925rem; }
-.prd-status {
-    display: inline-flex; align-items: center; padding: 0.28rem 0.7rem;
-    border-radius: 999px; font-size: 0.75rem; font-weight: 700;
-    background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35); color: #fff;
-}
-.prd-status-soft { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.22); color: rgba(255,255,255,0.85); }
-
-.prd-hero-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-start; justify-content: flex-end; max-width: 100%; }
-.prd-action-group { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
-
-.prd-btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;
-    padding: 0.48rem 0.85rem; font-size: 0.8125rem; font-weight: 650; border-radius: 0.55rem;
-    border: 1px solid transparent; cursor: pointer; text-decoration: none; white-space: nowrap;
-}
-.prd-btn-icon { width: 0.85rem; height: 0.85rem; }
-.prd-btn-primary { background: #fff; color: #047857; border-color: #fff; }
-.prd-btn-primary:hover { background: #ecfdf5; }
-.prd-btn-secondary { background: rgba(255,255,255,0.14); color: #fff; border-color: rgba(255,255,255,0.4); }
-.prd-btn-secondary:hover { background: rgba(255,255,255,0.24); }
-
 /* ===== Franja de datos clave ===== */
 .prd-metrics {
     display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem;
-    margin: -2.4rem 0.75rem 1.15rem; position: relative; z-index: 2;
+    margin: 0 0 1.15rem;
 }
-@media (min-width: 1000px) { .prd-metrics { grid-template-columns: 1fr 1.35fr 1fr 1.25fr 1fr; margin-left: 1rem; margin-right: 1rem; } }
+@media (min-width: 1000px) { .prd-metrics { grid-template-columns: 1fr 1.35fr 1fr 1.25fr 1fr; } }
 .prd-metric {
     background: #fff; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0.85rem 1rem;
     box-shadow: 0 6px 18px rgba(15,23,42,0.08);
 }
-.prd-metric-accent { border-left: 3px solid #10b981; }
+.prd-metric-accent { border-left: 3px solid #1E4FA8; }
 .prd-metric-label { display: block; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: #64748b; margin-bottom: 0.3rem; }
 .prd-metric-value { font-size: 1.05rem; font-weight: 800; color: #0f172a; line-height: 1.25; word-break: break-word; }
 .prd-metric-service { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; font-size: 0.92rem; }
 .prd-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.02em; }
 
 .prd-chip { display: inline-flex; align-items: center; padding: 0.16rem 0.5rem; border-radius: 999px; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; border: 1px solid transparent; }
-.prd-chip-air { background: #d1fae5; color: #047857; border-color: #a7f3d0; }
+.prd-chip-air { background: #E8EEF8; color: #0A2D6F; border-color: #C5D4EB; }
 .prd-chip-sea { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
+.prd-chip-cft { background: #E8F6EE; color: #16794C; border-color: #b7e0c8; }
 
 /* ===== Timeline horizontal ===== */
 .prd-timeline-card { margin-bottom: 1rem; }
@@ -388,24 +353,24 @@
     background: #e2e8f0; z-index: 0;
 }
 .prd-htl-step:first-child::before { display: none; }
-.prd-htl-step.is-done::before { background: #10b981; }
+.prd-htl-step.is-done::before { background: #1E4FA8; }
 .prd-htl-icon {
     position: relative; z-index: 1; width: 1.9rem; height: 1.9rem; border-radius: 999px;
     display: flex; align-items: center; justify-content: center;
     background: #fff; border: 2px solid #e2e8f0; color: #cbd5e1;
 }
 .prd-htl-icon svg { width: 0.9rem; height: 0.9rem; }
-.prd-htl-step.is-done .prd-htl-icon { background: #10b981; border-color: #a7f3d0; color: #fff; }
+.prd-htl-step.is-done .prd-htl-icon { background: #1E4FA8; border-color: #C5D4EB; color: #fff; }
 .prd-htl-step.is-current .prd-htl-icon {
-    background: #d1fae5; border-color: #10b981; color: #047857;
+    background: #E8EEF8; border-color: #1E4FA8; color: #0A2D6F;
     box-shadow: 0 0 0 4px rgba(16,185,129,0.16);
 }
 .prd-htl-title { display: block; font-size: 0.8rem; font-weight: 700; color: #b6c2d1; line-height: 1.2; }
 .prd-htl-step.is-done .prd-htl-title { color: #0f172a; }
-.prd-htl-step.is-current .prd-htl-title { color: #047857; }
+.prd-htl-step.is-current .prd-htl-title { color: #0A2D6F; }
 .prd-htl-meta { display: block; font-size: 0.68rem; font-weight: 600; color: #b6c2d1; margin-top: -0.2rem; word-break: break-word; padding: 0 0.25rem; }
 .prd-htl-step.is-done .prd-htl-meta { color: #64748b; }
-.prd-htl-step.is-current .prd-htl-meta { color: #059669; }
+.prd-htl-step.is-current .prd-htl-meta { color: #0A2D6F; }
 @media (max-width: 700px) {
     .prd-htl { overflow-x: auto; padding-bottom: 0.5rem; }
     .prd-htl-step { min-width: 92px; }
@@ -425,10 +390,10 @@
     display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;
 }
 .prd-card-title { margin: 0; font-size: 0.95rem; font-weight: 750; color: #0f172a; display: inline-flex; align-items: center; gap: 0.5rem; }
-.prd-card-icon { width: 1rem; height: 1rem; color: #059669; flex-shrink: 0; }
+.prd-card-icon { width: 1rem; height: 1rem; color: #0A2D6F; flex-shrink: 0; }
 .prd-card-body { padding: 1.1rem 1.15rem 1.2rem; }
-.prd-head-link { font-size: 0.78rem; font-weight: 700; color: #059669; text-decoration: none; }
-.prd-head-link:hover { color: #047857; text-decoration: underline; }
+.prd-head-link { font-size: 0.78rem; font-weight: 700; color: #0A2D6F; text-decoration: none; }
+.prd-head-link:hover { color: #0A2D6F; text-decoration: underline; }
 
 /* ===== Datos del envío ===== */
 .prd-fields { display: grid; grid-template-columns: 1fr; gap: 1rem 1.5rem; }
@@ -439,7 +404,7 @@
 .prd-field-label { font-size: 0.66rem; font-weight: 700; color: #94a3b8; letter-spacing: 0.07em; text-transform: uppercase; }
 .prd-field-value { font-size: 0.92rem; font-weight: 650; color: #0f172a; word-break: break-word; }
 .prd-field-intake { display: inline-flex; align-items: center; gap: 0.45rem; }
-.prd-intake-dot { width: 0.5rem; height: 0.5rem; border-radius: 999px; background: #10b981; flex-shrink: 0; }
+.prd-intake-dot { width: 0.5rem; height: 0.5rem; border-radius: 999px; background: #1E4FA8; flex-shrink: 0; }
 
 /* ===== Evidencia ===== */
 .prd-photo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
@@ -467,13 +432,13 @@
 .prd-saco-row .prd-field-label { display: block; margin-bottom: 0.25rem; }
 .prd-saco-row .prd-field-value { font-size: 1rem; font-weight: 800; }
 .prd-saco-status { text-align: right; }
-.prd-saco-scanned { margin: 0.75rem 0 0; font-size: 0.78rem; color: #059669; font-weight: 600; }
+.prd-saco-scanned { margin: 0.75rem 0 0; font-size: 0.78rem; color: #0A2D6F; font-weight: 600; }
 .prd-badge {
     display: inline-block; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.06em;
-    padding: 0.25rem 0.55rem; border-radius: 0.35rem; background: #d1fae5; color: #047857;
+    padding: 0.25rem 0.55rem; border-radius: 0.35rem; background: #E8EEF8; color: #0A2D6F;
 }
-.prd-side-link { color: #059669; font-weight: 700; font-size: 0.84rem; text-decoration: none; margin-left: 0.5rem; }
-.prd-side-link:hover { color: #047857; text-decoration: underline; }
+.prd-side-link { color: #0A2D6F; font-weight: 700; font-size: 0.84rem; text-decoration: none; margin-left: 0.5rem; }
+.prd-side-link:hover { color: #0A2D6F; text-decoration: underline; }
 
 /* ===== Administración ===== */
 .prd-card-admin { background: #f6fdf9; border-color: #bbf0d8; }

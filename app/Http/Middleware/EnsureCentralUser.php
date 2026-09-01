@@ -18,7 +18,7 @@ class EnsureCentralUser
         }
 
         if ($request->user()->isAgencyUser()) {
-            abort(403, 'No tiene permiso para acceder a esta sección.');
+            return redirect()->route('packages.index');
         }
 
         return $next($request);

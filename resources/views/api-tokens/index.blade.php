@@ -4,14 +4,11 @@
 
 @section('content')
 <div class="api-tokens-page">
-    <header class="api-tokens-hero">
-        <div class="api-tokens-hero-inner">
-            <div class="api-tokens-hero-text">
-                <h1 class="api-tokens-hero-title">Tokens API</h1>
-                <p class="api-tokens-hero-subtitle">Crea tokens para acceder a la API (app móvil, integraciones). Cada token se muestra una sola vez al crearlo.</p>
-            </div>
-        </div>
-    </header>
+    <x-module-banner section="Herramientas" current="Tokens API" title="Tokens API" subtitle="Crea tokens para acceder a la API (app móvil, integraciones). Cada token se muestra una sola vez al crearlo.">
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v3m0 0h3m-3 0h-3M6 8.25h4.5m-4.5 4.5h12m-12 4.5h12"/></svg>
+        </x-slot:icon>
+    </x-module-banner>
 
     @if(session('new_token_plain'))
     <div class="api-tokens-alert api-tokens-alert-success">
@@ -84,18 +81,18 @@
 
 <style>
 .api-tokens-page { padding: 1.5rem 0; max-width: 48rem; margin: 0 auto; width: 100%; }
-.api-tokens-hero { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); border-radius: 1rem; padding: 1.5rem 1.5rem; margin-bottom: 1.5rem; }
+.api-tokens-hero { background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%); border-radius: 1rem; padding: 1.5rem 1.5rem; margin-bottom: 1.5rem; }
 .api-tokens-hero-title { margin: 0; font-size: 1.5rem; font-weight: 700; color: #fff; }
 .api-tokens-hero-subtitle { margin: 0.35rem 0 0; font-size: 0.9375rem; color: rgba(255,255,255,0.9); }
 .api-tokens-alert { padding: 1rem 1.25rem; border-radius: 0.5rem; margin-bottom: 1rem; }
-.api-tokens-alert-success { background: #d1fae5; border: 1px solid #6ee7b7; color: #065f46; }
+.api-tokens-alert-success { background: #E8EEF8; border: 1px solid #9BB5D9; color: #0A2D6F; }
 .api-tokens-alert-info { background: #e0f2fe; border: 1px solid #7dd3fc; color: #0c4a6e; }
 .api-tokens-alert-title { font-weight: 600; margin: 0 0 0.35rem; }
 .api-tokens-alert-hint { font-size: 0.875rem; margin: 0 0 0.5rem; }
-.api-tokens-token-box { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; background: #fff; padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid #059669; }
+.api-tokens-token-box { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; background: #fff; padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid #0A2D6F; }
 .api-tokens-token-box code { flex: 1; min-width: 0; font-size: 0.8125rem; word-break: break-all; }
-.api-tokens-copy-btn { padding: 0.35rem 0.75rem; font-size: 0.8125rem; font-weight: 600; background: #059669; color: #fff; border: none; border-radius: 0.375rem; cursor: pointer; }
-.api-tokens-copy-btn:hover { background: #047857; }
+.api-tokens-copy-btn { padding: 0.35rem 0.75rem; font-size: 0.8125rem; font-weight: 600; background: #0A2D6F; color: #fff; border: none; border-radius: 0.375rem; cursor: pointer; }
+.api-tokens-copy-btn:hover { background: #0A2D6F; }
 .api-tokens-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e5e7eb; margin-bottom: 1.5rem; overflow: hidden; }
 .api-tokens-card-header { background: #f9fafb; padding: 0.75rem 1.25rem; border-bottom: 1px solid #e5e7eb; }
 .api-tokens-card-title { margin: 0; font-size: 1rem; font-weight: 600; color: #374151; }
@@ -103,11 +100,11 @@
 .api-tokens-field { margin-bottom: 1rem; }
 .api-tokens-label { display: block; font-size: 0.8125rem; font-weight: 600; color: #374151; margin-bottom: 0.35rem; }
 .api-tokens-input { width: 100%; max-width: 320px; padding: 0.5rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.5rem; }
-.api-tokens-input:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15); }
+.api-tokens-input:focus { outline: none; border-color: #0A2D6F; box-shadow: 0 0 0 3px rgba(30, 79, 168, 0.15); }
 .api-tokens-error { font-size: 0.875rem; color: #dc2626; margin-top: 0.25rem; }
 .api-tokens-btn { display: inline-flex; align-items: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; }
-.api-tokens-btn-primary { background: #059669; color: #fff; border-color: #059669; }
-.api-tokens-btn-primary:hover { background: #047857; color: #fff; }
+.api-tokens-btn-primary { background: #0A2D6F; color: #fff; border-color: #0A2D6F; }
+.api-tokens-btn-primary:hover { background: #0A2D6F; color: #fff; }
 .api-tokens-btn-danger { background: #fff; color: #dc2626; border-color: #dc2626; }
 .api-tokens-btn-danger:hover { background: #fef2f2; color: #b91c1c; }
 .api-tokens-btn-sm { padding: 0.35rem 0.65rem; font-size: 0.8125rem; }

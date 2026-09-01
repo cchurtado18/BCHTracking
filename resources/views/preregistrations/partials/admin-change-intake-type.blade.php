@@ -85,7 +85,7 @@
 }
 .admin-intake-panel__select:focus {
     outline: none;
-    border-color: #059669;
+    border-color: #0A2D6F;
     box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2);
 }
 .admin-intake-panel__btn {
@@ -96,12 +96,12 @@
     font-size: 0.875rem;
     font-weight: 600;
     color: #fff;
-    background: #059669;
+    background: #0A2D6F;
     border: none;
     border-radius: 0.5rem;
     cursor: pointer;
 }
-.admin-intake-panel__btn:hover { background: #047857; }
+.admin-intake-panel__btn:hover { background: #0A2D6F; }
 .admin-intake-panel__err {
     margin: 0.5rem 0 0;
     font-size: 0.8125rem;

@@ -11,18 +11,11 @@
     $tz = $displayTz ?? config('app.display_timezone', 'America/New_York');
 @endphp
 <div class="packages-page">
-    <header class="packages-hero">
-        <div class="packages-hero-inner">
-            <div class="packages-hero-text">
-                <h1 class="packages-hero-title">Fichaje del equipo</h1>
-                <p class="packages-hero-subtitle">Registros de trabajadores centrales (sin subagencia). Zona horaria: {{ $tz }}.</p>
-            </div>
-            <a href="{{ route('time-entries.index') }}" class="packages-hero-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-                Mi fichaje
-            </a>
-        </div>
-    </header>
+    <x-module-banner section="General" current="Fichaje del equipo" title="Fichaje del equipo" subtitle="Registros de trabajadores centrales (sin subagencia). Zona horaria: {{ $tz }}." back-href="{{ route('time-entries.index') }}" back-label="Mi fichaje">
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+        </x-slot:icon>
+    </x-module-banner>
 
     <div class="packages-card packages-filters-card">
         <div class="packages-card-header">

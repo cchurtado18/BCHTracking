@@ -12,7 +12,7 @@ class LinkOrphanDeliveriesToNotes extends Command
     protected $signature = 'deliveries:link-orphan-notes
                             {--dry-run : Solo muestra cuántas entregas quedarían vinculadas}';
 
-    protected $description = 'Vincula entregas históricas sin nota de salida a notas BCH (agrupa por agencia, fecha y quien retira)';
+    protected $description = 'Vincula entregas históricas sin nota de salida a notas SLO (agrupa por agencia, fecha y quien retira)';
 
     public function handle(): int
     {

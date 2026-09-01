@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $receiptNote->code }} · Recibo de almacén · BCH Tracking</title>
+    <title>{{ $receiptNote->code }} · Recibo de almacén · PrimeTrack Group</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, body * { font-family: Arial, Helvetica, sans-serif; }
@@ -26,26 +26,26 @@
         }
 
         .no-print { width: 8.5in; margin: 0 auto 12px; padding: 0 10mm; }
-        .no-print .btn-print { background: #059669; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
-        .no-print .btn-back { margin-left: 12px; color: #059669; font-weight: 500; text-decoration: none; font-size: 14px; }
+        .no-print .btn-print { background: #0A2D6F; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
+        .no-print .btn-back { margin-left: 12px; color: #0A2D6F; font-weight: 500; text-decoration: none; font-size: 14px; }
         .print-hint { font-size: 11px; color: #6b7280; margin-top: 6px; }
 
         /* Header */
         .h {
             display: flex; justify-content: space-between; align-items: flex-start;
             gap: 14px; padding-bottom: 7px; margin-bottom: 7px;
-            border-bottom: 2px solid #059669;
+            border-bottom: 2px solid #0A2D6F;
         }
         .h-left { display: flex; gap: 9px; align-items: flex-start; }
         .h-logo { height: 38px; width: auto; max-width: 140px; object-fit: contain; }
-        .h-company { font-size: 12px; font-weight: 800; color: #059669; letter-spacing: 0.02em; }
+        .h-company { font-size: 12px; font-weight: 800; color: #0A2D6F; letter-spacing: 0.02em; }
         .h-address { font-size: 8pt; color: #4b5563; line-height: 1.3; margin-top: 1px; }
         .h-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
         .h-title { font-size: 14pt; font-weight: 800; color: #0f172a; letter-spacing: 0.04em; }
         .h-meta { display: flex; gap: 10px; align-items: center; }
         .h-qr { width: 56px; height: 56px; flex-shrink: 0; border: 1px solid #e5e7eb; padding: 2px; background: #fff; }
         .h-qr img { display: block; width: 100%; height: 100%; }
-        .h-code { font-size: 14pt; font-weight: 800; color: #059669; font-family: ui-monospace, monospace; letter-spacing: 0.05em; }
+        .h-code { font-size: 14pt; font-weight: 800; color: #0A2D6F; font-family: ui-monospace, monospace; letter-spacing: 0.05em; }
         .h-code-label { font-size: 7.5pt; font-weight: 700; text-transform: uppercase; color: #6b7280; letter-spacing: 0.06em; }
 
         /* Cuadro de cuenta + receptor */
@@ -83,7 +83,7 @@
             padding: 0 16px;
             display: flex; align-items: center; justify-content: center;
             font-size: 13pt; font-weight: 800; color: #fff;
-            background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+            background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%);
             letter-spacing: 0.05em; min-width: 90px;
         }
 
@@ -102,7 +102,7 @@
         table.tbl thead th {
             padding: 4px 5px; text-align: left; font-size: 7.5pt; font-weight: 700;
             color: #1f2937; text-transform: uppercase; letter-spacing: 0.04em;
-            background: #f1f5f9; border-bottom: 1.5px solid #059669;
+            background: #f1f5f9; border-bottom: 1.5px solid #0A2D6F;
             border-right: 1px solid #cbd5e1;
         }
         table.tbl thead th:last-child { border-right: none; }
@@ -139,7 +139,7 @@
             align-items: baseline;
         }
         .totals-row:last-child { border-bottom: none; }
-        .totals-row-strong { background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); }
+        .totals-row-strong { background: linear-gradient(135deg, #F4F8FD 0%, #E8EEF8 100%); }
         .totals-label { font-size: 8pt; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.04em; }
         .totals-value { font-size: 10pt; font-weight: 800; color: #0f172a; text-align: right; }
 
@@ -192,9 +192,9 @@
     <div class="doc">
         <header class="h">
             <div class="h-left">
-                <img src="{{ asset('images/bch-tracking-logo.png') }}" alt="BCH Tracking" class="h-logo">
+                <img src="{{ asset('images/primetrack-group-logo.png') }}" alt="PrimeTrack Group" class="h-logo">
                 <div>
-                    <div class="h-company">BCH TRACKING</div>
+                    <div class="h-company">PRIMETRACK GROUP</div>
                     <div class="h-address">
                         8307 NW 68TH ST · 33166 · MIA, FL
                     </div>
@@ -358,7 +358,7 @@
 
         <div class="foot">
             <div class="disclaimer">
-                Es responsabilidad del cliente declarar el contenido y embalar adecuadamente. BCH Tracking no se responsabiliza por daños en empaque, contenido no declarado, frágiles sin protección o artículos prohibidos. Pesos y dimensiones son preliminares.
+                Es responsabilidad del cliente declarar el contenido y embalar adecuadamente. PrimeTrack Group no se responsabiliza por daños en empaque, contenido no declarado, frágiles sin protección o artículos prohibidos. Pesos y dimensiones son preliminares.
             </div>
             <div class="sigs">
                 <div class="sig">
@@ -367,13 +367,13 @@
                 </div>
                 <div class="sig">
                     <div class="sig-line">&nbsp;</div>
-                    <div class="sig-caption">Recibido — BCH Tracking</div>
+                    <div class="sig-caption">Recibido — PrimeTrack Group</div>
                 </div>
             </div>
         </div>
 
         <div class="meta-foot">
-            Generado el {{ $createdAt?->format('d/m/Y H:i') }} por {{ $receiptNote->receivedBy?->name ?? 'BCH Tracking' }} · {{ $receiptNote->code }}
+            Generado el {{ $createdAt?->format('d/m/Y H:i') }} por {{ $receiptNote->receivedBy?->name ?? 'PrimeTrack Group' }} · {{ $receiptNote->code }}
         </div>
     </div>
 </body>

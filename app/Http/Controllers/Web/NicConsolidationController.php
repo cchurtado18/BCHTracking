@@ -134,9 +134,9 @@ class NicConsolidationController extends Controller
         }
 
         $preregistration = $item->preregistration ?? Preregistration::find($item->preregistration_id);
-        if ($preregistration->service_type !== $consolidation->service_type) {
-            $pkg = $preregistration->service_type === 'SEA' ? 'marítimo' : 'aéreo';
-            $saco = $consolidation->service_type === 'SEA' ? 'marítimo' : 'aéreo';
+        if (! \App\Support\ServiceType::matchesRoute($preregistration->service_type, $consolidation->service_type)) {
+            $pkg = \App\Support\ServiceType::routeLabelLower($preregistration->service_type);
+            $saco = \App\Support\ServiceType::routeLabelLower($consolidation->service_type);
             $msg = "El paquete es {$pkg} y el saco es {$saco}. Use el saco correcto o corrija el tipo de servicio del preregistro.";
             if ($wantsJson) {
                 return response()->json(['success' => false, 'message' => $msg], 422);

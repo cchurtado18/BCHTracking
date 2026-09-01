@@ -4,15 +4,18 @@
 
 @section('content')
 <div class="preregs-page preregs-form-page">
-    <header class="preregs-hero">
-        <div class="preregs-hero-inner">
-            <div class="preregs-hero-text">
-                <h1 class="preregs-hero-title">Captura rápida – Courier</h1>
-                <p class="preregs-hero-subtitle">Toma la foto del paquete y, si quieres, ingresa el tracking. Otro usuario podrá completar los datos después.</p>
-            </div>
-            <a href="{{ route('preregistrations.index') }}" class="preregs-hero-btn">← Volver a preregistros</a>
-        </div>
-    </header>
+    <x-module-banner
+        section="General"
+        current="Captura rápida"
+        title="Captura rápida – Courier"
+        subtitle="Tome la foto del paquete y, si quiere, el tracking. Otro usuario podrá completar los datos después."
+        back-href="{{ route('preregistrations.index') }}"
+        back-label="Volver a preregistros"
+    >
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.87 47.87 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/></svg>
+        </x-slot:icon>
+    </x-module-banner>
 
     @if($errors->any())
     <div class="preregs-alert preregs-alert-danger">
@@ -218,37 +221,37 @@ document.addEventListener('DOMContentLoaded', function() {
 /* Reutilizamos el mismo estilo base de formularios de preregistros */
 .preregs-form-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
 .preregs-form-page .preregs-hero {
-    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+    background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%);
     border-radius: 1rem; padding: 1.75rem 1.5rem; margin-bottom: 1.5rem;
     box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
 }
 .preregs-form-page .preregs-hero-title { color: #fff; margin: 0; font-size: 1.75rem; font-weight: 700; }
 .preregs-form-page .preregs-hero-subtitle { color: rgba(255,255,255,0.9); margin: 0.35rem 0 0; font-size: 0.9375rem; }
 .preregs-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-.preregs-hero-btn { display: inline-flex; align-items: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600; background: #fff; color: #047857; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none; }
-.preregs-hero-btn:hover { background: #ecfdf5; color: #059669; }
+.preregs-hero-btn { display: inline-flex; align-items: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600; background: #fff; color: #0A2D6F; border: 1px solid rgba(255,255,255,0.5); border-radius: 0.5rem; text-decoration: none; }
+.preregs-hero-btn:hover { background: #F4F8FD; color: #0A2D6F; }
 .preregs-hero-btn.preregs-hero-btn-secondary { background: rgba(4, 120, 87,0.08); color: #ecfeff; border-color: rgba(255,255,255,0.4); }
 .preregs-alert { padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.875rem; }
 .preregs-alert-danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
 .preregs-alert-title { font-weight: 600; margin-bottom: 0.35rem; }
 .preregs-alert-list { margin: 0; padding-left: 1.25rem; }
 .preregs-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; margin-bottom: 1.5rem; }
-.preregs-card-header.preregs-form-header { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); padding: 0.75rem 1.5rem; }
+.preregs-card-header.preregs-form-header { background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%); padding: 0.75rem 1.5rem; }
 .preregs-form-header .preregs-card-title { color: #fff; margin: 0; font-size: 1rem; font-weight: 600; }
 .preregs-card-body { padding: 1.25rem 1.5rem; }
 .preregs-form-body { padding: 1.5rem; }
 .preregs-form-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; }
-.preregs-section-title { font-size: 1.125rem; font-weight: 600; color: #059669; margin-bottom: 0.75rem; }
+.preregs-section-title { font-size: 1.125rem; font-weight: 600; color: #0A2D6F; margin-bottom: 0.75rem; }
 .preregs-photo-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; }
 .preregs-form-actions { margin-top: 1.5rem; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.75rem; }
 .preregs-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; }
-.preregs-btn-primary { background: #059669; color: #fff; border-color: #059669; font-weight: 600; }
-.preregs-btn-primary:hover { background: #047857; border-color: #047857; color: #fff; }
+.preregs-btn-primary { background: #0A2D6F; color: #fff; border-color: #0A2D6F; font-weight: 600; }
+.preregs-btn-primary:hover { background: #0A2D6F; border-color: #0A2D6F; color: #fff; }
 .preregs-btn-secondary { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
 .preregs-btn-secondary:hover { background: #e5e7eb; color: #111827; }
 .preregs-label { display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 0.35rem; }
 .preregs-input { width: 100%; padding: 0.5rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.5rem; background: #fff; color: #111827; box-sizing: border-box; }
-.preregs-input:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15); }
+.preregs-input:focus { outline: none; border-color: #0A2D6F; box-shadow: 0 0 0 3px rgba(30, 79, 168, 0.15); }
 
 .quick-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 0.5rem; }
 .quick-field { max-width: 32rem; }

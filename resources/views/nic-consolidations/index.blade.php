@@ -3,87 +3,86 @@
 @section('title', 'Escaneo NIC')
 
 @section('content')
-<div class="nic-page">
-    {{-- Hero --}}
-    <header class="nic-hero">
-        <div class="nic-hero-inner">
-            <div class="nic-hero-text">
-                <h1 class="nic-hero-title">Escaneo NIC</h1>
-                <p class="nic-hero-subtitle">Sacos enviados listos para escanear en Nicaragua. Escanee el código del saco con la pistola y luego los paquetes.</p>
+<div class="cx-page">
+    <x-module-banner section="Operaciones" current="Escaneo NIC" title="Escaneo NIC PrimeTrack" subtitle="Sacos enviados listos para recibir en Nicaragua. Escanee el código del saco y luego los paquetes.">
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 6.75h15v10.5h-15V6.75Zm3 3h4.5m-4.5 3h9"/></svg>
+        </x-slot:icon>
+        <x-slot:actions>
+            <a href="{{ route('consolidations.index') }}" class="mb-btn mb-btn-secondary">Ver consolidaciones</a>
+        </x-slot:actions>
+    </x-module-banner>
+
+    @if(session('success'))
+    <div class="cx-alert cx-alert-success">{{ session('success') }}</div>
+    @endif
+    @if(session('error'))
+    <div class="cx-alert cx-alert-danger">{{ session('error') }}</div>
+    @endif
+
+    <div class="cx-card cx-scan-card">
+        <form method="GET" action="{{ route('nic-consolidations.index') }}" id="saco-scan-form" class="cx-scan-form">
+            <div class="cx-scan-field">
+                <label class="cx-label" for="saco_code">Código del saco</label>
+                <input type="text" name="saco_code" id="saco_code" class="cx-input cx-input-lg" placeholder="Escanear con pistola…" autofocus value="{{ old('saco_code') }}" autocomplete="off">
             </div>
-        </div>
-    </header>
+            <div class="cx-filters-actions">
+                <button type="submit" class="cx-btn cx-btn-primary">Ir al saco</button>
+            </div>
+        </form>
+        <p class="cx-scan-hint">Use la pistola sobre el código o la barra del saco; al confirmar se abre el escaneo de paquetes.</p>
+    </div>
 
-    {{-- Escanear código del saco (pistola) --}}
-    <div class="nic-card nic-scan-card">
-        <div class="nic-card-header nic-scan-header">
-            <h2 class="nic-card-title">Escanear código del saco</h2>
+    <div class="cx-kpis">
+        <div class="cx-kpi-card">
+            <span class="cx-kpi-label">Sacos enviados</span>
+            <span class="cx-kpi-value">{{ number_format($statsTotal ?? 0) }}</span>
+            <span class="cx-kpi-note">Listos para escanear</span>
         </div>
-        <div class="nic-card-body">
-            <p class="nic-scan-hint">Use la pistola para escanear el código o barra del saco; luego escanee los paquetes dentro.</p>
-            <form method="GET" action="{{ route('nic-consolidations.index') }}" id="saco-scan-form" class="nic-scan-form">
-                <input type="text" name="saco_code" id="saco_code" class="nic-input nic-input-lg" placeholder="Código del saco (escanear con pistola)" autofocus value="{{ old('saco_code') }}">
-                <button type="submit" class="nic-btn nic-btn-primary">Ir al saco</button>
-            </form>
-            @if(session('error'))
-            <p class="nic-scan-error">{{ session('error') }}</p>
-            @endif
+        <div class="cx-kpi-card">
+            <span class="cx-kpi-label">Aéreo</span>
+            <span class="cx-kpi-value">{{ number_format($statsAir ?? 0) }}</span>
+            <span class="cx-kpi-note">Servicio AIR</span>
+        </div>
+        <div class="cx-kpi-card">
+            <span class="cx-kpi-label">Marítimo</span>
+            <span class="cx-kpi-value">{{ number_format($statsSea ?? 0) }}</span>
+            <span class="cx-kpi-note">Servicio SEA</span>
+        </div>
+        <div class="cx-kpi-card cx-kpi-card--green">
+            <span class="cx-kpi-label">Total items</span>
+            <span class="cx-kpi-value cx-text-green">{{ number_format($statsTotalItems ?? 0) }}</span>
+            <span class="cx-kpi-note">Paquetes en esos sacos</span>
         </div>
     </div>
 
-    {{-- Tarjetas de resumen --}}
-    <div class="nic-stats">
-        <div class="nic-stat-card nic-stat-total">
-            <span class="nic-stat-label">Sacos enviados</span>
-            <span class="nic-stat-value">{{ number_format($statsTotal ?? 0) }}</span>
-        </div>
-        <div class="nic-stat-card nic-stat-air">
-            <span class="nic-stat-label">Aéreo</span>
-            <span class="nic-stat-value">{{ number_format($statsAir ?? 0) }}</span>
-        </div>
-        <div class="nic-stat-card nic-stat-sea">
-            <span class="nic-stat-label">Marítimo</span>
-            <span class="nic-stat-value">{{ number_format($statsSea ?? 0) }}</span>
-        </div>
-        <div class="nic-stat-card nic-stat-items">
-            <span class="nic-stat-label">Total items</span>
-            <span class="nic-stat-value">{{ number_format($statsTotalItems ?? 0) }}</span>
-        </div>
+    <div class="cx-card cx-filters-card">
+        <form method="GET" action="{{ route('nic-consolidations.index') }}" class="cx-filters-form">
+            <div class="cx-field">
+                <label class="cx-label" for="service_type">Servicio</label>
+                <select name="service_type" id="service_type" class="cx-input">
+                    <option value="">Todos los servicios</option>
+                    <option value="AIR" @selected(request('service_type') === 'AIR')>Aéreo</option>
+                    <option value="SEA" @selected(request('service_type') === 'SEA')>Marítimo</option>
+                </select>
+            </div>
+            <div class="cx-filters-actions">
+                <button class="cx-btn cx-btn-primary" type="submit">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
+                    Filtrar
+                </button>
+                <a href="{{ route('nic-consolidations.index') }}" class="cx-btn cx-btn-secondary">Limpiar</a>
+            </div>
+        </form>
     </div>
 
-    {{-- Filtros --}}
-    <div class="nic-card nic-filters-card">
-        <div class="nic-card-header">
-            <h2 class="nic-card-title">Filtros</h2>
-        </div>
-        <div class="nic-card-body">
-            <form method="GET" action="{{ route('nic-consolidations.index') }}" class="nic-filters-form">
-                <div class="nic-filters-grid">
-                    <div class="nic-field">
-                        <label class="nic-label">Servicio</label>
-                        <select name="service_type" class="nic-select">
-                            <option value="">Todos</option>
-                            <option value="AIR" {{ request('service_type') == 'AIR' ? 'selected' : '' }}>Aéreo</option>
-                            <option value="SEA" {{ request('service_type') == 'SEA' ? 'selected' : '' }}>Marítimo</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="nic-filters-actions">
-                    <button type="submit" class="nic-btn nic-btn-primary">Aplicar filtros</button>
-                    <a href="{{ route('nic-consolidations.index') }}" class="nic-btn nic-btn-secondary">Limpiar</a>
-                </div>
-            </form>
-        </div>
+    <div class="cx-toolbar">
+        <span class="cx-count">Total: <strong>{{ number_format($consolidations->total()) }}</strong> {{ $consolidations->total() === 1 ? 'registro' : 'registros' }}.</span>
     </div>
 
-    {{-- Tabla de sacos --}}
-    <div class="nic-card nic-table-card">
-        <div class="nic-card-header nic-table-header">
-            <h2 class="nic-card-title">Listado de sacos enviados</h2>
-            <span class="nic-card-badge">{{ $consolidations->total() }} {{ $consolidations->total() === 1 ? 'registro' : 'registros' }}</span>
-        </div>
-        <div class="nic-table-wrap">
-            <table class="nic-table">
+    <div class="cx-card">
+        <div class="cx-table-scroll">
+            <table class="cx-table">
                 <thead>
                     <tr>
                         <th>Código</th>
@@ -92,7 +91,7 @@
                         <th>Escaneados</th>
                         <th>Faltantes</th>
                         <th>Fecha envío</th>
-                        <th class="nic-th-actions">Opciones</th>
+                        <th class="cx-th-actions">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -102,25 +101,33 @@
                         $missing_count = $consolidation->items_count - $scanned_count;
                     @endphp
                     <tr>
-                        <td><span class="nic-code">{{ $consolidation->code }}</span></td>
                         <td>
-                            <span class="nic-badge nic-badge-{{ strtolower($consolidation->service_type ?? '') }}">
-                                {{ $consolidation->service_type == 'AIR' ? 'Aéreo' : ($consolidation->service_type == 'SEA' ? 'Marítimo' : ($consolidation->service_type ?? '—')) }}
+                            <a href="{{ route('nic-consolidations.show', $consolidation->id) }}" class="cx-folio">{{ $consolidation->code }}</a>
+                        </td>
+                        <td>
+                            <span class="cx-type-badge {{ ($consolidation->service_type ?? '') === 'SEA' ? 'cx-type-badge--sea' : '' }}">
+                                {{ \App\Support\ServiceType::label($consolidation->service_type) }}
                             </span>
                         </td>
-                        <td class="nic-num">{{ $consolidation->items_count }}</td>
-                        <td class="nic-num nic-num-success">{{ $scanned_count }}</td>
-                        <td class="nic-num nic-num-danger">{{ $missing_count }}</td>
-                        <td class="nic-date">{{ $consolidation->sent_at ? $consolidation->sent_at->format('d/m/Y H:i') : '—' }}</td>
-                        <td class="nic-actions">
-                            <a href="{{ route('nic-consolidations.show', $consolidation->id) }}" class="nic-btn nic-btn-sm nic-btn-outline-primary">Escanear</a>
+                        <td>{{ $consolidation->items_count }}</td>
+                        <td><span class="cx-text-green">{{ $scanned_count }}</span></td>
+                        <td>
+                            @if($missing_count > 0)
+                            <span class="cx-text-red">{{ $missing_count }}</span>
+                            @else
+                            <span class="cx-text-green">0</span>
+                            @endif
+                        </td>
+                        <td class="cx-nowrap">{{ $consolidation->sent_at ? $consolidation->sent_at->format('d/m/Y H:i') : '—' }}</td>
+                        <td class="cx-actions">
+                            <a href="{{ route('nic-consolidations.show', $consolidation->id) }}" class="cx-action-btn">Escanear</a>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="nic-empty">
-                            <p class="nic-empty-text">No hay sacos enviados para escanear.</p>
-                            <a href="{{ route('consolidations.index') }}" class="nic-btn nic-btn-secondary">Ver consolidaciones</a>
+                        <td colspan="7" class="cx-empty">
+                            No hay sacos enviados para escanear.
+                            <a href="{{ route('consolidations.index') }}" class="cx-folio">Ver consolidaciones</a>
                         </td>
                     </tr>
                     @endforelse
@@ -128,12 +135,10 @@
             </table>
         </div>
         @if($consolidations->total() > 0)
-        <div class="nic-card-footer">
-            <span class="nic-pagination-info">
-                {{ $consolidations->firstItem() }} – {{ $consolidations->lastItem() }} de {{ $consolidations->total() }}
-            </span>
+        <div class="cx-card-footer">
+            <span class="cx-count">{{ $consolidations->firstItem() }} – {{ $consolidations->lastItem() }} de {{ $consolidations->total() }}</span>
             @if($consolidations->hasPages())
-            <div class="nic-pagination-links">{{ $consolidations->links() }}</div>
+            <div class="cx-pager-wrap">{{ $consolidations->links('vendor.pagination.primetrack') }}</div>
             @endif
         </div>
         @endif
@@ -141,99 +146,111 @@
 </div>
 
 <style>
-.nic-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
-
-/* Hero */
-.nic-hero {
-    background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
-    border-radius: 1rem;
-    padding: 1.75rem 1.5rem;
-    margin-bottom: 1.5rem;
-    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
+.cx-page {
+    --cx-navy: #0A2D6F; --cx-blue: #1E4FA8; --cx-green: #16794C; --cx-red: #D64545;
+    --cx-line: #E8EEF8; --cx-border: #C5D4EB; --cx-soft: #F4F8FD; --cx-muted: #5E6168;
+    padding: 1.15rem 0 2.25rem; max-width: 96rem; margin: 0 auto; width: 100%;
 }
-.nic-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-.nic-hero-title { margin: 0; font-size: 1.75rem; font-weight: 700; color: #fff; letter-spacing: -0.02em; }
-.nic-hero-subtitle { margin: 0.35rem 0 0; font-size: 0.9375rem; color: rgba(255,255,255,0.9); max-width: 52ch; }
-
-/* Scan saco card */
-.nic-scan-card { border: 2px solid #059669; background: #ecfdf5; }
-.nic-scan-header { background: #d1fae5; border-bottom-color: #a7f3d0; }
-.nic-scan-header .nic-card-title { color: #047857; }
-.nic-scan-hint { font-size: 0.875rem; color: #6b7280; margin: 0 0 1rem; }
-.nic-scan-form { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
-.nic-input { padding: 0.5rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.5rem; background: #fff; color: #111827; max-width: 280px; width: 100%; }
-.nic-input:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15); }
-.nic-input-lg { padding: 0.65rem 1rem; font-size: 1rem; font-family: ui-monospace, monospace; }
-.nic-scan-error { font-size: 0.875rem; color: #dc2626; margin: 0.75rem 0 0; }
-
-/* Card */
-.nic-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 1.5rem; overflow: hidden; }
-.nic-card-header { padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb; background: #fafafa; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
-.nic-card-title { margin: 0; font-size: 0.9375rem; font-weight: 600; color: #374151; }
-.nic-card-body { padding: 1.25rem; }
-.nic-card-footer { padding: 0.75rem 1.25rem; border-top: 1px solid #e5e7eb; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; font-size: 0.875rem; color: #6b7280; }
-
-/* Stats */
-.nic-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-.nic-stat-card {
-    background: #fff; border-radius: 0.75rem; padding: 1rem 1.25rem; border: 1px solid #e5e7eb;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 0.25rem;
+.cx-header {
+    display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 1rem;
+    background: #fff; border: 1px solid var(--cx-line); border-radius: 1rem;
+    padding: 1.05rem 1.25rem 1.1rem; margin-bottom: 1.15rem; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
 }
-.nic-stat-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #6b7280; }
-.nic-stat-value { font-size: 1.5rem; font-weight: 700; color: #111827; }
-.nic-stat-total { border-left: 4px solid #059669; }
-.nic-stat-air { border-left: 4px solid #3b82f6; }
-.nic-stat-sea { border-left: 4px solid #059669; }
-.nic-stat-items { border-left: 4px solid #059669; }
-
-/* Filters */
-.nic-filters-form { display: flex; flex-direction: column; gap: 1rem; }
-.nic-filters-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
-.nic-label { display: block; font-size: 0.75rem; font-weight: 600; color: #6b7280; margin-bottom: 0.35rem; }
-.nic-select {
-    display: block; width: 100%; padding: 0.5rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.5rem;
-    background: #fff; color: #111827;
+.cx-breadcrumb { display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.45rem; }
+.cx-breadcrumb strong { color: #334155; font-weight: 700; }
+.cx-title-row { display: flex; align-items: center; gap: 0.6rem; }
+.cx-title-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 2.35rem; height: 2.35rem; border-radius: 0.65rem;
+    background: linear-gradient(135deg, var(--cx-navy), var(--cx-blue));
+    color: #fff; box-shadow: 0 6px 14px rgba(10, 45, 111, 0.28); flex-shrink: 0;
 }
-.nic-select:focus { outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15); }
-.nic-filters-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
-
-/* Buttons */
-.nic-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; transition: background 0.15s, color 0.15s; }
-.nic-btn-primary { background: #059669; color: #fff; border-color: #059669; }
-.nic-btn-primary:hover { background: #047857; border-color: #047857; color: #fff; }
-.nic-btn-secondary { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
-.nic-btn-secondary:hover { background: #e5e7eb; color: #111827; }
-.nic-btn-outline-primary { background: #fff; color: #059669; border-color: #059669; }
-.nic-btn-outline-primary:hover { background: #d1fae5; color: #047857; }
-.nic-btn-sm { padding: 0.35rem 0.65rem; font-size: 0.8125rem; }
-
-/* Table */
-.nic-table-header { background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%); }
-.nic-table-header .nic-card-title { color: #fff; }
-.nic-table-header .nic-card-badge { color: rgba(255,255,255,0.9); }
-.nic-table-wrap { overflow-x: auto; }
-.nic-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-.nic-table th { text-align: left; padding: 0.75rem 1rem; font-weight: 600; color: #374151; background: #f9fafb; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
-.nic-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
-.nic-table tbody tr:hover { background: #f9fafb; }
-.nic-code { font-family: ui-monospace, monospace; font-weight: 600; color: #111827; }
-.nic-num { color: #374151; font-weight: 500; }
-.nic-num-success { color: #059669; font-weight: 600; }
-.nic-num-danger { color: #dc2626; font-weight: 600; }
-.nic-date { color: #6b7280; }
-.nic-th-actions { text-align: right; }
-.nic-actions { text-align: right; white-space: nowrap; }
-.nic-badge { display: inline-block; padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem; }
-.nic-badge-air { background: #dbeafe; color: #1d4ed8; }
-.nic-badge-sea { background: #d1fae5; color: #047857; }
-.nic-empty { text-align: center; padding: 3rem 1rem !important; }
-.nic-empty-text { margin: 0 0 0.75rem; color: #6b7280; }
-.nic-pagination-info { font-weight: 500; }
-.nic-pagination-links { display: flex; align-items: center; }
-.nic-pagination-links nav { display: flex; gap: 0.25rem; flex-wrap: wrap; }
-.nic-pagination-links a, .nic-pagination-links span { display: inline-block; padding: 0.35rem 0.65rem; font-size: 0.8125rem; border-radius: 0.375rem; border: 1px solid #e5e7eb; background: #fff; color: #374151; text-decoration: none; }
-.nic-pagination-links a:hover { background: #f3f4f6; color: #059669; }
-.nic-pagination-links .disabled span { background: #f9fafb; color: #9ca3af; }
-.nic-pagination-links .active span { background: #059669; color: #fff; border-color: #059669; }
+.cx-title { margin: 0; font-size: 1.45rem; font-weight: 800; color: #0f172a; letter-spacing: -0.02em; }
+.cx-subtitle { margin: 0.4rem 0 0; font-size: 0.875rem; color: var(--cx-muted); line-height: 1.45; max-width: 44rem; }
+.cx-header-actions { display: flex; flex-wrap: wrap; gap: 0.55rem; align-self: center; }
+.cx-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+    padding: 0.58rem 1.05rem; font-size: 0.875rem; font-weight: 700; border-radius: 0.6rem;
+    border: 1px solid transparent; cursor: pointer; text-decoration: none;
+}
+.cx-btn-primary { background: var(--cx-navy); color: #fff; border-color: var(--cx-navy); box-shadow: 0 5px 14px rgba(10, 45, 111, 0.25); }
+.cx-btn-primary:hover { background: var(--cx-blue); border-color: var(--cx-blue); color: #fff; }
+.cx-btn-secondary { background: #fff; color: #334155; border-color: #d1d9e6; }
+.cx-btn-secondary:hover { background: var(--cx-soft); color: var(--cx-navy); border-color: var(--cx-border); }
+.cx-alert { padding: 0.85rem 1.05rem; border-radius: 0.7rem; margin-bottom: 1rem; font-size: 0.875rem; font-weight: 600; }
+.cx-alert-success { background: #EFFAF4; border: 1px solid #A7DFC3; color: #116039; }
+.cx-alert-danger { background: #FDECEC; border: 1px solid #F6C9C9; color: #B03030; }
+.cx-scan-card {
+    padding: 1rem 1.15rem 0.95rem; margin-bottom: 1.15rem;
+    background: linear-gradient(180deg, #fff 45%, #F4F8FD 160%);
+    border-color: var(--cx-border);
+}
+.cx-scan-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.7rem; }
+.cx-scan-field { display: flex; flex-direction: column; gap: 0.28rem; flex: 1; min-width: 16rem; max-width: 36rem; }
+.cx-scan-hint { margin: 0.65rem 0 0; font-size: 0.78rem; color: #94a3b8; }
+.cx-input-lg { font-size: 1rem; padding: 0.68rem 0.85rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; letter-spacing: 0.02em; }
+.cx-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1.15rem; }
+.cx-kpi-card {
+    background: #fff; border: 1px solid var(--cx-line); border-radius: 0.85rem;
+    padding: 0.9rem 1.05rem; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    display: flex; flex-direction: column; gap: 0.28rem;
+}
+.cx-kpi-card--green { border-color: #A7DFC3; background: linear-gradient(180deg, #fff 40%, #F2FBF6 140%); }
+.cx-kpi-label { font-size: 0.66rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: #94a3b8; }
+.cx-kpi-value { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: #0f172a; }
+.cx-kpi-note { font-size: 0.7rem; color: #94a3b8; }
+.cx-card { background: #fff; border: 1px solid var(--cx-line); border-radius: 0.85rem; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04); overflow: hidden; margin-bottom: 1.15rem; }
+.cx-filters-card { padding: 0.9rem 1.1rem; overflow: visible; }
+.cx-filters-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.7rem; }
+.cx-field { display: flex; flex-direction: column; gap: 0.28rem; min-width: 10rem; flex: 1; max-width: 16rem; }
+.cx-label { font-size: 0.8rem; font-weight: 700; color: #334155; }
+.cx-input { padding: 0.52rem 0.7rem; font-size: 0.85rem; border: 1px solid #D8DCE2; border-radius: 0.55rem; background: #fff; color: #0f172a; width: 100%; box-sizing: border-box; }
+.cx-input:focus { outline: none; border-color: var(--cx-blue); box-shadow: 0 0 0 3px rgba(30, 79, 168, 0.15); }
+.cx-filters-actions { display: flex; align-items: center; gap: 0.55rem; }
+.cx-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem; margin: 0 0.1rem 0.75rem; }
+.cx-back-link { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; font-weight: 700; color: var(--cx-blue); text-decoration: none; }
+.cx-back-link:hover { color: var(--cx-navy); text-decoration: underline; }
+.cx-toolbar-right { display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap; }
+.cx-count { font-size: 0.85rem; color: #64748b; }
+.cx-count strong { color: #0f172a; }
+.cx-table-scroll { overflow-x: auto; }
+.cx-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.cx-table thead th {
+    background: var(--cx-navy); color: #fff; text-align: left; padding: 0.62rem 0.8rem;
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
+}
+.cx-table td { padding: 0.7rem 0.8rem; border-bottom: 1px solid #f4f7fb; color: #334155; vertical-align: middle; }
+.cx-table tbody tr:nth-child(even) td { background: #FAFCFF; }
+.cx-table tbody tr:hover td { background: var(--cx-soft); }
+.cx-th-actions, .cx-actions { text-align: right; }
+.cx-actions { white-space: nowrap; }
+.cx-nowrap { white-space: nowrap; }
+.cx-empty { padding: 1.4rem 1rem; text-align: center; color: #94a3b8; }
+.cx-folio { font-weight: 800; color: var(--cx-blue); text-decoration: none; }
+.cx-folio:hover { color: var(--cx-navy); text-decoration: underline; }
+.cx-type-badge {
+    display: inline-flex; padding: 0.12rem 0.5rem; border-radius: 999px;
+    background: #EAF1FC; color: var(--cx-blue); font-size: 0.66rem; font-weight: 700; border: 1px solid #C9DAF3;
+}
+.cx-type-badge--sea { background: #EFFAF4; color: #116039; border-color: #A7DFC3; }
+.cx-action-btn {
+    display: inline-flex; align-items: center; gap: 0.28rem; padding: 0.32rem 0.6rem;
+    font-size: 0.72rem; font-weight: 700; border-radius: 0.45rem; border: 1px solid #C5D4EB;
+    background: #fff; color: var(--cx-blue); text-decoration: none; margin-left: 0.25rem; cursor: pointer;
+}
+.cx-action-btn:hover { background: var(--cx-soft); color: var(--cx-navy); }
+.cx-card-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem 1.1rem; border-top: 1px solid var(--cx-line); }
+.cx-pager-wrap .pt-pager { display: flex; align-items: center; gap: 0.3rem; }
+.cx-pager-wrap .pt-pager-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 2rem; height: 2rem; padding: 0 0.45rem;
+    border-radius: 0.45rem; border: 1px solid #d1d9e6;
+    background: #fff; color: #334155; text-decoration: none; font-size: 0.8rem; font-weight: 700;
+}
+.cx-pager-wrap .pt-pager-btn-active { background: var(--cx-navy); color: #fff; border-color: var(--cx-navy); }
+.cx-text-green { color: var(--cx-green); }
+.cx-text-red { color: var(--cx-red); font-weight: 700; }
+@media (max-width: 900px) { .cx-kpis { grid-template-columns: 1fr 1fr; } .cx-field, .cx-scan-field { max-width: none; } }
+@media (max-width: 560px) { .cx-kpis { grid-template-columns: 1fr; } }
 </style>
 @endsection

@@ -12,8 +12,8 @@
     .reporte-table td { padding: 0.6rem 0.5rem; border-bottom: 1px solid #e2e8f0; }
     .reporte-table tbody tr:nth-child(even) { background: #f8fafc; }
     .reporte-table .text-end { text-align: right; }
-    .btn-print { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: #059669; color: #fff; border: none; border-radius: 0.5rem; font-weight: 600; font-size: 0.875rem; cursor: pointer; margin-bottom: 1rem; text-decoration: none; }
-    .btn-print:hover { background: #047857; color: #fff; }
+    .btn-print { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: #0A2D6F; color: #fff; border: none; border-radius: 0.5rem; font-weight: 600; font-size: 0.875rem; cursor: pointer; margin-bottom: 1rem; text-decoration: none; }
+    .btn-print:hover { background: #0A2D6F; color: #fff; }
     @media print {
         nav { display: none !important; }
         .btn-print { display: none !important; }
