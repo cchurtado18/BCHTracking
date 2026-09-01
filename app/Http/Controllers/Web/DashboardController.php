@@ -213,7 +213,7 @@ class DashboardController extends Controller
         $weeklyByDay = [];
         foreach ($weeklyRows as $row) {
             $dayKey = $row->created_at->copy()->timezone($displayTz)->toDateString();
-            $svc = $row->service_type === 'SEA' ? 'sea' : 'air';
+            $svc = in_array((string) $row->service_type, ['SEA', 'CFT'], true) ? 'sea' : 'air';
             $lbs = (float) ($row->verified_weight_lbs ?? $row->intake_weight_lbs ?? 0);
             $weeklyByDay[$dayKey][$svc] = ($weeklyByDay[$dayKey][$svc] ?? 0) + $lbs;
         }
@@ -225,6 +225,7 @@ class DashboardController extends Controller
             $key = $date->toDateString();
             $weeklyVolume[] = [
                 'label' => $dayNames[$date->dayOfWeekIso - 1],
+                'date_label' => $date->locale('es')->isoFormat('dddd D MMM'),
                 'air' => (float) ($weeklyByDay[$key]['air'] ?? 0),
                 'sea' => (float) ($weeklyByDay[$key]['sea'] ?? 0),
             ];
@@ -258,6 +259,7 @@ class DashboardController extends Controller
                 $count = $date->isFuture() ? null : (int) ($heatCounts[$key] ?? 0);
                 $week[] = [
                     'date' => $date->format('d/m'),
+                    'date_label' => $date->locale('es')->isoFormat('dddd D MMM'),
                     'count' => $count,
                     'level' => $count === null || $count === 0 ? 0 : (int) ceil(($count / $heatmapMax) * 4),
                 ];

@@ -112,14 +112,13 @@ class PreregistrationController extends Controller
         }
         $statsTotal = $statsQuery->count();
         $statsAir = (clone $statsQuery)->where('service_type', 'AIR')->count();
-        $statsSea = (clone $statsQuery)->where('service_type', 'SEA')->count();
-        $statsCft = (clone $statsQuery)->where('service_type', 'CFT')->count();
+        $statsSea = (clone $statsQuery)->whereIn('service_type', ['SEA', 'CFT'])->count();
         $statsReceived = (clone $statsQuery)->where('status', 'RECEIVED_MIAMI')->count();
         $statsReady = (clone $statsQuery)->where('status', 'READY')->count();
 
         $agenciesForFilter = Agency::where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
-        return view('preregistrations.index', compact('preregistrations', 'statsTotal', 'statsAir', 'statsSea', 'statsCft', 'statsReceived', 'statsReady', 'agenciesForFilter'));
+        return view('preregistrations.index', compact('preregistrations', 'statsTotal', 'statsAir', 'statsSea', 'statsReceived', 'statsReady', 'agenciesForFilter'));
     }
 
     public function create(Request $request)

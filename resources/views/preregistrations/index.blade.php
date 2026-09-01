@@ -464,15 +464,6 @@
                 <span class="preregs-stat-value">{{ number_format($statsSea ?? 0) }}</span>
             </div>
         </div>
-        <div class="preregs-stat-card preregs-stat-cft">
-            <span class="preregs-stat-icon" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5 12 3 3 7.5m18 0-9 4.5m9-4.5v9l-9 4.5m0-13.5L3 7.5m9 4.5v9m0-9L3 7.5m0 0v9l9 4.5"/></svg>
-            </span>
-            <div class="preregs-stat-body">
-                <span class="preregs-stat-label">Pie cúbico</span>
-                <span class="preregs-stat-value">{{ number_format($statsCft ?? 0) }}</span>
-            </div>
-        </div>
         <div class="preregs-stat-card preregs-stat-received">
             <span class="preregs-stat-icon" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>

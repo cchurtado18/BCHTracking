@@ -69,91 +69,6 @@
         </div>
     </section>
 
-    @if(!$isAgencyUser)
-    <nav class="opx-shortcuts" aria-label="Atajos de operación">
-        <a href="{{ route('preregistrations.create') }}" class="opx-short">
-            <span class="opx-short-n">1</span>
-            <span class="opx-short-t">Recibir Miami</span>
-        </a>
-        <a href="{{ route('consolidations.index') }}" class="opx-short">
-            <span class="opx-short-n">2</span>
-            <span class="opx-short-t">Consolidar</span>
-            @if(($consolidationsOpen ?? 0) > 0)
-            <span class="opx-short-badge">{{ $consolidationsOpen }} abiertos</span>
-            @endif
-        </a>
-        <a href="{{ route('nic-consolidations.index') }}" class="opx-short">
-            <span class="opx-short-n">3</span>
-            <span class="opx-short-t">Escaneo NIC</span>
-        </a>
-        <a href="{{ route('salidas.index') }}" class="opx-short">
-            <span class="opx-short-n">4</span>
-            <span class="opx-short-t">Salidas</span>
-        </a>
-        @if($user?->is_admin)
-        <a href="{{ route('accounting.invoices.index') }}" class="opx-short">
-            <span class="opx-short-n">5</span>
-            <span class="opx-short-t">Facturar</span>
-        </a>
-        @endif
-    </nav>
-    @else
-    <nav class="opx-shortcuts" aria-label="Atajos">
-        <a href="{{ route('packages.index') }}" class="opx-short">
-            <span class="opx-short-n">1</span>
-            <span class="opx-short-t">Mis paquetes</span>
-        </a>
-        <a href="{{ route('salidas.index') }}" class="opx-short">
-            <span class="opx-short-n">2</span>
-            <span class="opx-short-t">Mis entregas</span>
-        </a>
-        <a href="{{ route('accounting.invoices.index') }}" class="opx-short">
-            <span class="opx-short-n">3</span>
-            <span class="opx-short-t">Mis facturas</span>
-        </a>
-        <a href="{{ route('tracking.index') }}" class="opx-short">
-            <span class="opx-short-n">4</span>
-            <span class="opx-short-t">Rastrear</span>
-        </a>
-    </nav>
-    @endif
-
-    <section class="opx-card opx-pipeline-card">
-        <div class="opx-card-head">
-            <div>
-                <h2 class="opx-card-title">Flujo operativo</h2>
-                <p class="opx-card-sub">Inventario actual por etapa. Pulse una etapa para abrir el listado.</p>
-            </div>
-        </div>
-        <ol class="opx-pipeline">
-            @foreach($pipeline ?? [] as $i => $step)
-            <li>
-                @if(!$loop->first)
-                <span class="opx-pipe" aria-hidden="true"></span>
-                @endif
-                <a href="{{ $step['url'] }}" class="opx-pipe-step {{ $step['count'] > 0 ? 'has-work' : '' }}">
-                    <span class="opx-pipe-n">{{ $step['step'] }}</span>
-                    <span class="opx-pipe-label">{{ $step['label'] }}</span>
-                    <span class="opx-pipe-count">{{ number_format($step['count']) }}</span>
-                    <span class="opx-pipe-hint">{{ $step['hint'] }}</span>
-                </a>
-            </li>
-            @endforeach
-        </ol>
-    </section>
-
-    @if(!empty($alerts) && count($alerts) > 0)
-    <section class="opx-alerts" aria-label="Requiere atención">
-        @foreach($alerts as $alert)
-        <a href="{{ $alert['url'] ?? '#' }}" class="opx-alert">
-            <span class="opx-alert-count">{{ $alert['count'] }}</span>
-            <span class="opx-alert-title">{{ $alert['title'] }}</span>
-            <span class="opx-alert-arrow">Revisar →</span>
-        </a>
-        @endforeach
-    </section>
-    @endif
-
     <form method="GET" action="{{ route('dashboard') }}" class="opx-toolbar" id="opx-filters-form">
         @if(($activePeriod ?? null) !== null)
         <input type="hidden" name="period" value="{{ $activePeriod }}" id="opx-period-input">
@@ -246,12 +161,27 @@
             </div>
             <div class="opx-chart">
                 @foreach($weeklyVolume ?? [] as $day)
+                @php
+                    $airH = $day['air'] > 0 ? max(3, round(($day['air'] / $weeklyMax) * 100)) : 0;
+                    $seaH = $day['sea'] > 0 ? max(3, round(($day['sea'] / $weeklyMax) * 100)) : 0;
+                    $dayTitle = $day['date_label'] ?? $day['label'];
+                @endphp
                 <div class="opx-chart-col">
                     <div class="opx-chart-bars">
-                        <div class="opx-chart-bar" style="height: {{ $day['air'] > 0 ? max(3, round(($day['air'] / $weeklyMax) * 100)) : 0 }}%; background:#0A2D6F"
-                             title="Aéreo: {{ number_format($day['air'], 1) }} lbs"></div>
-                        <div class="opx-chart-bar" style="height: {{ $day['sea'] > 0 ? max(3, round(($day['sea'] / $weeklyMax) * 100)) : 0 }}%; background:#1E4FA8"
-                             title="Marítimo: {{ number_format($day['sea'], 1) }} lbs"></div>
+                        <div class="opx-chart-bar {{ $airH > 0 ? '' : 'is-empty' }}" style="height: {{ $airH }}%; background:#0A2D6F">
+                            <span class="opx-chart-tip">
+                                <em>{{ $dayTitle }}</em>
+                                <strong>Aéreo</strong>
+                                {{ number_format($day['air'], 1) }} lbs
+                            </span>
+                        </div>
+                        <div class="opx-chart-bar {{ $seaH > 0 ? '' : 'is-empty' }}" style="height: {{ $seaH }}%; background:#1E4FA8">
+                            <span class="opx-chart-tip">
+                                <em>{{ $dayTitle }}</em>
+                                <strong>Marítimo</strong>
+                                {{ number_format($day['sea'], 1) }} lbs
+                            </span>
+                        </div>
                     </div>
                     <span class="opx-chart-label">{{ $day['label'] }}</span>
                 </div>
@@ -298,8 +228,16 @@
                 @foreach($heatmapWeeks ?? [] as $week)
                 <div class="opx-heatmap-week">
                     @foreach($week as $cell)
-                    <div class="opx-heatcell opx-heat-{{ $cell['count'] === null ? 'future' : $cell['level'] }}"
-                         title="{{ $cell['date'] }}{{ $cell['count'] !== null ? ' · ' . $cell['count'] . ' paquetes' : '' }}"></div>
+                    @foreach($week as $cell)
+                    <div class="opx-heatcell opx-heat-{{ $cell['count'] === null ? 'future' : $cell['level'] }}{{ $cell['count'] === null ? '' : ' has-tip' }}">
+                        @if($cell['count'] !== null)
+                        <span class="opx-heat-tip">
+                            <em>{{ $cell['date_label'] ?? $cell['date'] }}</em>
+                            <strong>{{ $cell['count'] === 1 ? '1 paquete' : number_format($cell['count']).' paquetes' }}</strong>
+                        </span>
+                        @endif
+                    </div>
+                    @endforeach
                     @endforeach
                 </div>
                 @endforeach
@@ -394,7 +332,8 @@ function opxDateChanged(form) {
 </script>
 
 <style>
-.opx-page { max-width: 78rem; margin: 0 auto; padding: 0.35rem 0 2.5rem; width: 100%; }
+.app-main-inner:has(.opx-page) { max-width: none; }
+.opx-page { max-width: none; margin: 0; padding: 0.35rem 0 2.5rem; width: 100%; }
 
 .opx-hero {
     display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1.25rem;
@@ -414,32 +353,6 @@ function opxDateChanged(form) {
 .opx-hero-stat-label { font-size: 0.65rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.65); }
 .opx-hero-stats strong { font-size: 1.55rem; font-weight: 800; letter-spacing: -0.03em; }
 .opx-hero-stats small { font-size: 0.72rem; color: rgba(255,255,255,0.65); }
-
-.opx-shortcuts { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: 0.65rem; margin-bottom: 1rem; }
-.opx-short {
-    display: flex; flex-direction: column; gap: 0.25rem; text-decoration: none;
-    background: #fff; border: 1px solid #E8EEF8; border-radius: 0.85rem; padding: 0.85rem 0.95rem;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04); transition: transform 0.15s, border-color 0.15s;
-}
-.opx-short:hover { transform: translateY(-2px); border-color: #C5D4EB; }
-.opx-short-n { font-size: 0.65rem; font-weight: 800; letter-spacing: 0.1em; color: #1E4FA8; }
-.opx-short-t { font-size: 0.92rem; font-weight: 800; color: #0f172a; }
-.opx-short-badge { font-size: 0.68rem; font-weight: 700; color: #9A6700; }
-
-.opx-pipeline-card { margin-bottom: 1rem; }
-.opx-pipeline { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; }
-.opx-pipeline li { display: flex; align-items: stretch; min-width: 0; }
-.opx-pipe { width: 0.7rem; align-self: center; height: 2px; background: #C5D4EB; flex-shrink: 0; margin: 0 0.15rem; }
-.opx-pipe-step {
-    flex: 1; display: flex; flex-direction: column; gap: 0.12rem; min-width: 0;
-    text-decoration: none; padding: 0.7rem 0.55rem; border-radius: 0.75rem; border: 1px solid transparent;
-}
-.opx-pipe-step:hover { background: #F4F8FD; border-color: #E8EEF8; }
-.opx-pipe-step.has-work .opx-pipe-count { color: #0A2D6F; }
-.opx-pipe-n { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.1em; color: #94a3b8; }
-.opx-pipe-label { font-size: 0.88rem; font-weight: 800; color: #0f172a; }
-.opx-pipe-count { font-size: 1.25rem; font-weight: 800; color: #64748b; letter-spacing: -0.03em; }
-.opx-pipe-hint { font-size: 0.7rem; color: #94a3b8; }
 
 .opx-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
 .opx-period-toggle { display: inline-flex; background: #fff; border: 1px solid #E8EEF8; border-radius: 0.65rem; padding: 0.2rem; gap: 0.15rem; }
@@ -475,10 +388,30 @@ function opxDateChanged(form) {
 .opx-empty { color: #94a3b8; font-size: 0.85rem; text-align: center; padding: 1.4rem 0; margin: 0; }
 .opx-card-footer-link { margin-top: auto; padding-top: 0.95rem; border-top: 1px solid #F1F5F9; font-size: 0.82rem; font-weight: 700; color: #0A2D6F; text-decoration: none; display: flex; justify-content: space-between; }
 
-.opx-chart { display: flex; align-items: flex-end; gap: 0.45rem; height: 12.5rem; padding-top: 0.4rem; }
-.opx-chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.45rem; height: 100%; }
-.opx-chart-bars { flex: 1; display: flex; align-items: flex-end; justify-content: center; gap: 0.28rem; width: 100%; border-bottom: 1px solid #E8EEF8; padding: 0 0.3rem; }
-.opx-chart-bar { width: 100%; max-width: 1.45rem; border-radius: 0.28rem 0.28rem 0 0; }
+.opx-chart { display: flex; align-items: flex-end; gap: 0.55rem; height: 14.5rem; padding: 1.75rem 0.25rem 0; overflow: visible; }
+.opx-chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.45rem; height: 100%; min-width: 0; }
+.opx-chart-bars { flex: 1; display: flex; align-items: flex-end; justify-content: center; gap: 0.32rem; width: 100%; border-bottom: 1px solid #E8EEF8; padding: 0 0.35rem; overflow: visible; }
+.opx-chart-bar {
+    position: relative; width: 100%; max-width: 2.1rem; min-height: 0;
+    border-radius: 0.28rem 0.28rem 0 0; cursor: pointer;
+    transition: filter 0.12s ease, transform 0.12s ease;
+}
+.opx-chart-bar.is-empty { pointer-events: none; }
+.opx-chart-bar:hover { filter: brightness(1.12); transform: translateY(-2px); }
+.opx-chart-tip {
+    position: absolute; left: 50%; bottom: calc(100% + 10px); transform: translateX(-50%) translateY(4px);
+    background: #0A2D6F; color: #fff; border-radius: 0.55rem; padding: 0.45rem 0.65rem;
+    font-size: 0.72rem; line-height: 1.25; white-space: nowrap; text-align: center;
+    box-shadow: 0 10px 22px rgba(10, 45, 111, 0.28);
+    opacity: 0; pointer-events: none; z-index: 20; transition: opacity 0.12s ease, transform 0.12s ease;
+}
+.opx-chart-tip::after {
+    content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 6px solid transparent; border-top-color: #0A2D6F;
+}
+.opx-chart-tip em { display: block; font-style: normal; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-bottom: 0.12rem; }
+.opx-chart-tip strong { display: block; font-size: 0.78rem; font-weight: 800; }
+.opx-chart-bar:hover .opx-chart-tip { opacity: 1; transform: translateX(-50%) translateY(0); }
 .opx-chart-label { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.05em; color: #94a3b8; }
 
 .opx-donut-wrap { display: flex; justify-content: center; padding: 0.35rem 0 0.9rem; }
@@ -488,16 +421,33 @@ function opxDateChanged(form) {
 .opx-donut-caption { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.1em; color: #94a3b8; margin-top: 0.2rem; }
 .opx-donut-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem 0.7rem; }
 
-.opx-heatmap { display: flex; flex-direction: column; gap: 0.4rem; }
+.opx-heatmap { display: flex; flex-direction: column; gap: 0.4rem; overflow: visible; }
 .opx-heatmap-days, .opx-heatmap-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.4rem; }
+.opx-heatmap-week { overflow: visible; }
 .opx-heatmap-days span { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.05em; color: #94a3b8; text-align: center; }
-.opx-heatcell { aspect-ratio: 1.55 / 1; border-radius: 0.35rem; min-height: 1.45rem; }
+.opx-heatcell { position: relative; aspect-ratio: 1.55 / 1; border-radius: 0.35rem; min-height: 1.45rem; }
+.opx-heatcell.has-tip { cursor: pointer; }
+.opx-heatcell.has-tip:hover { z-index: 8; filter: brightness(1.08); }
 .opx-heat-future { background: transparent; border: 1px dashed #E8EEF8; }
 .opx-heat-0 { background: #F1F5F9; }
 .opx-heat-1 { background: #E8EEF8; }
 .opx-heat-2 { background: #9BB5D9; }
 .opx-heat-3 { background: #1E4FA8; }
 .opx-heat-4 { background: #0A2D6F; }
+.opx-heat-tip {
+    position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%) translateY(4px);
+    background: #0A2D6F; color: #fff; border-radius: 0.55rem; padding: 0.42rem 0.6rem;
+    font-size: 0.72rem; line-height: 1.25; white-space: nowrap; text-align: center;
+    box-shadow: 0 10px 22px rgba(10, 45, 111, 0.28);
+    opacity: 0; pointer-events: none; z-index: 20; transition: opacity 0.12s ease, transform 0.12s ease;
+}
+.opx-heat-tip::after {
+    content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 6px solid transparent; border-top-color: #0A2D6F;
+}
+.opx-heat-tip em { display: block; font-style: normal; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-bottom: 0.1rem; }
+.opx-heat-tip strong { display: block; font-size: 0.78rem; font-weight: 800; }
+.opx-heatcell.has-tip:hover .opx-heat-tip { opacity: 1; transform: translateX(-50%) translateY(0); }
 .opx-heatmap-scale { display: flex; align-items: center; gap: 0.3rem; margin-top: 0.8rem; font-size: 0.68rem; color: #94a3b8; }
 .opx-heatmap-scale .opx-heatcell { width: 1rem; min-height: 0.7rem; aspect-ratio: auto; height: 0.7rem; flex-shrink: 0; }
 
@@ -505,13 +455,6 @@ function opxDateChanged(form) {
 .opx-rank-head { display: flex; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.3rem; flex-wrap: wrap; }
 .opx-rank-name { font-size: 0.85rem; font-weight: 800; color: #0f172a; }
 .opx-rank-count { font-size: 0.72rem; color: #64748b; font-weight: 600; }
-
-.opx-alerts { display: flex; flex-direction: column; gap: 0.45rem; margin-bottom: 1rem; }
-.opx-alert { display: flex; align-items: center; gap: 0.7rem; background: #FFF6E8; border: 1px solid #F3D19C; border-radius: 0.75rem; padding: 0.7rem 1rem; text-decoration: none; }
-.opx-alert:hover { background: #FFF1D6; }
-.opx-alert-count { font-weight: 800; font-size: 0.9rem; color: #9A6700; background: #fff; border-radius: 0.45rem; padding: 0.15rem 0.5rem; min-width: 2rem; text-align: center; }
-.opx-alert-title { flex: 1; font-size: 0.84rem; font-weight: 700; color: #9A6700; }
-.opx-alert-arrow { color: #9A6700; font-size: 0.78rem; font-weight: 800; }
 
 .opx-table-card { padding: 0; }
 .opx-table-card .opx-card-head { padding: 1.15rem 1.2rem 0; }
@@ -531,9 +474,7 @@ function opxDateChanged(form) {
 .opx-badge-gray { background: #F1F5F9; color: #475569; }
 
 @media (max-width: 980px) {
-    .opx-row-2-1, .opx-row-1-1, .opx-kpis, .opx-pipeline { grid-template-columns: 1fr; }
-    .opx-pipeline li { flex-direction: column; }
-    .opx-pipe { width: 2px; height: 0.55rem; margin: 0.1rem auto; }
+    .opx-row-2-1, .opx-row-1-1, .opx-kpis { grid-template-columns: 1fr; }
     .opx-hero-stats { width: 100%; }
     .opx-hero-stats > div { flex: 1; }
 }

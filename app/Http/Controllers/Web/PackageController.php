@@ -128,12 +128,11 @@ class PackageController extends Controller
         }
         $statsTotal = $statsQuery->count();
         $statsAir = (clone $statsQuery)->where('service_type', 'AIR')->count();
-        $statsSea = (clone $statsQuery)->where('service_type', 'SEA')->count();
-        $statsCft = (clone $statsQuery)->where('service_type', 'CFT')->count();
+        $statsSea = (clone $statsQuery)->whereIn('service_type', ['SEA', 'CFT'])->count();
         $statsReady = (clone $statsQuery)->where('status', 'READY')->count();
         $statsDelivered = (clone $statsQuery)->where('status', 'DELIVERED')->count();
 
-        return view('packages.index', compact('packages', 'agenciesForFilter', 'statsTotal', 'statsAir', 'statsSea', 'statsCft', 'statsReady', 'statsDelivered'));
+        return view('packages.index', compact('packages', 'agenciesForFilter', 'statsTotal', 'statsAir', 'statsSea', 'statsReady', 'statsDelivered'));
     }
 
     public function show(string $id)

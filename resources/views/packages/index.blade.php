@@ -408,15 +408,6 @@
                 <span class="packages-stat-value">{{ number_format($statsSea ?? 0) }}</span>
             </div>
         </div>
-        <div class="packages-stat-card packages-stat-cft">
-            <span class="packages-stat-icon" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5 12 3 3 7.5m18 0-9 4.5m9-4.5v9l-9 4.5m0-13.5L3 7.5m9 4.5v9m0-9L3 7.5m0 0v9l9 4.5"/></svg>
-            </span>
-            <div class="packages-stat-body">
-                <span class="packages-stat-label">Pie cúbico</span>
-                <span class="packages-stat-value">{{ number_format($statsCft ?? 0) }}</span>
-            </div>
-        </div>
         <div class="packages-stat-card packages-stat-ready">
             <span class="packages-stat-icon" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4 10-10"/></svg>
