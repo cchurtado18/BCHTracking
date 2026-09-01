@@ -20,7 +20,7 @@ return new class extends Migration
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
 
-            $table->index(['agency_id', 'service_type', 'effective_from']);
+            $table->index(['agency_id', 'service_type', 'effective_from'], 'arc_agency_svc_from_idx');
         });
     }
 

@@ -40,7 +40,7 @@ return new class extends Migration
             $table->unsignedSmallInteger('sort_order')->default(0);
             $table->timestamps();
 
-            $table->index(['accounting_invoice_id', 'service_type']);
+            $table->index(['accounting_invoice_id', 'service_type'], 'ail_invoice_svc_idx');
         });
     }
 
