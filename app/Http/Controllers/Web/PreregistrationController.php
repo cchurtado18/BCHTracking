@@ -7,6 +7,7 @@ use App\Http\Requests\StorePreregistrationRequest;
 use App\Models\Agency;
 use App\Models\Preregistration;
 use App\Models\PreregistrationPhoto;
+use App\Services\ClientPackageStatusMailer;
 use App\Services\PreregistrationPhotoService;
 use App\Services\WarehouseService;
 use Illuminate\Http\Request;
@@ -20,10 +21,16 @@ class PreregistrationController extends Controller
 
     protected PreregistrationPhotoService $photoService;
 
-    public function __construct(WarehouseService $warehouseService, PreregistrationPhotoService $photoService)
-    {
+    protected ClientPackageStatusMailer $clientMailer;
+
+    public function __construct(
+        WarehouseService $warehouseService,
+        PreregistrationPhotoService $photoService,
+        ClientPackageStatusMailer $clientMailer,
+    ) {
         $this->warehouseService = $warehouseService;
         $this->photoService = $photoService;
+        $this->clientMailer = $clientMailer;
     }
 
     public function index(Request $request)
@@ -203,6 +210,7 @@ class PreregistrationController extends Controller
         try {
             $data['warehouse_code'] = $this->warehouseService->generateWarehouseCode();
             $preregistration = Preregistration::create($data);
+            $this->clientMailer->notifyReceivedInMiami($preregistration);
         } catch (\Throwable $e) {
             \Log::error('Preregistration store failed', ['exception' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'data' => $data]);
 
@@ -274,6 +282,7 @@ class PreregistrationController extends Controller
                     'bulto_index' => 1,
                     'bultos_total' => $total,
                 ]);
+                $this->clientMailer->notifyReceivedInMiami($preregistration);
                 if ($request->hasFile('photo')) {
                     $this->photoService->uploadPhoto($preregistration, $request->file('photo'));
                 }
@@ -331,6 +340,7 @@ class PreregistrationController extends Controller
                 'bulto_index' => $step,
                 'bultos_total' => $sessionTotal,
             ]);
+            $this->clientMailer->notifyReceivedInMiami($preregistration);
             if ($request->hasFile('photo')) {
                 $this->photoService->uploadPhoto($preregistration, $request->file('photo'));
             }
@@ -383,6 +393,7 @@ class PreregistrationController extends Controller
                     'bulto_index' => $i + 1,
                     'bultos_total' => $n,
                 ]));
+                $this->clientMailer->notifyReceivedInMiami($preregistration);
                 $ids[] = $preregistration->id;
                 $photoKey = 'photo_bulto_'.$i;
                 if ($request->hasFile($photoKey)) {
@@ -445,7 +456,18 @@ class PreregistrationController extends Controller
             : collect();
         $partnerAgencies = $agencies->filter(fn (Agency $a) => ! $a->isDirectClient())->values();
 
-        return view('preregistrations.edit', compact('preregistration', 'agencies', 'partnerAgencies', 'sloClients', 'slo'));
+        $warehousePreview = $preregistration->warehouse_code
+            ? null
+            : $this->warehouseService->peekNextWarehouseCode();
+
+        return view('preregistrations.edit', compact(
+            'preregistration',
+            'agencies',
+            'partnerAgencies',
+            'sloClients',
+            'slo',
+            'warehousePreview'
+        ));
     }
 
     public function update(Request $request, string $id)
@@ -486,6 +508,10 @@ class PreregistrationController extends Controller
 
         $preregistration->update($data);
         $preregistration->refresh();
+
+        if ($wasPhotoPending && $preregistration->status === 'RECEIVED_MIAMI') {
+            $this->clientMailer->notifyReceivedInMiami($preregistration);
+        }
 
         // Si venía de captura rápida, al completar mandamos directo a la etiqueta,
         // igual que cuando se guarda un preregistro normal.

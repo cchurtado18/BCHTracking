@@ -34,5 +34,15 @@ class WarehouseService
             return str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
         });
     }
+
+    /**
+     * Siguiente código de almacén sin consumirlo (solo vista previa).
+     */
+    public function peekNextWarehouseCode(): string
+    {
+        $next = (int) (WarehouseSequence::query()->find(1)?->next_number ?? 1);
+
+        return str_pad((string) max(1, $next), 6, '0', STR_PAD_LEFT);
+    }
 }
 

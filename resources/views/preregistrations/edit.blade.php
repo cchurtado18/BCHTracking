@@ -61,8 +61,19 @@
                                         · {{ $preregistration->intake_type === 'DROP_OFF' ? 'Drop Off' : 'Courier' }}
                                     @else
                                         Completa o corrige la información del paquete.
+                                        @if(!empty($warehousePreview))
+                                            Al guardar se asignará el warehouse <strong class="preregs-wh-preview-inline">{{ $warehousePreview }}</strong>
+                                            (siguiente disponible).
+                                        @endif
                                     @endif
                                 </p>
+                                @if(!$preregistration->warehouse_code && !empty($warehousePreview))
+                                <div class="preregs-wh-preview" role="status">
+                                    <span class="preregs-wh-preview-kicker">Warehouse (vista previa)</span>
+                                    <span class="preregs-wh-preview-code">{{ $warehousePreview }}</span>
+                                    <span class="preregs-wh-preview-note">Aún no está guardado. Se confirma al completar el preregistro.</span>
+                                </div>
+                                @endif
                             </div>
                             <ol class="preregs-steps" aria-label="Secciones del formulario">
                                 <li class="preregs-step is-active"><span>1</span> Cuenta</li>
@@ -432,6 +443,42 @@
     font-size: 0.875rem;
     color: var(--pt-muted);
     line-height: 1.45;
+}
+.preregs-wh-preview-inline {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    letter-spacing: 0.08em;
+    color: var(--pt-navy);
+}
+.preregs-wh-preview {
+    margin-top: 0.85rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem 0.85rem;
+    padding: 0.7rem 0.9rem;
+    background: var(--pt-soft);
+    border: 1px solid var(--pt-border);
+    border-radius: 0.7rem;
+}
+.preregs-wh-preview-kicker {
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--pt-blue);
+    width: 100%;
+}
+.preregs-wh-preview-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 1.55rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: var(--pt-navy);
+    line-height: 1;
+}
+.preregs-wh-preview-note {
+    font-size: 0.78rem;
+    color: var(--pt-muted);
 }
 .preregs-edit-page .preregs-steps {
     list-style: none;

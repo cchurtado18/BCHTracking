@@ -112,6 +112,7 @@ class PreregistrationAdminResetService
                     'status' => 'RECEIVED_MIAMI',
                     'received_nic_at' => null,
                     'ready_at' => null,
+                    'ready_notified_at' => null,
                     'verified_weight_lbs' => null,
                     'label_print_count' => 0,
                     'label_last_printed_at' => null,

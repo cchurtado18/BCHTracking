@@ -7,11 +7,10 @@ use Illuminate\Support\Facades\DB;
 
 class PackageProcessingService
 {
-    protected WarehouseService $warehouseService;
-
-    public function __construct(WarehouseService $warehouseService)
-    {
-        $this->warehouseService = $warehouseService;
+    public function __construct(
+        protected WarehouseService $warehouseService,
+        protected ClientPackageStatusMailer $clientMailer,
+    ) {
     }
 
     /**
@@ -29,7 +28,7 @@ class PackageProcessingService
             throw new \Exception('Solo se pueden procesar paquetes con estado IN_WAREHOUSE_NIC.');
         }
 
-        return DB::transaction(function () use ($preregistration, $agencyId, $verifiedWeightLbs) {
+        $processed = DB::transaction(function () use ($preregistration, $agencyId, $verifiedWeightLbs) {
             $data = [
                 'agency_id' => $agencyId,
                 'verified_weight_lbs' => $verifiedWeightLbs,
@@ -39,7 +38,7 @@ class PackageProcessingService
                 'status' => 'READY',
             ];
 
-            if (!$preregistration->warehouse_code) {
+            if (! $preregistration->warehouse_code) {
                 $data['warehouse_code'] = $this->warehouseService->generateWarehouseCode();
             }
 
@@ -47,6 +46,10 @@ class PackageProcessingService
 
             return $preregistration->fresh();
         });
+
+        $this->clientMailer->notifyReadyForPickup($processed);
+
+        return $processed;
     }
 
     /**
