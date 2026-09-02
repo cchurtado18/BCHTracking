@@ -40,7 +40,12 @@ class WarehouseService
      */
     public function peekNextWarehouseCode(): string
     {
-        $next = (int) (WarehouseSequence::query()->find(1)?->next_number ?? 1);
+        try {
+            $next = (int) (WarehouseSequence::query()->find(1)?->next_number ?? 1);
+        } catch (\Throwable $e) {
+            report($e);
+            $next = 1;
+        }
 
         return str_pad((string) max(1, $next), 6, '0', STR_PAD_LEFT);
     }

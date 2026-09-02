@@ -100,7 +100,7 @@
                                 @php
                                     $current = $agencies->firstWhere('id', (int) old('agency_id', $preregistration->agency_id));
                                     $currentIsSloClient = $current && $current->isDirectClient();
-                                    $selectedPartnerId = $currentIsSloClient ? $current->parent_agency_id : ($current->id ?? null);
+                                    $selectedPartnerId = $currentIsSloClient ? $current->parent_agency_id : $current?->id;
                                 @endphp
                                 <div class="preregs-field preregs-field--full">
                                     <label for="partner_agency_id" class="preregs-field-label">Cuenta (subagencia o SkyLink One) <span class="preregs-req">*</span></label>

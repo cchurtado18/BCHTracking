@@ -456,9 +456,14 @@ class PreregistrationController extends Controller
             : collect();
         $partnerAgencies = $agencies->filter(fn (Agency $a) => ! $a->isDirectClient())->values();
 
-        $warehousePreview = $preregistration->warehouse_code
-            ? null
-            : $this->warehouseService->peekNextWarehouseCode();
+        $warehousePreview = null;
+        if (! $preregistration->warehouse_code) {
+            try {
+                $warehousePreview = $this->warehouseService->peekNextWarehouseCode();
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
 
         return view('preregistrations.edit', compact(
             'preregistration',
