@@ -3,12 +3,19 @@
 @section('title', $agency->isDirectClient() ? 'Editar cliente' : 'Editar subagencia')
 
 @section('content')
-<div class="agency-page agency-form-page">
+@php
+    $canReparent = (bool) ($canReparent ?? false);
+    $isClient = $agency->isDirectClient();
+    $currentScope = $currentScope ?? 'slo';
+    $panelDatos = $canReparent ? 2 : 1;
+    $panelConta = $canReparent ? 3 : 2;
+@endphp
+<div class="cx-page cx-page--wide">
     <x-module-banner
         section="Administración"
         current="Editar cliente"
-        title="{{ $agency->isDirectClient() ? 'Editar cliente' : 'Editar subagencia' }}"
-        subtitle="{{ $agency->name }} · {{ $agency->typeLabel() }}. Actualice datos de contacto, facturación y tipo de cuenta."
+        title="{{ $isClient ? 'Editar cliente' : 'Editar subagencia' }}"
+        subtitle="{{ $agency->name }} · {{ $agency->typeLabel() }}. Actualice afiliación, datos de contacto y facturación."
         back-href="{{ route('agencies.show', $agency->id) }}"
         back-label="Volver a la ficha"
     >
@@ -18,8 +25,9 @@
     </x-module-banner>
 
     @if($errors->any())
-    <div class="agency-alert agency-alert-danger">
-        <ul class="agency-alert-list">
+    <div class="cx-alert cx-alert-danger">
+        <strong>No se pudo guardar la cuenta.</strong>
+        <ul class="cx-alert-list">
             @foreach($errors->all() as $err)
             <li>{{ $err }}</li>
             @endforeach
@@ -27,176 +35,266 @@
     </div>
     @endif
 
-    <div class="agency-card agency-form-card">
-        <div class="agency-card-header agency-form-header">
-            <h2 class="agency-card-title">{{ $agency->isDirectClient() ? 'Datos del cliente' : 'Datos de la subagencia' }}</h2>
-        </div>
-        <div class="agency-card-body">
-            <form action="{{ route('agencies.update', $agency->id) }}" method="POST" enctype="multipart/form-data">
-                @csrf
-                @method('PUT')
+    <ol class="cx-steps" aria-label="Secciones">
+        @if($canReparent)
+        <li class="cx-step is-active"><span>1</span> Afiliación</li>
+        @endif
+        <li class="cx-step is-active"><span>{{ $panelDatos }}</span> Datos</li>
+        <li class="cx-step is-active"><span>{{ $panelConta }}</span> Contabilidad</li>
+    </ol>
 
-                <div class="agency-form-section">
-                    <div class="agency-field">
-                        <label class="agency-label">Código</label>
-                        <p class="agency-readonly agency-code">{{ $agency->code }}</p>
-                        <p class="agency-field-hint">Asignado por el sistema; no se puede modificar.</p>
+    <form action="{{ route('agencies.update', $agency->id) }}" method="POST" enctype="multipart/form-data" id="agency-edit-form" class="cx-stack">
+        @csrf
+        @method('PUT')
+
+        @if($canReparent)
+        <div class="cx-card">
+            <div class="cx-section-head">
+                <span class="cx-panel-num">1</span>
+                <div>
+                    <h2 class="cx-section-title">¿De quién es esta subagencia?</h2>
+                    <p class="cx-section-sub">Si pertenece a CH u otra red, cámbielo aquí. El portal de una hija de subagencia solo ve paquetes.</p>
+                </div>
+            </div>
+            <div class="cx-card-body">
+                <div class="cx-type-cards" role="radiogroup" aria-label="Afiliación de la subagencia">
+                    <label class="cx-type-card {{ $currentScope === 'slo' ? 'is-selected' : '' }}">
+                        <input type="radio" name="subagency_scope" value="slo" {{ $currentScope === 'slo' ? 'checked' : '' }}>
+                        <span class="cx-type-card-body">
+                            <strong>Hija de SkyLink One</strong>
+                            <span>Partner propio de SLO. Ve paquetes, entregas y facturas.</span>
+                        </span>
+                    </label>
+                    <label class="cx-type-card {{ $currentScope === 'nested' ? 'is-selected' : '' }}">
+                        <input type="radio" name="subagency_scope" value="nested" {{ $currentScope === 'nested' ? 'checked' : '' }}>
+                        <span class="cx-type-card-body">
+                            <strong>Hija de otra subagencia</strong>
+                            <span>Se cuelga de un partner que ya existe (por ejemplo CH Logistics).</span>
+                        </span>
+                    </label>
+                </div>
+                @error('subagency_scope')
+                <p class="cx-field-error">{{ $message }}</p>
+                @enderror
+
+                <div class="cx-form-grid cx-form-grid--pair" id="parent_field_wrap" style="margin-top: 1rem;" @if($currentScope !== 'nested') hidden @endif>
+                    <div class="cx-field">
+                        <label for="parent_agency_filter" class="cx-label">Buscar padre</label>
+                        <input type="search" id="parent_agency_filter" class="cx-input" autocomplete="off"
+                               placeholder="Nombre o código…" @if($currentScope !== 'nested') disabled @endif>
                     </div>
-                    <div class="agency-field">
-                        <label for="name" class="agency-label">{{ $agency->isDirectClient() ? 'Nombre del cliente' : 'Nombre de la subagencia' }} *</label>
-                        <input type="text" name="name" id="name" value="{{ old('name', $agency->name) }}" required class="agency-input">
-                        <p class="agency-field-hint">No puede coincidir con el nombre de otra cuenta.</p>
-                        @error('name')
-                        <p class="agency-field-error">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <div class="agency-field">
-                        <label for="phone" class="agency-label">Teléfono</label>
-                        <input type="text" name="phone" id="phone" value="{{ old('phone', $agency->phone) }}" class="agency-input">
-                        @error('phone')
-                        <p class="agency-field-error">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <div class="agency-field">
-                        <label for="address" class="agency-label">Dirección</label>
-                        <input type="text" name="address" id="address" value="{{ old('address', $agency->address) }}" placeholder="{{ $agency->isDirectClient() ? 'Dirección del cliente' : 'Dirección de la subagencia' }}" class="agency-input">
-                        @error('address')
-                        <p class="agency-field-error">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <div class="agency-field">
-                        <label for="department" class="agency-label">Departamento (Nicaragua)</label>
-                        <select name="department" id="department" class="agency-select">
-                            <option value="">— Seleccionar —</option>
-                            @foreach($departments as $dept)
-                            <option value="{{ $dept }}" {{ old('department', $agency->department) === $dept ? 'selected' : '' }}>{{ $dept }}</option>
+                    <div class="cx-field">
+                        <label for="parent_agency_id" class="cx-label">Subagencia padre *</label>
+                        <select name="parent_agency_id" id="parent_agency_id" class="cx-input" @if($currentScope !== 'nested') disabled @endif>
+                            <option value="">— Seleccionar subagencia —</option>
+                            @foreach($subagencyParents as $parent)
+                            <option value="{{ $parent->id }}"
+                                    data-search="{{ strtolower(trim(($parent->code ? $parent->code.' ' : '').$parent->name)) }}"
+                                    @selected((string) old('parent_agency_id', $agency->parent_agency_id) === (string) $parent->id)>
+                                {{ $parent->code ? $parent->code.' · ' : '' }}{{ $parent->name }}
+                            </option>
                             @endforeach
                         </select>
-                        @error('department')
-                        <p class="agency-field-error">{{ $message }}</p>
+                        <p class="cx-field-hint">No puede colgar de un cliente propio de SLO ni de una de sus hijas.</p>
+                        @error('parent_agency_id')
+                        <p class="cx-field-error">{{ $message }}</p>
                         @enderror
                     </div>
-                    @unless($agency->isDirectClient())
-                    <div class="agency-field">
-                        <label for="logo" class="agency-label">Logo (opcional)</label>
+                </div>
+                <p class="cx-slo-note" id="slo_parent_note" @if($currentScope !== 'slo') hidden @endif>
+                    Queda bajo <strong>SkyLink One</strong>.
+                </p>
+                @if(!empty($slo))
+                <input type="hidden" name="parent_agency_id" id="parent_agency_id_slo" value="{{ $slo->id }}" @if($currentScope !== 'slo') disabled @endif>
+                @endif
+            </div>
+        </div>
+        @endif
+
+        <div class="cx-card">
+            <div class="cx-section-head">
+                <span class="cx-panel-num">{{ $panelDatos }}</span>
+                <div>
+                    <h2 class="cx-section-title">{{ $isClient ? 'Datos del cliente' : 'Datos de la subagencia' }}</h2>
+                    <p class="cx-section-sub">Nombre comercial, contacto y estado de la cuenta.</p>
+                </div>
+            </div>
+            <div class="cx-card-body">
+                <div class="cx-form-grid">
+                    <div class="cx-field">
+                        <label class="cx-label">Código</label>
+                        <p class="cx-code">{{ $agency->code }}</p>
+                        <p class="cx-field-hint">Asignado por el sistema; no se puede modificar.</p>
+                    </div>
+                    <div class="cx-field">
+                        <label class="cx-check" style="margin-top: 1.55rem;">
+                            <input type="checkbox" name="is_active" value="1" {{ old('is_active', $agency->is_active) ? 'checked' : '' }}>
+                            <span>Cuenta activa</span>
+                        </label>
+                    </div>
+                    <div class="cx-field cx-field-wide">
+                        <label for="name" class="cx-label">{{ $isClient ? 'Nombre del cliente' : 'Nombre de la subagencia' }} *</label>
+                        <input type="text" name="name" id="name" value="{{ old('name', $agency->name) }}" required class="cx-input"
+                               placeholder="{{ $isClient ? 'Ej. Juan Pérez o Empresa S.A.' : 'Ej. Agencia Norte' }}">
+                        <p class="cx-field-hint">No puede coincidir con el nombre de otra cuenta.</p>
+                        @error('name')<p class="cx-field-error">{{ $message }}</p>@enderror
+                    </div>
+                    <div class="cx-field">
+                        <label for="phone" class="cx-label">Teléfono</label>
+                        <input type="text" name="phone" id="phone" value="{{ old('phone', $agency->phone) }}" class="cx-input" placeholder="Ej. 8888-8888">
+                        @error('phone')<p class="cx-field-error">{{ $message }}</p>@enderror
+                    </div>
+                    <div class="cx-field">
+                        <label for="department" class="cx-label">Departamento</label>
+                        <select name="department" id="department" class="cx-input">
+                            <option value="">— Seleccionar —</option>
+                            @foreach($departments as $dept)
+                            <option value="{{ $dept }}" @selected(old('department', $agency->department) === $dept)>{{ $dept }}</option>
+                            @endforeach
+                        </select>
+                        @error('department')<p class="cx-field-error">{{ $message }}</p>@enderror
+                    </div>
+                    <div class="cx-field cx-field-wide">
+                        <label for="address" class="cx-label">Dirección</label>
+                        <input type="text" name="address" id="address" value="{{ old('address', $agency->address) }}" class="cx-input"
+                               placeholder="{{ $isClient ? 'Dirección del cliente' : 'Dirección de la subagencia' }}">
+                        @error('address')<p class="cx-field-error">{{ $message }}</p>@enderror
+                    </div>
+                    @unless($isClient)
+                    <div class="cx-field cx-field-wide">
+                        <label for="logo" class="cx-label">Logo (opcional)</label>
                         @if($agency->logo_url)
-                        <div class="agency-logo-row">
-                            <img src="{{ $agency->logo_url }}" alt="Logo actual" class="agency-logo-preview">
-                            <label class="agency-checkbox-label">
-                                <input type="checkbox" name="remove_logo" value="1" class="agency-checkbox">
+                        <div class="cx-logo-row">
+                            <img src="{{ $agency->logo_url }}" alt="Logo actual" class="cx-logo-preview">
+                            <label class="cx-check">
+                                <input type="checkbox" name="remove_logo" value="1">
                                 <span>Quitar logo</span>
                             </label>
                         </div>
                         @endif
-                        <p class="agency-field-hint">Se muestra en la etiqueta sin fondo. PNG con fondo transparente. JPEG, PNG, GIF o WebP, máx. 2 MB.</p>
-                        <input type="file" name="logo" id="logo" accept="image/jpeg,image/png,image/gif,image/webp" class="agency-input-file">
-                        @error('logo')
-                        <p class="agency-field-error">{{ $message }}</p>
-                        @enderror
+                        <input type="file" name="logo" id="logo" accept="image/jpeg,image/png,image/gif,image/webp" class="cx-input">
+                        <p class="cx-field-hint">Se muestra en la etiqueta. PNG con fondo transparente. Máx. 2 MB.</p>
+                        @error('logo')<p class="cx-field-error">{{ $message }}</p>@enderror
                     </div>
                     @endunless
-                    <div class="agency-field">
-                        <label class="agency-checkbox-label">
-                            <input type="checkbox" name="is_active" value="1" {{ old('is_active', $agency->is_active) ? 'checked' : '' }} class="agency-checkbox">
-                            <span>Activa</span>
-                        </label>
-                    </div>
-
-                    <div class="agency-field" style="grid-column: 1 / -1; border-top: 1px solid #e5e7eb; padding-top: 1rem;">
-                        <p class="agency-label" style="font-size: 0.95rem;">Contabilidad (crédito y datos fiscales)</p>
-                    </div>
-                    <div class="agency-field">
-                        <label for="credit_limit_usd" class="agency-label">Crédito máximo (USD)</label>
-                        <input type="number" step="0.01" min="0" name="credit_limit_usd" id="credit_limit_usd" value="{{ old('credit_limit_usd', $agency->credit_limit_usd) }}" placeholder="Sin límite" class="agency-input">
-                        @error('credit_limit_usd')
-                        <p class="agency-field-error">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <div class="agency-field">
-                        <label for="credit_days" class="agency-label">Días de crédito</label>
-                        <input type="number" min="0" max="365" name="credit_days" id="credit_days" value="{{ old('credit_days', $agency->credit_days) }}" placeholder="Ej.: 30" class="agency-input">
-                        @error('credit_days')
-                        <p class="agency-field-error">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <div class="agency-field">
-                        <label for="tax_id" class="agency-label">RUC / identificación fiscal</label>
-                        <input type="text" name="tax_id" id="tax_id" value="{{ old('tax_id', $agency->tax_id) }}" class="agency-input">
-                        @error('tax_id')
-                        <p class="agency-field-error">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <div class="agency-field">
-                        <label for="billing_contact_name" class="agency-label">Contacto de cobranza</label>
-                        <input type="text" name="billing_contact_name" id="billing_contact_name" value="{{ old('billing_contact_name', $agency->billing_contact_name) }}" placeholder="Nombre" class="agency-input">
-                        @error('billing_contact_name')
-                        <p class="agency-field-error">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <div class="agency-field">
-                        <label for="billing_contact_phone" class="agency-label">Teléfono de cobranza</label>
-                        <input type="text" name="billing_contact_phone" id="billing_contact_phone" value="{{ old('billing_contact_phone', $agency->billing_contact_phone) }}" class="agency-input">
-                        @error('billing_contact_phone')
-                        <p class="agency-field-error">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <div class="agency-field">
-                        <label for="billing_email" class="agency-label">Correo de facturación</label>
-                        <input type="email" name="billing_email" id="billing_email" value="{{ old('billing_email', $agency->billing_email) }}" placeholder="facturacion@cliente.com" class="agency-input">
-                        <p class="agency-field-hint">Aquí se envían las facturas. Si está vacío se usa el correo de acceso de la cuenta.</p>
-                        @error('billing_email')
-                        <p class="agency-field-error">{{ $message }}</p>
-                        @enderror
-                    </div>
                 </div>
-
-                <div class="agency-form-actions">
-                    <a href="{{ route('agencies.show', $agency->id) }}" class="agency-btn agency-btn-secondary">Cancelar</a>
-                    <button type="submit" class="agency-btn agency-btn-primary">Actualizar</button>
-                </div>
-            </form>
+            </div>
         </div>
-    </div>
+
+        <div class="cx-card">
+            <div class="cx-section-head">
+                <span class="cx-panel-num">{{ $panelConta }}</span>
+                <div>
+                    <h2 class="cx-section-title">Contabilidad</h2>
+                    <p class="cx-section-sub">Crédito, datos fiscales y correo donde se envían las facturas.</p>
+                </div>
+            </div>
+            <div class="cx-card-body">
+                <div class="cx-form-grid">
+                    <div class="cx-field">
+                        <label for="credit_limit_usd" class="cx-label">Crédito máximo (USD)</label>
+                        <input type="number" step="0.01" min="0" name="credit_limit_usd" id="credit_limit_usd" class="cx-input"
+                               value="{{ old('credit_limit_usd', $agency->credit_limit_usd) }}" placeholder="Sin límite">
+                        @error('credit_limit_usd')<p class="cx-field-error">{{ $message }}</p>@enderror
+                    </div>
+                    <div class="cx-field">
+                        <label for="credit_days" class="cx-label">Días de crédito</label>
+                        <input type="number" min="0" max="365" name="credit_days" id="credit_days" class="cx-input"
+                               value="{{ old('credit_days', $agency->credit_days) }}" placeholder="Ej. 30">
+                        @error('credit_days')<p class="cx-field-error">{{ $message }}</p>@enderror
+                    </div>
+                    <div class="cx-field cx-field-wide">
+                        <label for="tax_id" class="cx-label">RUC / identificación fiscal</label>
+                        <input type="text" name="tax_id" id="tax_id" class="cx-input" value="{{ old('tax_id', $agency->tax_id) }}">
+                        @error('tax_id')<p class="cx-field-error">{{ $message }}</p>@enderror
+                    </div>
+                    <div class="cx-field">
+                        <label for="billing_contact_name" class="cx-label">Contacto de cobranza</label>
+                        <input type="text" name="billing_contact_name" id="billing_contact_name" class="cx-input"
+                               value="{{ old('billing_contact_name', $agency->billing_contact_name) }}" placeholder="Nombre">
+                        @error('billing_contact_name')<p class="cx-field-error">{{ $message }}</p>@enderror
+                    </div>
+                    <div class="cx-field">
+                        <label for="billing_contact_phone" class="cx-label">Teléfono de cobranza</label>
+                        <input type="text" name="billing_contact_phone" id="billing_contact_phone" class="cx-input"
+                               value="{{ old('billing_contact_phone', $agency->billing_contact_phone) }}">
+                        @error('billing_contact_phone')<p class="cx-field-error">{{ $message }}</p>@enderror
+                    </div>
+                    <div class="cx-field cx-field-wide">
+                        <label for="billing_email" class="cx-label">Correo de facturación</label>
+                        <input type="email" name="billing_email" id="billing_email" class="cx-input"
+                               value="{{ old('billing_email', $agency->billing_email) }}" placeholder="facturacion@cliente.com">
+                        <p class="cx-field-hint">Aquí se envían las facturas. Si está vacío se usa el correo de acceso de la cuenta.</p>
+                        @error('billing_email')<p class="cx-field-error">{{ $message }}</p>@enderror
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="cx-step-actions">
+            <a href="{{ route('agencies.show', $agency->id) }}" class="cx-btn cx-btn-secondary">Cancelar</a>
+            <button type="submit" class="cx-btn cx-btn-primary">Guardar cambios</button>
+        </div>
+    </form>
 </div>
 
-<style>
-.agency-form-page { padding: 1.5rem 0; max-width: 96rem; margin: 0 auto; width: 100%; }
-.agency-form-page .agency-hero {
-    background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%);
-    border-radius: 1rem; padding: 1.75rem 1.5rem; margin-bottom: 1.5rem;
-    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
-}
-.agency-form-page .agency-hero-title { color: #fff; margin: 0; font-size: 1.75rem; font-weight: 700; }
-.agency-form-page .agency-hero-subtitle { color: rgba(255,255,255,0.9); margin: 0.35rem 0 0; font-size: 0.9375rem; }
-.agency-form-page .agency-hero-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-.agency-form-page .agency-hero-btn { background: #fff; color: #0A2D6F; padding: 0.5rem 1rem; font-weight: 600; border-radius: 0.5rem; text-decoration: none; border: 1px solid rgba(255,255,255,0.5); }
-.agency-form-page .agency-hero-btn:hover { background: #F4F8FD; color: #0A2D6F; }
-.agency-alert { padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.875rem; }
-.agency-alert-danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
-.agency-card { background: #fff; border-radius: 0.75rem; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; margin-bottom: 1.5rem; }
-.agency-card-header { padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb; background: #fafafa; }
-.agency-card-title { margin: 0; font-size: 0.9375rem; font-weight: 600; color: #374151; }
-.agency-card-body { padding: 1.25rem; }
-.agency-form-card { max-width: 36rem; margin: 0 auto; }
-.agency-form-header { background: linear-gradient(135deg, #0A2D6F 0%, #143A8C 50%, #1E4FA8 100%); padding: 0.75rem 1.5rem; }
-.agency-form-header .agency-card-title { color: #fff; }
-.agency-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; }
-.agency-btn-primary { background: #0A2D6F; color: #fff; border-color: #0A2D6F; }
-.agency-btn-primary:hover { background: #0A2D6F; color: #fff; }
-.agency-btn-secondary { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
-.agency-btn-secondary:hover { background: #e5e7eb; color: #111827; }
-.agency-form-section { display: flex; flex-direction: column; gap: 1rem; }
-.agency-readonly { font-family: ui-monospace, monospace; font-weight: 600; color: #111827; margin: 0; }
-.agency-logo-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
-.agency-logo-preview { height: 3rem; width: auto; max-width: 180px; object-fit: contain; }
-.agency-checkbox-label { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: #374151; cursor: pointer; }
-.agency-checkbox { width: 1rem; height: 1rem; }
-.agency-input-file { padding: 0.5rem 0; font-size: 0.8125rem; border: 1px dashed #d1d5db; border-radius: 0.5rem; background: #fafafa; width: 100%; }
-.agency-form-actions { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.75rem; }
-.agency-label, .agency-input, .agency-select, .agency-field-hint, .agency-field-error { display: block; width: 100%; }
-.agency-input, .agency-select { padding: 0.5rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.5rem; background: #fff; }
-.agency-input:focus, .agency-select:focus { outline: none; border-color: #0A2D6F; box-shadow: 0 0 0 3px rgba(30, 79, 168, 0.15); }
-.agency-field-error { color: #dc2626; font-size: 0.875rem; margin-top: 0.25rem; }
-.agency-field-hint { font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem; }
-</style>
+@include('agencies.partials.cx-form-styles')
+@if($canReparent)
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var parentWrap = document.getElementById('parent_field_wrap');
+    var parentSelect = document.getElementById('parent_agency_id');
+    var parentSlo = document.getElementById('parent_agency_id_slo');
+    var sloNote = document.getElementById('slo_parent_note');
+    var filter = document.getElementById('parent_agency_filter');
+    var cards = document.querySelectorAll('#agency-edit-form .cx-type-card');
+
+    function scope() {
+        var checked = document.querySelector('input[name="subagency_scope"]:checked');
+        return checked ? checked.value : 'slo';
+    }
+
+    function syncCards() {
+        cards.forEach(function (card) {
+            var radio = card.querySelector('input');
+            card.classList.toggle('is-selected', !!(radio && radio.checked));
+        });
+    }
+
+    function sync() {
+        var nested = scope() === 'nested';
+        if (parentWrap) parentWrap.hidden = !nested;
+        if (sloNote) sloNote.hidden = nested;
+        if (parentSelect) {
+            parentSelect.disabled = !nested;
+            parentSelect.required = nested;
+        }
+        if (filter) filter.disabled = !nested;
+        if (parentSlo) parentSlo.disabled = nested;
+        syncCards();
+    }
+
+    function applyFilter() {
+        if (!parentSelect || !filter) return;
+        var q = (filter.value || '').toLowerCase().trim();
+        Array.prototype.forEach.call(parentSelect.options, function (opt, i) {
+            if (i === 0) {
+                opt.hidden = false;
+                return;
+            }
+            var hay = opt.getAttribute('data-search') || (opt.textContent || '').toLowerCase();
+            opt.hidden = q !== '' && hay.indexOf(q) === -1;
+        });
+    }
+
+    document.querySelectorAll('input[name="subagency_scope"]').forEach(function (input) {
+        input.addEventListener('change', sync);
+    });
+    if (filter) {
+        filter.addEventListener('input', applyFilter);
+    }
+    sync();
+});
+</script>
+@endif
 @endsection

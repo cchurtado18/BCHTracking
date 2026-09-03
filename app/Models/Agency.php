@@ -293,6 +293,36 @@ class Agency extends Model
     }
 
     /**
+     * Subagencias a las que esta cuenta puede colgarse (no SLO, no ella misma ni su descendencia).
+     *
+     * @return \Illuminate\Support\Collection<int, self>
+     */
+    public function nestedParentOptions()
+    {
+        $blocked = array_values(array_unique(array_merge([(int) $this->id], $this->descendantIds())));
+
+        $options = static::parentCandidates()
+            ->whereNotIn('id', $blocked)
+            ->get()
+            ->filter(fn (self $agency) => ! $agency->isRootAccount())
+            ->values();
+
+        $current = $this->relationLoaded('parent') ? $this->parent : $this->parent()->first();
+        if ($current && ! $current->isRootAccount() && ! $options->contains('id', $current->id)) {
+            $options->prepend($current);
+        }
+
+        return $options;
+    }
+
+    public function affiliationScope(): string
+    {
+        $parent = $this->relationLoaded('parent') ? $this->parent : $this->parent()->first();
+
+        return ($parent && ! $parent->isRootAccount()) ? 'nested' : 'slo';
+    }
+
+    /**
      * URL del logo (para etiquetas y vistas).
      */
     public function getLogoUrlAttribute(): ?string

@@ -56,6 +56,14 @@
                 </select>
             </div>
             <div class="cx-field">
+                <label class="cx-label" for="affiliation">Afiliación</label>
+                <select name="affiliation" id="affiliation" class="cx-input">
+                    <option value="">Todas</option>
+                    <option value="slo" @selected(request('affiliation') === 'slo')>Hijas de SLO</option>
+                    <option value="nested" @selected(request('affiliation') === 'nested')>Hijas de otra subagencia</option>
+                </select>
+            </div>
+            <div class="cx-field">
                 <label class="cx-label" for="is_active">Estado</label>
                 <select name="is_active" id="is_active" class="cx-input">
                     <option value="">Todos los estados</option>

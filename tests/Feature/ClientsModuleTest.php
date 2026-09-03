@@ -723,4 +723,118 @@ class ClientsModuleTest extends TestCase
         $this->actingAs($sloClientUser)->get(route('accounting.invoices.index'))->assertOk();
         $this->actingAs($sloClientUser)->get(route('salidas.index'))->assertOk();
     }
+
+    public function test_admin_can_reparent_slo_subagency_under_partner(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        ['slo' => $slo, 'ch' => $ch] = $this->sloTree();
+        $misplaced = Agency::create([
+            'name' => 'Shipia Express Test',
+            'code' => '0919',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'parent_agency_id' => $slo->id,
+        ]);
+        $portalUser = User::factory()->create(['agency_id' => $misplaced->id, 'is_admin' => false]);
+
+        $this->assertFalse($portalUser->isPackagesOnlyPortal());
+
+        $this->actingAs($admin)
+            ->get(route('agencies.edit', $misplaced))
+            ->assertOk()
+            ->assertSee('Hija de otra subagencia')
+            ->assertSee($ch->name);
+
+        $this->actingAs($admin)
+            ->put(route('agencies.update', $misplaced), [
+                'name' => $misplaced->name,
+                'subagency_scope' => 'nested',
+                'parent_agency_id' => $ch->id,
+                'is_active' => '1',
+            ])
+            ->assertRedirect(route('agencies.show', $misplaced));
+
+        $this->assertSame($ch->id, (int) $misplaced->fresh()->parent_agency_id);
+        $this->assertTrue($portalUser->fresh()->isPackagesOnlyPortal());
+    }
+
+    public function test_admin_cannot_parent_subagency_under_its_child(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        ['ch' => $ch] = $this->sloTree();
+        $child = Agency::create([
+            'name' => 'Hija de CH ciclo',
+            'code' => '0920',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'parent_agency_id' => $ch->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('agencies.update', $ch), [
+                'name' => $ch->name,
+                'subagency_scope' => 'nested',
+                'parent_agency_id' => $child->id,
+                'is_active' => '1',
+            ])
+            ->assertSessionHasErrors('parent_agency_id');
+
+        $this->assertNotSame($child->id, (int) $ch->fresh()->parent_agency_id);
+    }
+
+    public function test_clients_index_filters_nested_affiliation(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        ['slo' => $slo, 'ch' => $ch] = $this->sloTree();
+        $nested = Agency::create([
+            'name' => 'Norte Filtro Nested',
+            'code' => '0921',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'parent_agency_id' => $ch->id,
+        ]);
+        $sloChild = Agency::create([
+            'name' => 'Partner Filtro SLO',
+            'code' => '0922',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'parent_agency_id' => $slo->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('agencies.index', ['affiliation' => 'nested']))
+            ->assertOk()
+            ->assertSee('Norte Filtro Nested')
+            ->assertDontSee('Partner Filtro SLO');
+
+        $this->actingAs($admin)
+            ->get(route('agencies.index', ['affiliation' => 'slo']))
+            ->assertOk()
+            ->assertSee('Partner Filtro SLO')
+            ->assertDontSee('Norte Filtro Nested');
+    }
+
+    public function test_direct_client_edit_does_not_offer_subagency_parent(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        ['slo' => $slo] = $this->sloTree();
+        $client = Agency::create([
+            'name' => 'Cliente sin afiliacion',
+            'code' => '0923',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_DIRECT_CLIENT,
+            'parent_agency_id' => $slo->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('agencies.edit', $client))
+            ->assertOk()
+            ->assertDontSee('Hija de otra subagencia')
+            ->assertDontSee('name="subagency_scope"', false);
+    }
 }

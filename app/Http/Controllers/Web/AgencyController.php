@@ -38,6 +38,8 @@ class AgencyController extends Controller
         if ($request->filled('account_type')) {
             $query->where('account_type', $request->account_type);
         }
+        $slo = $this->sloRoot();
+        $this->applyAffiliationFilter($query, $request, $slo);
         $agencies = $query->orderBy('name')->paginate(25)->withQueryString();
 
         // Estadísticas con los mismos filtros
@@ -54,6 +56,7 @@ class AgencyController extends Controller
         if ($request->filled('account_type')) {
             $statsQuery->where('account_type', $request->account_type);
         }
+        $this->applyAffiliationFilter($statsQuery, $request, $slo);
         $statsTotal = $statsQuery->count();
         $statsActive = (clone $statsQuery)->where('is_active', true)->count();
         $statsInactive = (clone $statsQuery)->where('is_active', false)->count();
@@ -228,10 +231,21 @@ class AgencyController extends Controller
 
     public function edit(string $id)
     {
-        $agency = Agency::findOrFail($id);
+        $agency = Agency::with('parent')->findOrFail($id);
         $departments = self::NICARAGUA_DEPARTMENTS;
+        $canReparent = ! $agency->isRootAccount() && ! $agency->isDirectClient();
+        $slo = $this->sloRoot();
+        $subagencyParents = $canReparent ? $agency->nestedParentOptions() : collect();
+        $currentScope = old('subagency_scope', $canReparent ? $agency->affiliationScope() : 'slo');
 
-        return view('agencies.edit', compact('agency', 'departments'));
+        return view('agencies.edit', compact(
+            'agency',
+            'departments',
+            'canReparent',
+            'slo',
+            'subagencyParents',
+            'currentScope'
+        ));
     }
 
     public function update(Request $request, string $id)
@@ -242,7 +256,13 @@ class AgencyController extends Controller
             'phone' => $request->filled('phone') ? trim((string) $request->input('phone')) : null,
             'address' => $request->filled('address') ? trim((string) $request->input('address')) : null,
         ]);
-        $request->validate([
+        $canReparent = ! $agency->isRootAccount() && ! $agency->isDirectClient();
+        $slo = $this->sloRoot();
+        if ($canReparent && $request->input('subagency_scope') === 'slo' && $slo) {
+            $request->merge(['parent_agency_id' => $slo->id]);
+        }
+
+        $rules = [
             'name' => 'required|string|max:255|unique:agencies,name,'.$agency->id,
             'phone' => 'nullable|string|max:50',
             'address' => 'nullable|string|max:500',
@@ -256,13 +276,40 @@ class AgencyController extends Controller
             'billing_contact_name' => 'nullable|string|max:120',
             'billing_contact_phone' => 'nullable|string|max:40',
             'billing_email' => 'nullable|email|max:255',
-        ], [
+        ];
+        if ($canReparent) {
+            $rules['subagency_scope'] = 'required|in:slo,nested';
+            $rules['parent_agency_id'] = 'required|exists:agencies,id';
+        }
+
+        $request->validate($rules, [
             'name.required' => $agency->isDirectClient() ? 'El nombre del cliente es obligatorio.' : 'El nombre de la subagencia es obligatorio.',
             'name.unique' => $agency->isDirectClient()
                 ? 'Ya existe otra cuenta con ese nombre. Elija otro nombre.'
                 : 'Ya existe otra subagencia con ese nombre. Elija otro nombre.',
+            'subagency_scope.required' => 'Indique si pertenece a SkyLink One o a otra subagencia.',
+            'parent_agency_id.required' => 'Seleccione la subagencia padre.',
+            'parent_agency_id.exists' => 'La cuenta padre seleccionada no es válida.',
         ]);
         $data = $request->only(['name', 'phone', 'address', 'department', 'credit_limit_usd', 'credit_days', 'tax_id', 'billing_contact_name', 'billing_contact_phone', 'billing_email']);
+
+        if ($canReparent) {
+            $parent = $request->input('subagency_scope') === 'slo'
+                ? $slo
+                : Agency::find($request->parent_agency_id);
+            $blocked = array_merge([(int) $agency->id], $agency->descendantIds());
+            if (! $parent || $parent->isDirectClient() || in_array((int) $parent->id, $blocked, true)) {
+                return redirect()->back()->withInput()->withErrors([
+                    'parent_agency_id' => 'Debe colgar de SkyLink One o de otra subagencia, sin crear un ciclo.',
+                ]);
+            }
+            if ($request->input('subagency_scope') === 'nested' && $parent->isRootAccount()) {
+                return redirect()->back()->withInput()->withErrors([
+                    'parent_agency_id' => 'Elija la subagencia padre (no SkyLink One).',
+                ]);
+            }
+            $data['parent_agency_id'] = $parent->id;
+        }
         if (! $agency->isDirectClient()) {
             if ($request->boolean('remove_logo') && $agency->logo_path) {
                 Storage::disk('public')->delete($agency->logo_path);
@@ -485,5 +532,33 @@ class AgencyController extends Controller
         }
 
         return "Ese correo ya lo usa el usuario {$existing->name} en Usuarios. Use otro correo, o cambie el de ese usuario si ya no aplica.";
+    }
+
+    private function sloRoot(): ?Agency
+    {
+        return Agency::query()
+            ->where(function ($q) {
+                $q->where('is_main', true)->orWhere('account_type', Agency::TYPE_ROOT);
+            })
+            ->orderByDesc('is_main')
+            ->first();
+    }
+
+    private function applyAffiliationFilter($query, Request $request, ?Agency $slo): void
+    {
+        if (! $slo) {
+            return;
+        }
+
+        if ($request->input('affiliation') === 'slo') {
+            $query->where('account_type', Agency::TYPE_SUBAGENCY)
+                ->where(function ($q) use ($slo) {
+                    $q->where('parent_agency_id', $slo->id)->orWhereNull('parent_agency_id');
+                });
+        } elseif ($request->input('affiliation') === 'nested') {
+            $query->where('account_type', Agency::TYPE_SUBAGENCY)
+                ->whereNotNull('parent_agency_id')
+                ->where('parent_agency_id', '!=', $slo->id);
+        }
     }
 }
