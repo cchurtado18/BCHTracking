@@ -234,9 +234,9 @@
     border: 1px solid transparent;
     white-space: nowrap;
 }
-.packages-badge-air,
-.packages-badge-sea { background: #e5e7eb; color: #374151; }
-.packages-badge-cft { background: #E8F6EE; color: #16794C; }
+.packages-badge-air { background: #dbeafe; color: #1e40af; }
+.packages-badge-sea,
+.packages-badge-cft { background: #ffedd5; color: #9a3412; }
 .packages-status.status-info { background: #fef3c7; color: #92400e; }
 .packages-status.status-warning { background: #ffedd5; color: #9a3412; }
 .packages-status.status-primary { background: #dbeafe; color: #1e40af; }

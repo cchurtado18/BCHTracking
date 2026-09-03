@@ -283,9 +283,9 @@
     border: 1px solid transparent;
     white-space: nowrap;
 }
-.preregs-badge-air { background: #e5e7eb; color: #374151; }
-.preregs-badge-sea { background: #e5e7eb; color: #374151; }
-.preregs-badge-cft { background: #E8F6EE; color: #16794C; }
+.preregs-badge-air { background: #dbeafe; color: #1e40af; }
+.preregs-badge-sea,
+.preregs-badge-cft { background: #ffedd5; color: #9a3412; }
 .preregs-status.status-pending { background: #eef2ff; color: #3730a3; }
 .preregs-status.status-info { background: #fef3c7; color: #92400e; }
 .preregs-status.status-warning { background: #ffedd5; color: #9a3412; }
