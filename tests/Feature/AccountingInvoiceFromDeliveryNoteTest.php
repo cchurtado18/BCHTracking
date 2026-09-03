@@ -233,7 +233,9 @@ class AccountingInvoiceFromDeliveryNoteTest extends TestCase
             ->get(route('accounting.invoices.create'))
             ->assertOk()
             ->assertSee('Nueva factura PrimeTrack')
-            ->assertSee('SLO-9501');
+            ->assertSee('SLO-9501')
+            ->assertSee('invoice-notes-q', false)
+            ->assertSee('Buscar por hoja, agencia o código');
 
         $this->actingAs($admin)
             ->post(route('accounting.invoices.start-create'), [
