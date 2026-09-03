@@ -247,6 +247,7 @@
 .cx-hint { margin: 0 0 1rem; font-size: 0.875rem; color: var(--cx-muted); }
 .cx-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
 .cx-field { display: flex; flex-direction: column; gap: 0.28rem; }
+.cx-field[hidden], .cx-step-panel[hidden], [data-only][hidden] { display: none !important; }
 .cx-field-wide { grid-column: 1 / -1; }
 .cx-label { font-size: 0.8rem; font-weight: 700; color: #334155; }
 .cx-input { padding: 0.52rem 0.7rem; font-size: 0.85rem; border: 1px solid #D8DCE2; border-radius: 0.55rem; background: #fff; color: #0f172a; width: 100%; box-sizing: border-box; }

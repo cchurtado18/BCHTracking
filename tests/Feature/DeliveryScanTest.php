@@ -270,6 +270,18 @@ class DeliveryScanTest extends TestCase
             ->assertOk()
             ->assertSee('SLO-7777')
             ->assertDontSee('SLO-8888');
+
+        $this->actingAs($user)
+            ->get(route('salidas.index', ['q' => $agency->name]))
+            ->assertOk()
+            ->assertSee('SLO-7777')
+            ->assertDontSee('SLO-8888');
+
+        $this->actingAs($user)
+            ->get(route('salidas.index', ['q' => '7777']))
+            ->assertOk()
+            ->assertSee('SLO-7777')
+            ->assertDontSee('SLO-8888');
     }
 
     public function test_salidas_index_lists_notes_and_create_button(): void

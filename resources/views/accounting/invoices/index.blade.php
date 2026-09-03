@@ -145,7 +145,7 @@
                             <div class="inv-types">
                                 @forelse($services as $svc)
                                 <span class="inv-type inv-type--{{ strtolower($svc) }}">
-                                    {{ \App\Support\ServiceType::icon($svc) }} {{ $serviceLabels[$svc] ?? $svc }}
+                                    {{ \App\Support\ServiceType::icon($svc) }} {{ $serviceLabels[$svc] ?? \App\Support\ServiceType::label($svc) }}
                                 </span>
                                 @empty
                                 <span class="inv-muted">—</span>
@@ -159,7 +159,7 @@
                             @endif
                         </td>
                         <td class="inv-nowrap">{{ optional($invoice->issued_at)->format('d/m/Y') ?? '—' }}</td>
-                        <td class="inv-muted">{{ $invoice->deliveryNote?->code ?? '—' }}</td>
+                        <td class="inv-muted">{{ $invoice->noteCodesLabel() }}</td>
                         <td class="inv-num">
                             <span class="inv-paq">{{ $invoice->lines_count }}</span>
                         </td>

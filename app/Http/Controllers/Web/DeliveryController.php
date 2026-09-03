@@ -397,21 +397,57 @@ class DeliveryController extends Controller
             return;
         }
 
-        $notesQuery->where(function ($query) use ($q) {
-            $query->where('code', 'like', '%'.$q.'%')
-                ->orWhereHas('agency', fn ($aq) => $aq->where('name', 'like', '%'.$q.'%')->orWhere('code', 'like', '%'.$q.'%'))
-                ->orWhereHas('deliveries', function ($dq) use ($q) {
-                    $dq->where('delivered_to', 'like', '%'.$q.'%')
-                        ->orWhere('retirer_id_number', 'like', '%'.$q.'%')
-                        ->orWhere('retirer_phone', 'like', '%'.$q.'%')
-                        ->orWhere('invoice_number', 'like', '%'.$q.'%')
-                        ->orWhereHas('preregistration', function ($pq) use ($q) {
-                            $pq->where('warehouse_code', 'like', '%'.$q.'%')
-                                ->orWhere('tracking_external', 'like', '%'.$q.'%')
-                                ->orWhere('label_name', 'like', '%'.$q.'%');
+        $like = '%'.$q.'%';
+        $codeNeedles = $this->deliveryNoteCodeNeedles($q);
+
+        $notesQuery->where(function ($query) use ($like, $codeNeedles) {
+            $query->where(function ($codeQuery) use ($like, $codeNeedles) {
+                $codeQuery->where('code', 'like', $like);
+                foreach ($codeNeedles as $needle) {
+                    $codeQuery->orWhere('code', 'like', '%'.$needle.'%');
+                }
+            })
+                ->orWhereHas('agency', function ($aq) use ($like) {
+                    $aq->where('name', 'like', $like)->orWhere('code', 'like', $like);
+                })
+                ->orWhereHas('deliveries.preregistration.agency', function ($aq) use ($like) {
+                    $aq->where('name', 'like', $like)->orWhere('code', 'like', $like);
+                })
+                ->orWhereHas('deliveries', function ($dq) use ($like) {
+                    $dq->where('delivered_to', 'like', $like)
+                        ->orWhere('retirer_id_number', 'like', $like)
+                        ->orWhere('retirer_phone', 'like', $like)
+                        ->orWhere('invoice_number', 'like', $like)
+                        ->orWhereHas('preregistration', function ($pq) use ($like) {
+                            $pq->where('warehouse_code', 'like', $like)
+                                ->orWhere('tracking_external', 'like', $like)
+                                ->orWhere('label_name', 'like', $like);
                         });
                 });
         });
+    }
+
+    /**
+     * Variantes del número de hoja: "42", "0042", "SLO-42", "slo-0042".
+     *
+     * @return list<string>
+     */
+    private function deliveryNoteCodeNeedles(string $q): array
+    {
+        $stripped = strtoupper((string) preg_replace('/\s+/', '', $q));
+        $stripped = (string) preg_replace('/^(SLO|BCH)-?/', '', $stripped);
+        if ($stripped === '' || ! ctype_digit($stripped)) {
+            return [];
+        }
+
+        $padded = str_pad($stripped, 4, '0', STR_PAD_LEFT);
+
+        return array_values(array_unique([
+            $stripped,
+            $padded,
+            'SLO-'.$padded,
+            'BCH-'.$padded,
+        ]));
     }
 
     /**
@@ -608,7 +644,7 @@ class DeliveryController extends Controller
         $deliveryNotesInReport = collect();
 
         if ($request->filled('delivery_note_id')) {
-            $deliveryNote = DeliveryNote::with(['agency.parent', 'accountingInvoice'])->findOrFail((int) $request->delivery_note_id);
+            $deliveryNote = DeliveryNote::with(['agency.parent', 'accountingInvoice', 'linkedInvoices'])->findOrFail((int) $request->delivery_note_id);
             $this->ensureUserCanAccessAgency($deliveryNote->agency);
             $deliveries = Delivery::with('preregistration.agency', 'preregistration.agencyClient', 'deliveryNote')
                 ->where('delivery_note_id', $deliveryNote->id)
@@ -956,6 +992,7 @@ class DeliveryController extends Controller
         $deliveryNote->load([
             'agency',
             'accountingInvoice',
+            'linkedInvoices',
             'deliveries' => fn ($q) => $q->with('preregistration.agency')->orderBy('delivered_at'),
         ]);
 
@@ -990,8 +1027,9 @@ class DeliveryController extends Controller
     {
         $this->ensureAdmin();
 
-        if ($deliveryNote->accountingInvoice) {
-            return back()->with('error', 'No se puede quitar paquetes: esta hoja ya tiene la factura '.$deliveryNote->accountingInvoice->folio.'. Anúlela primero.');
+        $activeInvoice = $deliveryNote->currentInvoice();
+        if ($activeInvoice) {
+            return back()->with('error', 'No se puede quitar paquetes: esta hoja ya tiene la factura '.$activeInvoice->folio.'. Anúlela primero.');
         }
 
         if ((int) $delivery->delivery_note_id !== (int) $deliveryNote->id) {

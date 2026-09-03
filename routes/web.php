@@ -51,6 +51,10 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('admin')->group(function () {
         Route::resource('agencies', AgencyController::class);
         Route::post('agencies/{id}/toggle', [AgencyController::class, 'toggle'])->name('agencies.toggle');
+        Route::get('agencies/{agency}/acceso/nuevo', [AgencyController::class, 'createAccess'])->name('agencies.users.create');
+        Route::post('agencies/{agency}/acceso', [AgencyController::class, 'storeAccess'])->name('agencies.users.store');
+        Route::get('agencies/{agency}/acceso/{user}', [AgencyController::class, 'editAccess'])->name('agencies.users.edit');
+        Route::put('agencies/{agency}/acceso/{user}', [AgencyController::class, 'updateAccess'])->name('agencies.users.update');
         Route::post('agencies/{agency}/users/{user}/reset-password', [AgencyController::class, 'resetUserPassword'])->name('agencies.users.reset-password');
         Route::prefix('agencies/{agency_id}/clients')->name('agency-clients.')->group(function () {
             Route::get('/', [AgencyClientController::class, 'index'])->name('index');
@@ -133,7 +137,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('contabilidad/parametros', [AccountingSettingController::class, 'update'])->name('accounting.settings.update');
     });
 
-    Route::prefix('contabilidad/facturas')->name('accounting.invoices.')->group(function () {
+    Route::middleware('not-packages-only')->prefix('contabilidad/facturas')->name('accounting.invoices.')->group(function () {
         Route::get('/', [AccountingInvoiceController::class, 'index'])->name('index');
         Route::get('/{invoice}/voucher', [AccountingInvoiceController::class, 'voucher'])->name('voucher');
         Route::get('/{invoice}/pdf', [AccountingInvoiceController::class, 'pdf'])->name('pdf');
@@ -189,7 +193,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{id}/reprint-label', [PackageController::class, 'reprintLabel'])->name('reprint-label');
     });
 
-    Route::prefix('salidas')->name('salidas.')->group(function () {
+    Route::middleware('not-packages-only')->prefix('salidas')->name('salidas.')->group(function () {
         Route::get('/', [DeliveryController::class, 'index'])->name('index');
         Route::get('/nueva', [DeliveryController::class, 'create'])->name('create');
         Route::get('/batch', [DeliveryController::class, 'batch'])->name('batch');

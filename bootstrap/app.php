@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'central' => \App\Http\Middleware\EnsureCentralUser::class,
             'central.worker' => \App\Http\Middleware\EnsureCentralWorker::class,
+            'not-packages-only' => \App\Http\Middleware\DenyPackagesOnlyPortal::class,
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\DispatchDuePackageAlerts::class,

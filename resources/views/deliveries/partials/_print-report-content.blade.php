@@ -77,7 +77,7 @@
 
     // REF: factura PrimeTrack vinculada a la hoja; si no hay, el número legado de la entrega.
     $firstDelivery = $deliveries->first();
-    $linkedFolio = $deliveryNote?->accountingInvoice?->folio;
+    $linkedFolio = $deliveryNote?->currentInvoice()?->folio;
     $ocNumber = filled($linkedFolio) ? $linkedFolio : (filled($firstDelivery?->invoice_number) ? $firstDelivery->invoice_number : '');
     $printDateLong = \Carbon\Carbon::now()->locale('es')->isoFormat('D [de] MMMM [de] YYYY');
     $printDateFooter = \Carbon\Carbon::now()->format('d/m/Y H:i');

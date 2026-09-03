@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AccountingInvoice extends Model
@@ -16,6 +18,7 @@ class AccountingInvoice extends Model
         'issued_at',
         'total_lbs',
         'total_usd',
+        'delivery_fee_usd',
         'total_cor',
         'exchange_rate',
         'amount_paid',
@@ -33,6 +36,7 @@ class AccountingInvoice extends Model
         'voided_at' => 'datetime',
         'total_lbs' => 'decimal:3',
         'total_usd' => 'decimal:2',
+        'delivery_fee_usd' => 'decimal:2',
         'total_cor' => 'decimal:2',
         'exchange_rate' => 'decimal:4',
         'amount_paid' => 'decimal:2',
@@ -46,6 +50,38 @@ class AccountingInvoice extends Model
     public function deliveryNote(): BelongsTo
     {
         return $this->belongsTo(DeliveryNote::class);
+    }
+
+    public function deliveryNotes(): BelongsToMany
+    {
+        return $this->belongsToMany(DeliveryNote::class, 'accounting_invoice_delivery_notes')
+            ->withTimestamps()
+            ->orderBy('delivery_notes.id');
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeCoveringNote(Builder $query, int $noteId): Builder
+    {
+        return $query->where(function (Builder $q) use ($noteId) {
+            $q->where('delivery_note_id', $noteId)
+                ->orWhereHas('deliveryNotes', fn (Builder $n) => $n->where('delivery_notes.id', $noteId));
+        });
+    }
+
+    public function noteCodesLabel(): string
+    {
+        $codes = $this->relationLoaded('deliveryNotes')
+            ? $this->deliveryNotes->pluck('code')->filter()->values()
+            : collect();
+
+        if ($codes->isEmpty() && $this->deliveryNote?->code) {
+            return (string) $this->deliveryNote->code;
+        }
+
+        return $codes->isNotEmpty() ? $codes->implode(', ') : '—';
     }
 
     public function lines(): HasMany

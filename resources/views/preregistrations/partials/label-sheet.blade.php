@@ -9,18 +9,17 @@
             <div class="agency-right">
                 <div class="agency-logo-wrap" style="background: transparent;">
                     @php
-                        $logoUrl = $preregistration->agency->logo_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($preregistration->agency->logo_path)
-                            ? asset('storage/' . $preregistration->agency->logo_path)
-                            : null;
+                        $brand = $preregistration->agency->labelBrandAgency();
+                        $logoUrl = $brand->logo_url;
                     @endphp
                     @if($logoUrl)
-                        <img src="{{ $logoUrl }}" alt="Logo {{ $preregistration->agency->name }}" class="agency-logo" style="background: transparent;" onerror="this.style.display='none'; this.nextElementSibling && (this.nextElementSibling.style.display = 'block');">
-                        <span class="agency-name-fallback" style="display: none;">{{ $preregistration->agency->name }}</span>
+                        <img src="{{ $logoUrl }}" alt="Logo {{ $brand->name }}" class="agency-logo" style="background: transparent;" onerror="this.style.display='none'; this.nextElementSibling && (this.nextElementSibling.style.display = 'block');">
+                        <span class="agency-name-fallback" style="display: none;">{{ $brand->name }}</span>
                     @else
-                        <span class="agency-name-fallback">{{ $preregistration->agency->name }}</span>
+                        <span class="agency-name-fallback">{{ $brand->name }}</span>
                     @endif
                 </div>
-                <div class="agency-name-below">{{ $preregistration->agency->name }}</div>
+                <div class="agency-name-below">{{ $brand->name }}</div>
             </div>
         @endif
     </div>

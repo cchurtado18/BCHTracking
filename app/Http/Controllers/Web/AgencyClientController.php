@@ -12,6 +12,9 @@ class AgencyClientController extends Controller
     public function index(string $agency_id)
     {
         $agency = Agency::with('parent')->findOrFail($agency_id);
+        if ($redirect = $this->rejectDestinatariosForDirectClient($agency)) {
+            return $redirect;
+        }
         $query = $agency->clients();
 
         if (request()->filled('is_active') !== null && request()->filled('is_active') !== '') {
@@ -33,12 +36,18 @@ class AgencyClientController extends Controller
     public function create(string $agency_id)
     {
         $agency = Agency::findOrFail($agency_id);
+        if ($redirect = $this->rejectDestinatariosForDirectClient($agency)) {
+            return $redirect;
+        }
         return view('agency-clients.create', compact('agency'));
     }
 
     public function store(Request $request, string $agency_id)
     {
         $agency = Agency::findOrFail($agency_id);
+        if ($redirect = $this->rejectDestinatariosForDirectClient($agency)) {
+            return $redirect;
+        }
         $request->validate([
             'full_name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:50',
@@ -80,5 +89,16 @@ class AgencyClientController extends Controller
         $client = AgencyClient::findOrFail($id);
         $client->update(['is_active' => !$client->is_active]);
         return back()->with('success', $client->is_active ? 'Cliente activado.' : 'Cliente desactivado.');
+    }
+
+    private function rejectDestinatariosForDirectClient(Agency $agency): ?\Illuminate\Http\RedirectResponse
+    {
+        if ($agency->canManageDestinatarios()) {
+            return null;
+        }
+
+        return redirect()
+            ->route('agencies.show', $agency)
+            ->with('error', 'Los clientes de SkyLink One no tienen destinatarios. Esa lista es solo para subagencias.');
     }
 }

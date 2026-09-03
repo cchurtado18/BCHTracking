@@ -59,7 +59,7 @@ class PreregistrationAdminResetService
         $noteId = $preregistration->delivery?->delivery_note_id
             ?? $preregistration->delivery()->value('delivery_note_id');
         if ($noteId && AccountingInvoice::query()
-            ->where('delivery_note_id', $noteId)
+            ->coveringNote((int) $noteId)
             ->where('status', '!=', 'void')
             ->exists()) {
             return 'No se puede revertir: la hoja de salida de este paquete ya tiene una factura vigente.';

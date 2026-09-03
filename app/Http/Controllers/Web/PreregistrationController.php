@@ -455,6 +455,17 @@ class PreregistrationController extends Controller
             ? $agencies->filter(fn (Agency $a) => $a->isDirectClient() && (int) $a->parent_agency_id === (int) $slo->id)->values()
             : collect();
         $partnerAgencies = $agencies->filter(fn (Agency $a) => ! $a->isDirectClient())->values();
+        $partnerAgenciesJson = $partnerAgencies->map(fn (Agency $a) => [
+            'id' => $a->id,
+            'code' => $a->code,
+            'name' => $a->name,
+            'is_slo' => $a->isRootAccount(),
+        ])->values();
+        $sloClientsJson = $sloClients->map(fn (Agency $a) => [
+            'id' => $a->id,
+            'code' => $a->code,
+            'name' => $a->name,
+        ])->values();
 
         $warehousePreview = null;
         if (! $preregistration->warehouse_code) {
@@ -471,7 +482,9 @@ class PreregistrationController extends Controller
             'partnerAgencies',
             'sloClients',
             'slo',
-            'warehousePreview'
+            'warehousePreview',
+            'partnerAgenciesJson',
+            'sloClientsJson'
         ));
     }
 

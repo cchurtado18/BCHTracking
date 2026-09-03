@@ -70,9 +70,9 @@
             <h2 class="delivery-card-title">Paquetes en esta hoja ({{ $deliveryNote->deliveries->count() }})</h2>
             <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
                 <a href="{{ route('salidas.print-report', ['delivery_note_id' => $deliveryNote->id]) }}" target="_blank" class="delivery-btn delivery-btn-sm delivery-btn-outline-light">Ver / imprimir hoja</a>
-                @if($deliveryNote->accountingInvoice)
-                    <a href="{{ route('accounting.invoices.show', $deliveryNote->accountingInvoice) }}" class="delivery-btn delivery-btn-sm delivery-btn-outline-light">Factura {{ $deliveryNote->accountingInvoice->folio }}</a>
-                    <a href="{{ route('accounting.invoices.voucher', $deliveryNote->accountingInvoice) }}" target="_blank" class="delivery-btn delivery-btn-sm delivery-btn-outline-light">Voucher</a>
+                @if($deliveryNote->currentInvoice())
+                    <a href="{{ route('accounting.invoices.show', $deliveryNote->currentInvoice()) }}" class="delivery-btn delivery-btn-sm delivery-btn-outline-light">Factura {{ $deliveryNote->currentInvoice()->folio }}</a>
+                    <a href="{{ route('accounting.invoices.voucher', $deliveryNote->currentInvoice()) }}" target="_blank" class="delivery-btn delivery-btn-sm delivery-btn-outline-light">Voucher</a>
                 @elseif(auth()->user()?->is_admin)
                     <a href="{{ route('accounting.invoices.create-from-note', $deliveryNote) }}" class="delivery-btn delivery-btn-sm delivery-btn-outline-light">Generar Factura PrimeTrack</a>
                 @endif
@@ -108,7 +108,7 @@
                         <td class="delivery-num">{{ $p?->verified_weight_lbs ?? $p?->intake_weight_lbs ?? '—' }}</td>
                         <td class="delivery-muted">{{ $delivery->delivered_at?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') ?? '—' }}</td>
                         <td class="delivery-actions">
-                            @if($deliveryNote->accountingInvoice)
+                            @if($deliveryNote->currentInvoice())
                             <span class="delivery-muted">Facturada</span>
                             @else
                             <form action="{{ route('salidas.hojas.remove-package', [$deliveryNote, $delivery]) }}" method="POST" class="delivery-remove-form" onsubmit="return confirm('¿Quitar este paquete de la hoja? Volverá a «Listo para retiro».');">

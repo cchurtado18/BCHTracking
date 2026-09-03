@@ -1,8 +1,7 @@
 @php
-    $agency = $preregistration->agency;
-    $logoUrl = $agency?->logo_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($agency->logo_path)
-        ? asset('storage/' . $agency->logo_path)
-        : null;
+    $account = $preregistration->agency;
+    $agency = $account?->labelBrandAgency() ?? $account;
+    $logoUrl = $agency?->logo_url;
 
     $displayTz = config('app.display_timezone') ?: 'America/New_York';
     $dt = $preregistration->created_at ? $preregistration->created_at->timezone($displayTz) : null;

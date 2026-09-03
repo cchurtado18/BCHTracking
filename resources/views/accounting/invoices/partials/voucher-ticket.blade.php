@@ -38,8 +38,8 @@
     <div class="vch-block">
         <div>F/H Impreso: {{ $printedAt->format('d/m/Y H:i') }}</div>
         <div>Impreso por: {{ $printer }}</div>
-        @if($note)
-            <div>Hoja salida: {{ $note->code }}</div>
+        @if($invoice->noteCodesLabel() !== '—')
+            <div>Hoja salida: {{ $invoice->noteCodesLabel() }}</div>
         @endif
     </div>
 

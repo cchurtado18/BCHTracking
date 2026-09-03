@@ -317,12 +317,14 @@
             </div>
             <nav class="sidebar-nav">
                 @if(auth()->user() && auth()->user()->isAgencyUser())
+                @php $packagesOnlyPortal = auth()->user()->isPackagesOnlyPortal(); @endphp
                 <div class="sidebar-section">
                     <p class="sidebar-section-title">General</p>
                     <a href="{{ route('packages.index') }}" class="sidebar-link {{ request()->routeIs('packages.*') ? 'sidebar-link-active' : '' }}">
                         <svg class="sidebar-link-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.5 12 13 3 8.5M12 13v8M4.2 7.8 12 3l7.8 4.8A2 2 0 0 1 21 9.5v8.9a2 2 0 0 1-1 1.73l-7 4.02a2 2 0 0 1-2 0l-7-4.02a2 2 0 0 1-1-1.73V9.5a2 2 0 0 1 1.2-1.7Z" /></svg>
                         <span class="sidebar-link-label">Mis paquetes</span>
                     </a>
+                    @unless($packagesOnlyPortal)
                     <a href="{{ route('salidas.index') }}" class="sidebar-link {{ request()->routeIs('salidas.*') ? 'sidebar-link-active' : '' }}">
                         <svg class="sidebar-link-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h11.25v10.5H3.75V6.75Zm11.25 3h3.19a1.5 1.5 0 0 1 1.22.63l1.59 2.24v4.63H15V9.75ZM7.5 18.75a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm12 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z" /></svg>
                         <span class="sidebar-link-label">Mis entregas</span>
@@ -331,6 +333,7 @@
                         <svg class="sidebar-link-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>
                         <span class="sidebar-link-label">Mis facturas</span>
                     </a>
+                    @endunless
                 </div>
                 <div class="sidebar-divider"></div>
                 <div class="sidebar-section">

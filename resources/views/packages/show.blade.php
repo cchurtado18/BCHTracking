@@ -14,6 +14,7 @@
     ];
     $statusLabel = $statusLabels[$package->status] ?? $package->status;
     $isAgencyUser = auth()->user() && auth()->user()->isAgencyUser();
+    $packagesOnlyPortal = auth()->user()?->isPackagesOnlyPortal();
     $weightLbs = $package->verified_weight_lbs ?? $package->intake_weight_lbs;
     $showAdmin = auth()->user()?->is_admin;
 
@@ -235,7 +236,9 @@
                                 <span class="prd-field-value">
                                     @if($package->delivery->deliveryNote)
                                     <span class="prd-mono">{{ $package->delivery->deliveryNote->code }}</span>
+                                    @unless($packagesOnlyPortal)
                                     <a href="{{ route('salidas.print-report', ['delivery_note_id' => $package->delivery->delivery_note_id]) }}" target="_blank" class="prd-side-link">Ver hoja</a>
+                                    @endunless
                                     @else
                                     Sin hoja vinculada
                                     @endif

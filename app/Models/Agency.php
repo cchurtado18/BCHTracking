@@ -61,9 +61,55 @@ class Agency extends Model
         return $this->account_type === self::TYPE_DIRECT_CLIENT;
     }
 
+    /**
+     * Marca en etiqueta: clientes propios de SLO usan logo y nombre de SkyLink One.
+     */
+    public function labelBrandAgency(): self
+    {
+        if (! $this->isDirectClient()) {
+            return $this;
+        }
+
+        $parent = $this->relationLoaded('parent') && $this->parent
+            ? $this->parent
+            : $this->parent()->first();
+
+        return $parent ?: $this;
+    }
+
     public function canHaveChildren(): bool
     {
         return $this->is_main || $this->account_type === self::TYPE_SUBAGENCY || $this->account_type === self::TYPE_ROOT;
+    }
+
+    /**
+     * Subagencia colgada de otra subagencia (no de SLO).
+     * Su proveedor es la subagencia padre; no debe ver tarifas en entregas/facturas.
+     */
+    public function isNestedUnderPartner(): bool
+    {
+        if ($this->isRootAccount() || $this->isDirectClient()) {
+            return false;
+        }
+
+        if (! $this->parent_agency_id) {
+            return false;
+        }
+
+        $parent = $this->relationLoaded('parent') ? $this->parent : $this->parent()->first();
+        if (! $parent) {
+            return false;
+        }
+
+        return ! $parent->isRootAccount();
+    }
+
+    /**
+     * Destinatarios (libreta de entrega) solo en subagencias y SLO, no en clientes propios.
+     */
+    public function canManageDestinatarios(): bool
+    {
+        return ! $this->isDirectClient();
     }
 
     public function typeLabel(): string
@@ -111,6 +157,46 @@ class Agency extends Model
     public function networkIds(): array
     {
         return array_values(array_unique(array_merge([(int) $this->id], $this->descendantIds())));
+    }
+
+    /**
+     * Raíz comercial para facturar juntas las hojas de esta red.
+     * Cliente SLO o raíz: ella misma. Subagencia: sube hasta la agencia bajo SLO (incluye nietas).
+     */
+    public function invoiceFamilyRoot(): self
+    {
+        if ($this->isDirectClient() || $this->isRootAccount()) {
+            return $this;
+        }
+
+        $current = $this;
+        $guard = 0;
+        while ($current->parent_agency_id && $guard++ < 20) {
+            $parent = $current->relationLoaded('parent') && $current->parent
+                ? $current->parent
+                : $current->parent()->first();
+            if (! $parent || $parent->isRootAccount()) {
+                break;
+            }
+            $current = $parent;
+        }
+
+        return $current;
+    }
+
+    /**
+     * IDs de la misma red facturable: la agencia y sus subagencias (incluyendo subagencia de subagencia).
+     *
+     * @return list<int>
+     */
+    public function invoiceFamilyIds(): array
+    {
+        $root = $this->invoiceFamilyRoot();
+        if ($root->isDirectClient() || $root->isRootAccount()) {
+            return [(int) $root->id];
+        }
+
+        return $root->networkIds();
     }
 
     /**

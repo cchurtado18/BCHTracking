@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Detalle Agencia')
+@section('title', $agency->isDirectClient() ? 'Ficha del cliente' : 'Ficha de la subagencia')
 
 @section('content')
 <div class="agency-page agency-show-page">
@@ -8,7 +8,7 @@
         section="Administración"
         current="Ficha"
         title="{{ $agency->name }}"
-        subtitle="{{ $agency->typeLabel() }} · Código {{ $agency->code }}. Datos de la cuenta, destinatarios y accesos."
+        subtitle="{{ $agency->typeLabel() }} · Código {{ $agency->code }}. {{ $agency->isDirectClient() ? 'Datos de la cuenta y acceso al panel.' : 'Datos de la cuenta, destinatarios y accesos.' }}"
         back-href="{{ route('agencies.index') }}"
         back-label="Volver a clientes"
     >
@@ -21,7 +21,7 @@
                 @if(($agency->preregistrations_count ?? 0) > 0)
                 <span class="mb-btn mb-btn-secondary" style="opacity:.5;cursor:not-allowed;" title="No se puede eliminar: tiene {{ $agency->preregistrations_count }} paquete(s) asignado(s).">Eliminar</span>
                 @else
-                <form action="{{ route('agencies.destroy', $agency->id) }}" method="POST" onsubmit="return confirm('¿Eliminar la subagencia «{{ addslashes($agency->name) }}»? Esta acción no se puede deshacer.');">
+                <form action="{{ route('agencies.destroy', $agency->id) }}" method="POST" onsubmit="return confirm('¿Eliminar {{ $agency->isDirectClient() ? 'el cliente' : 'la subagencia' }} «{{ addslashes($agency->name) }}»? Esta acción no se puede deshacer.');">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="mb-btn mb-btn-danger">Eliminar</button>
@@ -30,6 +30,13 @@
             @endif
         </x-slot:actions>
     </x-module-banner>
+
+    @if(session('success'))
+    <div class="agency-alert agency-alert-success">{{ session('success') }}</div>
+    @endif
+    @if(session('error'))
+    <div class="agency-alert agency-alert-danger">{{ session('error') }}</div>
+    @endif
 
     <div class="agency-show-grid">
         {{-- Información --}}
@@ -74,7 +81,7 @@
                         <dd class="agency-dd">{{ $agency->department }}</dd>
                     </div>
                     @endif
-                    @if($agency->logo_url)
+                    @if($agency->logo_url && ! $agency->isDirectClient())
                     <div class="agency-dl-row">
                         <dt class="agency-dt">Logo</dt>
                         <dd class="agency-dd"><img src="{{ $agency->logo_url }}" alt="Logo" class="agency-logo-img"></dd>
@@ -83,11 +90,7 @@
                     <div class="agency-dl-row">
                         <dt class="agency-dt">Estado</dt>
                         <dd class="agency-dd">
-                            @if($agency->is_active)
-                            <span class="agency-badge agency-badge-success">Activa</span>
-                            @else
-                            <span class="agency-badge agency-badge-danger">Inactiva</span>
-                            @endif
+                            <span class="agency-badge {{ $agency->is_active ? 'agency-badge-success' : 'agency-badge-danger' }}">{{ $agency->is_active ? ($agency->isDirectClient() ? 'Activo' : 'Activa') : ($agency->isDirectClient() ? 'Inactivo' : 'Inactiva') }}</span>
                         </dd>
                     </div>
                 </dl>
@@ -95,7 +98,7 @@
                 @if($agency->users->isNotEmpty())
                 <div class="agency-users-block">
                     <h3 class="agency-users-title">Usuario de acceso</h3>
-                    <p class="agency-users-hint">Credenciales para que la agencia inicie sesión y vea sus paquetes.</p>
+                    <p class="agency-users-hint">{{ $agency->isDirectClient() ? 'Credenciales para que el cliente inicie sesión y vea sus paquetes.' : 'Credenciales para que la subagencia inicie sesión y vea sus paquetes.' }}</p>
                     @if($errors->has('password'))
                     <p class="agency-field-error">{{ $errors->first('password') }}</p>
                     @endif
@@ -106,7 +109,7 @@
                                 <span><strong>Correo:</strong> <span class="agency-code">{{ $agencyUser->email }}</span> <span class="agency-muted">({{ $agencyUser->name }})</span></span>
                                 @auth
                                 @if(auth()->user()->is_admin)
-                                <a href="{{ route('users.edit', $agencyUser) }}" class="agency-link">Editar usuario</a>
+                                <a href="{{ route('agencies.users.edit', [$agency, $agencyUser]) }}" class="agency-link">Editar acceso</a>
                                 @endif
                                 @endauth
                             </div>
@@ -132,7 +135,10 @@
                 </div>
                 @else
                 <div class="agency-users-block">
-                    <p class="agency-muted">Esta agencia no tiene usuario de acceso creado. Puede crear un usuario desde <a href="{{ route('users.index') }}" class="agency-link">Usuarios</a> asignándole esta agencia.</p>
+                    <p class="agency-muted">Esta cuenta no tiene acceso al panel.</p>
+                    @if(auth()->user()?->is_admin)
+                    <a href="{{ route('agencies.users.create', $agency) }}" class="agency-link">Crear acceso del cliente</a>
+                    @endif
                 </div>
                 @endif
 
@@ -213,11 +219,13 @@
                         <div class="agency-subagencia-info">
                             <a href="{{ route('agencies.show', $child->id) }}" class="agency-subagencia-name">{{ $child->name }}</a>
                             <span class="agency-code agency-subagencia-code">{{ $child->code }}</span>
-                            <span class="agency-muted">· {{ $child->typeLabel() }} · {{ $child->clients_count }} {{ $child->clients_count === 1 ? 'destinatario' : 'destinatarios' }}</span>
+                            <span class="agency-muted">· {{ $child->typeLabel() }}@unless($child->isDirectClient()) · {{ $child->clients_count }} {{ $child->clients_count === 1 ? 'destinatario' : 'destinatarios' }}@endunless</span>
                         </div>
                         <div class="agency-subagencia-actions">
                             <a href="{{ route('agencies.show', $child->id) }}" class="agency-btn agency-btn-sm agency-btn-outline-secondary">Ver</a>
-                            <a href="{{ route('agency-clients.create', $child->id) }}" class="agency-btn agency-btn-sm agency-btn-primary">+ Agregar cliente</a>
+                            @if($child->canManageDestinatarios())
+                            <a href="{{ route('agency-clients.create', $child->id) }}" class="agency-btn agency-btn-sm agency-btn-primary">+ Agregar destinatario</a>
+                            @endif
                         </div>
                     </li>
                     @endforeach
@@ -229,7 +237,8 @@
         </div>
         @endif
 
-        {{-- Clientes (de esta agencia o subagencia) --}}
+        @if($agency->canManageDestinatarios())
+        {{-- Destinatarios: solo subagencias / SLO, no clientes propios --}}
         <div class="agency-card">
             <div class="agency-card-header agency-table-header">
                 <h2 class="agency-card-title">Destinatarios ({{ $agency->clients->count() }})</h2>
@@ -264,10 +273,11 @@
                     @endforeach
                 </div>
                 @elseif(!$agency->is_main)
-                <p class="agency-muted">No hay clientes registrados para esta subagencia. Al hacer clic en «+ Agregar», el nuevo cliente quedará asignado a <strong>{{ $agency->name }}</strong>.</p>
+                <p class="agency-muted">No hay destinatarios registrados para esta subagencia. Al hacer clic en «+ Agregar», el nuevo destinatario quedará asignado a <strong>{{ $agency->name }}</strong>.</p>
                 @endif
             </div>
         </div>
+        @endif
     </div>
 </div>
 
@@ -331,6 +341,8 @@
 .agency-reset-row .agency-input { min-width: 140px; flex: 1; }
 .agency-input-sm { padding: 0.35rem 0.5rem; font-size: 0.8125rem; }
 .agency-alert-amber { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
+.agency-alert-success { background: #ecfdf5; border-color: #6ee7b7; color: #047857; }
+.agency-alert-danger { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
 .agency-toggle-block { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; }
 .agency-clients-list { max-height: 24rem; overflow-y: auto; }
 .agency-client-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; margin-bottom: 0.5rem; }

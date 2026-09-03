@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
-@section('title', 'Editar Agencia')
+@section('title', $agency->isDirectClient() ? 'Editar cliente' : 'Editar subagencia')
 
 @section('content')
 <div class="agency-page agency-form-page">
     <x-module-banner
         section="Administración"
         current="Editar cliente"
-        title="Editar cliente"
+        title="{{ $agency->isDirectClient() ? 'Editar cliente' : 'Editar subagencia' }}"
         subtitle="{{ $agency->name }} · {{ $agency->typeLabel() }}. Actualice datos de contacto, facturación y tipo de cuenta."
         back-href="{{ route('agencies.show', $agency->id) }}"
         back-label="Volver a la ficha"
@@ -29,7 +29,7 @@
 
     <div class="agency-card agency-form-card">
         <div class="agency-card-header agency-form-header">
-            <h2 class="agency-card-title">Datos de la agencia</h2>
+            <h2 class="agency-card-title">{{ $agency->isDirectClient() ? 'Datos del cliente' : 'Datos de la subagencia' }}</h2>
         </div>
         <div class="agency-card-body">
             <form action="{{ route('agencies.update', $agency->id) }}" method="POST" enctype="multipart/form-data">
@@ -76,6 +76,7 @@
                         <p class="agency-field-error">{{ $message }}</p>
                         @enderror
                     </div>
+                    @unless($agency->isDirectClient())
                     <div class="agency-field">
                         <label for="logo" class="agency-label">Logo (opcional)</label>
                         @if($agency->logo_url)
@@ -93,6 +94,7 @@
                         <p class="agency-field-error">{{ $message }}</p>
                         @enderror
                     </div>
+                    @endunless
                     <div class="agency-field">
                         <label class="agency-checkbox-label">
                             <input type="checkbox" name="is_active" value="1" {{ old('is_active', $agency->is_active) ? 'checked' : '' }} class="agency-checkbox">

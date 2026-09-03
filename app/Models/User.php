@@ -53,6 +53,26 @@ class User extends Authenticatable
     }
 
     /**
+     * Usuario de una subagencia anidada (no hija directa de SLO).
+     * Solo accede al módulo de paquetes: entregas y facturas revelarían tarifas del proveedor.
+     */
+    public function isPackagesOnlyPortal(): bool
+    {
+        if (! $this->isAgencyUser()) {
+            return false;
+        }
+
+        $agency = $this->relationLoaded('agency') ? $this->agency : $this->agency()->first();
+
+        return $agency?->isNestedUnderPartner() ?? false;
+    }
+
+    public function canViewCommercialModules(): bool
+    {
+        return ! $this->isPackagesOnlyPortal();
+    }
+
+    /**
      * True si es usuario central (sin agencia asignada).
      */
     public function isCentral(): bool

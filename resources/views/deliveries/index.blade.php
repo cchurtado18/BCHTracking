@@ -53,8 +53,8 @@
     <div class="inv-card inv-filters-card">
         <form method="GET" action="{{ route('salidas.index') }}" class="inv-filters-form">
             <div class="inv-field inv-field-wide">
-                <label class="inv-label" for="delivery_notes_q">Buscar</label>
-                <input type="search" name="q" id="delivery_notes_q" class="inv-input" value="{{ $searchQuery ?? '' }}" placeholder="Código SLO, warehouse, tracking, cliente o quien retira" autocomplete="off">
+                <label class="inv-label" for="delivery_notes_q">Agencia o número de hoja</label>
+                <input type="search" name="q" id="delivery_notes_q" class="inv-input" value="{{ $searchQuery ?? '' }}" placeholder="Ej. SLO-0042, 42 o nombre de la agencia" autocomplete="off" autofocus>
             </div>
             @unless(auth()->user()?->isAgencyUser())
             <div class="inv-field">

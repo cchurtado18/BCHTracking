@@ -103,28 +103,23 @@
                                     $selectedPartnerId = $currentIsSloClient ? $current->parent_agency_id : $current?->id;
                                 @endphp
                                 <div class="preregs-field preregs-field--full">
-                                    <label for="partner_agency_id" class="preregs-field-label">Cuenta (subagencia o SkyLink One) <span class="preregs-req">*</span></label>
-                                    <select id="partner_agency_id" class="preregs-input preregs-select">
-                                        <option value="">Seleccione…</option>
-                                        @foreach($partnerAgencies as $agency)
-                                        <option value="{{ $agency->id }}" data-slo="{{ $agency->isRootAccount() ? '1' : '0' }}" @selected((string) $selectedPartnerId === (string) $agency->id)>
-                                            {{ $agency->code ? $agency->code . ' - ' : '' }}{{ $agency->name }}
-                                        </option>
-                                        @endforeach
-                                    </select>
+                                    <label for="agency_combobox" class="preregs-field-label">Subagencia o SkyLink One <span class="preregs-req">*</span></label>
+                                    <div id="agency_combobox_wrap" class="preregs-combo-wrap">
+                                        <input type="text" id="agency_combobox" class="preregs-input" placeholder="Escriba para buscar o baje la lista…" autocomplete="off">
+                                        <input type="hidden" id="partner_agency_id" value="{{ $selectedPartnerId }}">
+                                        <div id="agency_dropdown" class="preregs-combo-dropdown" role="listbox"></div>
+                                    </div>
                                 </div>
                                 <div class="preregs-field preregs-field--full" id="slo_client_wrap" style="{{ $currentIsSloClient ? '' : 'display:none;' }}">
-                                    <label for="slo_client_id" class="preregs-field-label">Cliente de SkyLink One <span class="preregs-req">*</span></label>
-                                    <select id="slo_client_id" class="preregs-input preregs-select">
-                                        <option value="">— Seleccione el cliente SLO —</option>
-                                        @foreach($sloClients as $client)
-                                        <option value="{{ $client->id }}" @selected($currentIsSloClient && (string) old('agency_id', $preregistration->agency_id) === (string) $client->id)>
-                                            {{ $client->code }} - {{ $client->name }}
-                                        </option>
-                                        @endforeach
-                                    </select>
+                                    <label for="slo_client_combobox" class="preregs-field-label">Cliente de SkyLink One <span class="preregs-req">*</span></label>
+                                    <div id="slo_combobox_wrap" class="preregs-combo-wrap">
+                                        <input type="text" id="slo_client_combobox" class="preregs-input" placeholder="Escriba para buscar el cliente…" autocomplete="off">
+                                        <div id="slo_client_dropdown" class="preregs-combo-dropdown" role="listbox"></div>
+                                    </div>
                                 </div>
                                 <input type="hidden" name="agency_id" id="agency_id" value="{{ old('agency_id', $preregistration->agency_id) }}" required>
+                                <script type="application/json" id="agencies-data">@json($partnerAgenciesJson ?? [])</script>
+                                <script type="application/json" id="slo-clients-data">@json($sloClientsJson ?? [])</script>
                                 @error('agency_id')
                                 <p class="preregs-field-error preregs-field--full">{{ $message }}</p>
                                 @enderror
@@ -789,6 +784,30 @@
     border-color: var(--pt-navy);
 }
 .preregs-photo-order-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.preregs-combo-wrap { position: relative; }
+.preregs-combo-dropdown {
+    display: none;
+    position: absolute;
+    left: 0; right: 0; top: 100%;
+    margin-top: 0.35rem;
+    background: #fff;
+    border: 1px solid var(--pt-border);
+    border-radius: 0.7rem;
+    box-shadow: 0 14px 36px rgba(10, 45, 111, 0.14);
+    max-height: 250px;
+    overflow-y: auto;
+    z-index: 100;
+}
+.preregs-combo-dropdown .agency-combo-item {
+    padding: 0.72rem 0.95rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+}
+.preregs-combo-dropdown .agency-combo-item:last-child { border-bottom: none; }
+.preregs-combo-dropdown .agency-combo-item:hover { background: var(--pt-soft); color: var(--pt-navy); }
+.preregs-combo-empty { padding: 0.7rem 0.95rem; font-size: 0.875rem; color: #64748b; }
 
 @media (max-width: 960px) {
     .preregs-edit-layout.has-photo { grid-template-columns: 1fr; }
@@ -801,27 +820,5 @@
     .preregs-edit-page .preregs-form-header-text { padding: 0.9rem; }
 }
 </style>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    var partner = document.getElementById('partner_agency_id');
-    var sloWrap = document.getElementById('slo_client_wrap');
-    var sloSelect = document.getElementById('slo_client_id');
-    var hidden = document.getElementById('agency_id');
-    if (!partner || !hidden) return;
-    function sync() {
-        var opt = partner.options[partner.selectedIndex];
-        var isSlo = opt && opt.getAttribute('data-slo') === '1';
-        if (isSlo) {
-            if (sloWrap) sloWrap.style.display = '';
-            hidden.value = sloSelect ? (sloSelect.value || '') : '';
-        } else {
-            if (sloWrap) sloWrap.style.display = 'none';
-            hidden.value = partner.value || '';
-        }
-    }
-    partner.addEventListener('change', sync);
-    if (sloSelect) sloSelect.addEventListener('change', sync);
-    sync();
-});
-</script>
+@include('preregistrations.partials.agency-slo-combos-script')
 @endsection

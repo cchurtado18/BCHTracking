@@ -153,14 +153,25 @@ class AccountingProfitabilityController extends Controller
         ];
 
         $noteIds = $rows->pluck('delivery_note_id')->filter()->unique()->values();
-        $invoicesByNote = $noteIds->isEmpty()
-            ? collect()
-            : AccountingInvoice::query()
-                ->whereIn('delivery_note_id', $noteIds)
+        $invoicesByNote = collect();
+        if ($noteIds->isNotEmpty()) {
+            $invoices = AccountingInvoice::query()
+                ->with('deliveryNotes:id')
                 ->where('agency_id', $agency->id)
                 ->where('status', '!=', 'void')
-                ->get(['id', 'folio', 'delivery_note_id'])
-                ->keyBy('delivery_note_id');
+                ->where(function ($q) use ($noteIds) {
+                    $q->whereIn('delivery_note_id', $noteIds)
+                        ->orWhereHas('deliveryNotes', fn ($n) => $n->whereIn('delivery_notes.id', $noteIds));
+                })
+                ->get(['id', 'folio', 'delivery_note_id']);
+
+            foreach ($invoices as $invoice) {
+                $linkedIds = $invoice->deliveryNotes->pluck('id')->push($invoice->delivery_note_id)->filter()->unique();
+                foreach ($linkedIds as $linkedId) {
+                    $invoicesByNote[$linkedId] = $invoice;
+                }
+            }
+        }
 
         // Histórico de los últimos 6 meses (incluye el mes en curso)
         $shortMonths = [1 => 'Ene', 2 => 'Feb', 3 => 'Mar', 4 => 'Abr', 5 => 'May', 6 => 'Jun', 7 => 'Jul', 8 => 'Ago', 9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dic'];

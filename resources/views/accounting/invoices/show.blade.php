@@ -44,7 +44,7 @@
         section="Contabilidad"
         current="Factura"
         title="{{ $invoice->folio }}"
-        subtitle="Factura PrimeTrack{{ $invoice->deliveryNote ? ' · Hoja '.$invoice->deliveryNote->code : '' }} · {{ $invoice->agency?->name ?? 'Cliente' }}"
+        subtitle="Factura PrimeTrack{{ $invoice->noteCodesLabel() !== '—' ? ' · Hoja '.$invoice->noteCodesLabel() : '' }} · {{ $invoice->agency?->name ?? 'Cliente' }}"
         back-href="{{ route('accounting.invoices.index') }}"
         back-label="Volver a facturas"
     >
@@ -75,8 +75,8 @@
             @if($invoice->agency)
             <span class="mb-pill">{{ $invoice->agency->code }} · {{ $invoice->agency->name }}</span>
             @endif
-            @if($invoice->deliveryNote)
-            <span class="mb-pill">Hoja {{ $invoice->deliveryNote->code }}</span>
+            @if($invoice->noteCodesLabel() !== '—')
+            <span class="mb-pill">Hoja {{ $invoice->noteCodesLabel() }}</span>
             @endif
             @if($due)
             <span class="mb-pill {{ $invoice->arStatus() === 'overdue' ? 'mb-pill--warn' : '' }}">Vence {{ $due->format('d/m/Y') }}</span>
@@ -202,7 +202,16 @@
                     <div>
                         <dt>Hoja de salida</dt>
                         <dd>
-                            @if($invoice->deliveryNote && $noteHref)
+                            @if($invoice->deliveryNotes->isNotEmpty())
+                                @foreach($invoice->deliveryNotes as $linkedNote)
+                                    @php
+                                        $linkedHref = $isAdmin
+                                            ? route('salidas.hojas.edit', $linkedNote)
+                                            : route('salidas.print-report', ['delivery_note_id' => $linkedNote->id]);
+                                    @endphp
+                                    <a href="{{ $linkedHref }}" @unless($isAdmin) target="_blank" @endunless class="inv-inline-link">{{ $linkedNote->code }}</a>@if(! $loop->last), @endif
+                                @endforeach
+                            @elseif($invoice->deliveryNote && $noteHref)
                             <a href="{{ $noteHref }}" @unless($isAdmin) target="_blank" @endunless class="inv-inline-link">{{ $invoice->deliveryNote->code }}</a>
                             @else
                             —

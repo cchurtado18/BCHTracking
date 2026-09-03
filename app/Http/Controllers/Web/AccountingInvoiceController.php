@@ -27,7 +27,7 @@ class AccountingInvoiceController extends Controller
     private function ensureCanBrowseInvoices(): ?\Illuminate\Http\RedirectResponse
     {
         $user = auth()->user();
-        if (! $user || (! $user->is_admin && ! $user->isAgencyUser())) {
+        if (! $user || (! $user->is_admin && ! $user->isAgencyUser()) || $user->isPackagesOnlyPortal()) {
             return redirect()->route('packages.index');
         }
 
@@ -56,6 +56,7 @@ class AccountingInvoiceController extends Controller
             'agency:id,name,code,billing_email',
             'agency.users:id,agency_id,email',
             'deliveryNote:id,code',
+            'deliveryNotes:id,code',
             'lines:id,accounting_invoice_id,service_type',
         ])
             ->withCount('lines')
@@ -90,7 +91,7 @@ class AccountingInvoiceController extends Controller
             return $redirect;
         }
 
-        $invoice->load(['lines', 'agency.users', 'deliveryNote', 'createdBy', 'voidedBy']);
+        $invoice->load(['lines', 'agency.users', 'deliveryNote', 'deliveryNotes', 'createdBy', 'voidedBy']);
 
         return view('accounting.invoices.show', [
             'invoice' => $invoice,
@@ -104,7 +105,7 @@ class AccountingInvoiceController extends Controller
             return $redirect;
         }
 
-        $invoice->load(['lines', 'agency', 'deliveryNote', 'createdBy']);
+        $invoice->load(['lines', 'agency', 'deliveryNote', 'deliveryNotes', 'createdBy']);
 
         return view('accounting.invoices.voucher', [
             'invoice' => $invoice,
@@ -124,7 +125,7 @@ class AccountingInvoiceController extends Controller
                 ->with('error', 'No se puede descargar el voucher de una factura anulada.');
         }
 
-        $invoice->load(['lines', 'agency', 'deliveryNote', 'createdBy']);
+        $invoice->load(['lines', 'agency', 'deliveryNote', 'deliveryNotes', 'createdBy']);
 
         $pdf = Pdf::loadView('accounting.invoices.voucher-pdf', [
             'invoice' => $invoice,
@@ -142,7 +143,7 @@ class AccountingInvoiceController extends Controller
             abort(410, 'Esta factura fue anulada.');
         }
 
-        $invoice->load(['lines', 'agency', 'deliveryNote', 'createdBy']);
+        $invoice->load(['lines', 'agency', 'deliveryNote', 'deliveryNotes', 'createdBy']);
 
         return view('accounting.invoices.voucher', [
             'invoice' => $invoice,
@@ -156,7 +157,7 @@ class AccountingInvoiceController extends Controller
             return redirect()->back()->with('error', 'No se puede enviar una factura anulada.');
         }
 
-        $invoice->load(['agency.users', 'deliveryNote', 'lines']);
+        $invoice->load(['agency.users', 'deliveryNote', 'deliveryNotes', 'lines']);
         $email = $invoice->agency?->billingEmail();
         if (! $email) {
             return redirect()->back()->with(
@@ -190,10 +191,10 @@ class AccountingInvoiceController extends Controller
     public function create()
     {
         $notes = DeliveryNote::query()
-            ->with(['agency'])
+            ->with(['agency.parent.parent.parent', 'deliveries.preregistration:id,agency_id'])
             ->withCount('deliveries')
             ->whereHas('deliveries')
-            ->whereDoesntHave('accountingInvoices', fn ($q) => $q->where('status', '!=', 'void'))
+            ->withoutActiveInvoice()
             ->orderByDesc('id')
             ->limit(200)
             ->get();
@@ -203,14 +204,26 @@ class AccountingInvoiceController extends Controller
 
     public function startCreate(Request $request)
     {
+        if ($request->filled('delivery_note_id') && ! $request->filled('delivery_note_ids')) {
+            $request->merge(['delivery_note_ids' => [(int) $request->input('delivery_note_id')]]);
+        }
+
         $data = $request->validate([
-            'delivery_note_id' => 'required|exists:delivery_notes,id',
+            'delivery_note_ids' => 'required|array|min:1',
+            'delivery_note_ids.*' => 'integer|exists:delivery_notes,id',
         ], [
-            'delivery_note_id.required' => 'Seleccione una hoja de salida.',
-            'delivery_note_id.exists' => 'La hoja de salida no es válida.',
+            'delivery_note_ids.required' => 'Seleccione al menos una hoja de salida.',
+            'delivery_note_ids.min' => 'Seleccione al menos una hoja de salida.',
         ]);
 
-        return redirect()->route('accounting.invoices.create-from-note', $data['delivery_note_id']);
+        $ids = collect($data['delivery_note_ids'])->map(fn ($id) => (int) $id)->unique()->values();
+        $primary = $ids->first();
+        $extra = $ids->slice(1)->values()->all();
+
+        return redirect()->route('accounting.invoices.create-from-note', array_filter([
+            'deliveryNote' => $primary,
+            'notes' => $extra ?: null,
+        ]));
     }
 
     public function void(Request $request, AccountingInvoice $invoice)
@@ -306,12 +319,12 @@ class AccountingInvoiceController extends Controller
             ->with('success', 'Factura '.$folio.' eliminada.');
     }
 
-    public function createFromNote(DeliveryNote $deliveryNote, InvoiceFromDeliveryNoteService $service)
+    public function createFromNote(Request $request, DeliveryNote $deliveryNote, InvoiceFromDeliveryNoteService $service)
     {
-        $deliveryNote->load(['deliveries.preregistration', 'agency']);
+        $deliveryNote->load(['deliveries.preregistration', 'agency.parent.parent.parent']);
 
         $active = AccountingInvoice::query()
-            ->where('delivery_note_id', $deliveryNote->id)
+            ->coveringNote((int) $deliveryNote->id)
             ->where('status', '!=', 'void')
             ->first();
 
@@ -321,8 +334,10 @@ class AccountingInvoiceController extends Controller
                 ->with('success', 'Ya existe la factura '.$active->folio.' para esta hoja de salida.');
         }
 
+        $selectedNotes = $this->selectedNotesForInvoice($request, $deliveryNote);
+
         try {
-            $preview = $service->preview($deliveryNote);
+            $preview = $service->previewNotes($selectedNotes);
         } catch (InvalidArgumentException $e) {
             return redirect()
                 ->route('accounting.invoices.create')
@@ -336,15 +351,19 @@ class AccountingInvoiceController extends Controller
             'CFT' => AccountingRateCard::currentFor($agencyId, 'CFT')?->price_per_lb,
         ];
 
-        $agency = $deliveryNote->agency ?? Agency::find($agencyId);
+        $agency = Agency::with('parent')->find($agencyId) ?? $deliveryNote->agency;
         $creditBalance = round((float) ($agency?->credit_balance_usd ?? 0), 2);
+        $compatibleNotes = $this->compatibleUninvoicedNotes($deliveryNote, $selectedNotes);
 
         return view('accounting.invoices.create-from-note', [
             'deliveryNote' => $deliveryNote,
+            'selectedNotes' => $selectedNotes,
+            'compatibleNotes' => $compatibleNotes,
             'preview' => $preview,
             'suggestedRates' => $suggestedRates,
             'exchangeRate' => (float) \App\Models\AccountingSetting::current()->exchange_rate,
             'creditBalance' => $creditBalance,
+            'deliveryFee' => old('delivery_fee', 0),
         ]);
     }
 
@@ -355,6 +374,9 @@ class AccountingInvoiceController extends Controller
             'rate_sea' => 'nullable|numeric|min:0',
             'rate_cft' => 'nullable|numeric|min:0',
             'exchange_rate' => 'required|numeric|min:0.0001',
+            'delivery_fee' => 'nullable|numeric|min:0',
+            'delivery_note_ids' => 'nullable|array',
+            'delivery_note_ids.*' => 'integer|exists:delivery_notes,id',
             'persist_rates' => 'sometimes|boolean',
             'apply_credit' => 'sometimes|boolean',
             'apply_credit_amount' => 'nullable|numeric|min:0',
@@ -371,13 +393,20 @@ class AccountingInvoiceController extends Controller
             $overrides['CFT'] = (float) $data['rate_cft'];
         }
 
+        $extraNotes = $this->selectedNotesForInvoice($request, $deliveryNote)
+            ->reject(fn (DeliveryNote $n) => (int) $n->id === (int) $deliveryNote->id)
+            ->values();
+        $deliveryFee = (float) ($data['delivery_fee'] ?? 0);
+
         try {
-            $invoice = DB::transaction(function () use ($service, $deliveryNote, $request, $overrides, $data) {
+            $invoice = DB::transaction(function () use ($service, $deliveryNote, $request, $overrides, $data, $deliveryFee, $extraNotes) {
                 $created = $service->create(
                     $deliveryNote,
                     $request->user(),
                     $overrides,
-                    (float) $data['exchange_rate']
+                    (float) $data['exchange_rate'],
+                    $deliveryFee,
+                    $extraNotes
                 );
 
                 if ($request->boolean('apply_credit')) {
@@ -464,8 +493,64 @@ class AccountingInvoiceController extends Controller
             $query->where(function ($q) use ($s) {
                 $q->where('folio', 'like', "%{$s}%")
                     ->orWhereHas('deliveryNote', fn ($dq) => $dq->where('code', 'like', "%{$s}%"))
+                    ->orWhereHas('deliveryNotes', fn ($dq) => $dq->where('code', 'like', "%{$s}%"))
                     ->orWhereHas('agency', fn ($aq) => $aq->where('name', 'like', "%{$s}%"));
             });
         }
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, DeliveryNote>
+     */
+    private function selectedNotesForInvoice(Request $request, DeliveryNote $primary): \Illuminate\Support\Collection
+    {
+        $ids = collect($request->input('delivery_note_ids', $request->query('notes', [])))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $ids->prepend((int) $primary->id);
+        $ids = $ids->unique()->values();
+
+        $notes = DeliveryNote::query()
+            ->whereIn('id', $ids->all())
+            ->with(['deliveries.preregistration', 'agency.parent.parent.parent'])
+            ->get()
+            ->sortBy(fn (DeliveryNote $n) => $ids->search((int) $n->id))
+            ->values();
+
+        if (! $notes->contains(fn (DeliveryNote $n) => (int) $n->id === (int) $primary->id)) {
+            $notes->prepend($primary);
+        }
+
+        return $notes;
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, DeliveryNote>  $alreadySelected
+     * @return \Illuminate\Support\Collection<int, DeliveryNote>
+     */
+    private function compatibleUninvoicedNotes(DeliveryNote $primary, $alreadySelected)
+    {
+        $family = $primary->invoiceFamilyIds();
+        if ($family === []) {
+            $family = array_filter([(int) $primary->agency_id]);
+        }
+        $selectedIds = $alreadySelected->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        return DeliveryNote::query()
+            ->with(['agency', 'deliveries.preregistration:id,agency_id'])
+            ->withCount('deliveries')
+            ->whereHas('deliveries')
+            ->withoutActiveInvoice()
+            ->where(function ($q) use ($family) {
+                $q->whereIn('agency_id', $family)
+                    ->orWhereHas('deliveries.preregistration', fn ($p) => $p->whereIn('agency_id', $family));
+            })
+            ->whereNotIn('id', $selectedIds)
+            ->orderByDesc('id')
+            ->limit(80)
+            ->get();
     }
 }

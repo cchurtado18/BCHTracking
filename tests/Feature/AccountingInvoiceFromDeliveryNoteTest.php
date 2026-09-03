@@ -647,4 +647,238 @@ class AccountingInvoiceFromDeliveryNoteTest extends TestCase
             ->assertOk()
             ->assertViewHas('invoices', fn ($invoices) => $invoices->total() === 0);
     }
+
+    public function test_delivery_fee_is_added_to_invoice_total_and_voucher(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        ['note' => $note] = $this->seedNoteWithPackages();
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.create-from-note', $note))
+            ->assertOk()
+            ->assertSee('Delivery (USD)');
+
+        $this->actingAs($admin)
+            ->post(route('accounting.invoices.store-from-note', $note), [
+                'rate_air' => 3.5,
+                'rate_sea' => 1.25,
+                'exchange_rate' => 36.5,
+                'delivery_fee' => 15,
+            ])
+            ->assertRedirect();
+
+        $invoice = AccountingInvoice::first();
+        $this->assertNotNull($invoice);
+        $this->assertEquals(15.0, (float) $invoice->delivery_fee_usd);
+        $this->assertEquals(82.0, (float) $invoice->total_usd);
+        $this->assertTrue($invoice->lines()->where('service_type', 'DELIVERY')->where('amount_usd', 15)->exists());
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.voucher', $invoice))
+            ->assertOk()
+            ->assertSee('Delivery')
+            ->assertSee('82.00');
+    }
+
+    public function test_can_invoice_multiple_notes_from_same_agency_family(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        $parent = Agency::create([
+            'name' => 'Norte Express',
+            'code' => 'N200',
+            'phone' => '2222-2000',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+        ]);
+        $child = Agency::create([
+            'name' => 'Norte León',
+            'code' => 'N201',
+            'phone' => '2222-2001',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'parent_agency_id' => $parent->id,
+        ]);
+        $grand = Agency::create([
+            'name' => 'Norte León Centro',
+            'code' => 'N202',
+            'phone' => '2222-2002',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'parent_agency_id' => $child->id,
+        ]);
+
+        $noteParent = $this->seedSimpleNote($parent, 'SLO-9601', '960101', 10);
+        $noteGrand = $this->seedSimpleNote($grand, 'SLO-9602', '960102', 8);
+
+        $this->actingAs($admin)
+            ->post(route('accounting.invoices.start-create'), [
+                'delivery_note_ids' => [$noteParent->id, $noteGrand->id],
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($admin)
+            ->post(route('accounting.invoices.store-from-note', $noteParent), [
+                'rate_air' => 2,
+                'exchange_rate' => 36.5,
+                'delivery_fee' => 5,
+                'delivery_note_ids' => [$noteParent->id, $noteGrand->id],
+            ])
+            ->assertRedirect();
+
+        $invoice = AccountingInvoice::first();
+        $this->assertNotNull($invoice);
+        $this->assertEquals($parent->id, (int) $invoice->agency_id);
+        $this->assertEquals(41.0, (float) $invoice->total_usd);
+        $this->assertEquals(5.0, (float) $invoice->delivery_fee_usd);
+        $this->assertEqualsCanonicalizing(
+            [$noteParent->id, $noteGrand->id],
+            $invoice->deliveryNotes()->pluck('delivery_notes.id')->all()
+        );
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.voucher', $invoice))
+            ->assertOk()
+            ->assertSee('SLO-9601')
+            ->assertSee('SLO-9602');
+
+        $this->actingAs($admin)
+            ->post(route('accounting.invoices.store-from-note', $noteGrand), [
+                'rate_air' => 2,
+                'exchange_rate' => 36.5,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+    }
+
+    public function test_slo_direct_client_is_the_bill_to_on_invoice(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        $slo = Agency::query()->where('code', '0001')->first()
+            ?? Agency::query()->where('name', 'SkyLink One')->first()
+            ?? Agency::create([
+                'name' => 'SkyLink One',
+                'code' => '0001',
+                'is_active' => true,
+                'is_main' => true,
+                'account_type' => Agency::TYPE_ROOT,
+            ]);
+        $client = Agency::create([
+            'name' => 'Cliente Factura SLO',
+            'code' => '0883',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_DIRECT_CLIENT,
+            'parent_agency_id' => $slo->id,
+        ]);
+        $note = DeliveryNote::create([
+            'code' => 'SLO-9801',
+            'agency_id' => $slo->id,
+        ]);
+        $pkg = Preregistration::create([
+            'intake_type' => 'COURIER',
+            'tracking_external' => 'TRK-SLO-INV-1',
+            'warehouse_code' => '883001',
+            'label_name' => 'Destinatario',
+            'service_type' => 'AIR',
+            'intake_weight_lbs' => 10,
+            'verified_weight_lbs' => 10,
+            'status' => 'DELIVERED',
+            'agency_id' => $client->id,
+            'ready_at' => now()->subDay(),
+            'delivered_at' => now(),
+        ]);
+        Delivery::create([
+            'delivery_note_id' => $note->id,
+            'preregistration_id' => $pkg->id,
+            'delivered_at' => now(),
+            'delivered_to' => 'Retira',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.create-from-note', $note))
+            ->assertOk()
+            ->assertSee('Cliente Factura SLO')
+            ->assertDontSee('>SkyLink One</strong>', false);
+
+        $this->actingAs($admin)
+            ->post(route('accounting.invoices.store-from-note', $note), [
+                'rate_air' => 2,
+                'exchange_rate' => 36.5,
+            ])
+            ->assertRedirect();
+
+        $invoice = AccountingInvoice::first();
+        $this->assertNotNull($invoice);
+        $this->assertSame($client->id, (int) $invoice->agency_id);
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.voucher', $invoice))
+            ->assertOk()
+            ->assertSee('Cliente Factura SLO')
+            ->assertSee('0883');
+    }
+
+    public function test_cannot_invoice_notes_from_different_agency_families(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        $one = Agency::create([
+            'name' => 'Agencia Uno',
+            'code' => 'D301',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+        ]);
+        $two = Agency::create([
+            'name' => 'Agencia Dos',
+            'code' => 'D302',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+        ]);
+        $noteOne = $this->seedSimpleNote($one, 'SLO-9701', '970101', 4);
+        $noteTwo = $this->seedSimpleNote($two, 'SLO-9702', '970102', 4);
+
+        $this->actingAs($admin)
+            ->post(route('accounting.invoices.store-from-note', $noteOne), [
+                'rate_air' => 2,
+                'exchange_rate' => 36.5,
+                'delivery_note_ids' => [$noteOne->id, $noteTwo->id],
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $this->assertSame(0, AccountingInvoice::count());
+    }
+
+    private function seedSimpleNote(Agency $agency, string $code, string $warehouse, float $lbs): DeliveryNote
+    {
+        $note = DeliveryNote::create([
+            'code' => $code,
+            'agency_id' => $agency->id,
+        ]);
+        $pkg = Preregistration::create([
+            'intake_type' => 'COURIER',
+            'tracking_external' => 'TRK-'.$warehouse,
+            'warehouse_code' => $warehouse,
+            'label_name' => 'Cliente '.$code,
+            'service_type' => 'AIR',
+            'intake_weight_lbs' => $lbs,
+            'verified_weight_lbs' => $lbs,
+            'status' => 'DELIVERED',
+            'agency_id' => $agency->id,
+            'ready_at' => now()->subDay(),
+            'delivered_at' => now(),
+        ]);
+        Delivery::create([
+            'delivery_note_id' => $note->id,
+            'preregistration_id' => $pkg->id,
+            'delivered_at' => now(),
+            'delivered_to' => 'Retira',
+        ]);
+
+        return $note->fresh(['deliveries.preregistration', 'agency']);
+    }
 }

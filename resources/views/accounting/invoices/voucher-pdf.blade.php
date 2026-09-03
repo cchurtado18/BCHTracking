@@ -67,8 +67,8 @@
     <tr><td class="label">OC#</td><td>{{ $invoice->folio }}</td></tr>
     <tr><td class="label">FECHA</td><td>{{ optional($invoice->issued_at)->format('d/m/Y') ?? '—' }}</td></tr>
     <tr><td class="label">REG.POR</td><td>{{ $invoice->createdBy?->name ?? '—' }}</td></tr>
-    @if($note)
-    <tr><td class="label">HOJA</td><td>{{ $note->code }}</td></tr>
+    @if($invoice->noteCodesLabel() !== '—')
+    <tr><td class="label">HOJA</td><td>{{ $invoice->noteCodesLabel() }}</td></tr>
     @endif
 </table>
 

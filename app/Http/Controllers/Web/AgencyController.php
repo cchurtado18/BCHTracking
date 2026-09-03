@@ -152,7 +152,7 @@ class AgencyController extends Controller
         $data['account_type'] = $accountType;
         $data['billing_email'] = trim((string) $request->user_email);
 
-        if ($request->hasFile('logo')) {
+        if ($accountType !== Agency::TYPE_DIRECT_CLIENT && $request->hasFile('logo')) {
             try {
                 $data['logo_path'] = $request->file('logo')->store('agencies/logos', 'public');
             } catch (\Throwable $e) {
@@ -257,25 +257,29 @@ class AgencyController extends Controller
             'billing_contact_phone' => 'nullable|string|max:40',
             'billing_email' => 'nullable|email|max:255',
         ], [
-            'name.required' => 'El nombre de la subagencia es obligatorio.',
-            'name.unique' => 'Ya existe otra subagencia con ese nombre. Elija otro nombre.',
+            'name.required' => $agency->isDirectClient() ? 'El nombre del cliente es obligatorio.' : 'El nombre de la subagencia es obligatorio.',
+            'name.unique' => $agency->isDirectClient()
+                ? 'Ya existe otra cuenta con ese nombre. Elija otro nombre.'
+                : 'Ya existe otra subagencia con ese nombre. Elija otro nombre.',
         ]);
         $data = $request->only(['name', 'phone', 'address', 'department', 'credit_limit_usd', 'credit_days', 'tax_id', 'billing_contact_name', 'billing_contact_phone', 'billing_email']);
-        if ($request->boolean('remove_logo') && $agency->logo_path) {
-            Storage::disk('public')->delete($agency->logo_path);
-            $data['logo_path'] = null;
-        } elseif ($request->hasFile('logo')) {
-            if ($agency->logo_path) {
+        if (! $agency->isDirectClient()) {
+            if ($request->boolean('remove_logo') && $agency->logo_path) {
                 Storage::disk('public')->delete($agency->logo_path);
+                $data['logo_path'] = null;
+            } elseif ($request->hasFile('logo')) {
+                if ($agency->logo_path) {
+                    Storage::disk('public')->delete($agency->logo_path);
+                }
+                $data['logo_path'] = $request->file('logo')->store('agencies/logos', 'public');
             }
-            $data['logo_path'] = $request->file('logo')->store('agencies/logos', 'public');
         }
         if ($request->has('is_active')) {
             $data['is_active'] = (bool) $request->is_active;
         }
         $agency->update($data);
 
-        return redirect()->route('agencies.show', $agency->id)->with('success', 'Agencia actualizada.');
+        return redirect()->route('agencies.show', $agency->id)->with('success', $agency->isDirectClient() ? 'Cliente actualizado.' : 'Subagencia actualizada.');
     }
 
     public function toggle(string $id)
@@ -284,6 +288,112 @@ class AgencyController extends Controller
         $agency->update(['is_active' => ! $agency->is_active]);
 
         return back()->with('success', $agency->is_active ? 'Agencia activada.' : 'Agencia desactivada.');
+    }
+
+    public function createAccess(Agency $agency)
+    {
+        if ($agency->users()->exists()) {
+            $user = $agency->users()->orderBy('id')->first();
+
+            return redirect()->route('agencies.users.edit', [$agency, $user]);
+        }
+
+        return view('agencies.edit-access', [
+            'agency' => $agency,
+            'accessUser' => null,
+        ]);
+    }
+
+    public function storeAccess(Request $request, Agency $agency)
+    {
+        if ($agency->users()->exists()) {
+            return redirect()->route('agencies.show', $agency)
+                ->with('error', 'Esta cuenta ya tiene un acceso. Edítelo desde la ficha.');
+        }
+
+        $request->merge([
+            'name' => trim((string) $request->input('name', '')),
+            'email' => mb_strtolower(trim((string) $request->input('email', ''))),
+        ]);
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => ['required', 'confirmed', Password::defaults()],
+        ], [
+            'name.required' => 'El nombre de acceso es obligatorio.',
+            'email.required' => 'El correo de acceso es obligatorio.',
+            'email.unique' => $this->userEmailTakenMessage((string) $request->input('email')),
+            'password.required' => 'La contraseña es obligatoria.',
+            'password.confirmed' => 'La confirmación de contraseña no coincide.',
+        ]);
+
+        User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => $request->password,
+            'agency_id' => $agency->id,
+            'is_admin' => false,
+        ]);
+
+        if (! $agency->billing_email) {
+            $agency->update(['billing_email' => $request->email]);
+        }
+
+        return redirect()->route('agencies.show', $agency)
+            ->with('success', 'Acceso creado. El cliente ya puede entrar con ese correo y contraseña.');
+    }
+
+    public function editAccess(Agency $agency, User $user)
+    {
+        $this->ensureAgencyAccessUser($agency, $user);
+
+        return view('agencies.edit-access', [
+            'agency' => $agency,
+            'accessUser' => $user,
+        ]);
+    }
+
+    public function updateAccess(Request $request, Agency $agency, User $user)
+    {
+        $this->ensureAgencyAccessUser($agency, $user);
+
+        $request->merge([
+            'name' => trim((string) $request->input('name', '')),
+            'email' => mb_strtolower(trim((string) $request->input('email', ''))),
+        ]);
+
+        $rules = [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,'.$user->id,
+        ];
+        if ($request->filled('password')) {
+            $rules['password'] = ['confirmed', Password::defaults()];
+        }
+
+        $request->validate($rules, [
+            'name.required' => 'El nombre de acceso es obligatorio.',
+            'email.required' => 'El correo de acceso es obligatorio.',
+            'email.unique' => $this->userEmailTakenMessage((string) $request->input('email')),
+            'password.confirmed' => 'La confirmación de contraseña no coincide.',
+        ]);
+
+        $oldEmail = (string) $user->email;
+        $user->fill([
+            'name' => $request->name,
+            'email' => $request->email,
+            'is_admin' => false,
+        ]);
+        if ($request->filled('password')) {
+            $user->password = $request->password;
+        }
+        $user->save();
+
+        if ($agency->billing_email && strcasecmp((string) $agency->billing_email, $oldEmail) === 0) {
+            $agency->update(['billing_email' => $request->email]);
+        }
+
+        return redirect()->route('agencies.show', $agency)
+            ->with('success', 'Acceso del cliente actualizado.');
     }
 
     /**
@@ -304,7 +414,9 @@ class AgencyController extends Controller
         $userModel->update(['password' => Hash::make($request->password)]);
 
         return redirect()->route('agencies.show', $agencyModel->id)
-            ->with('success', 'Contraseña actualizada. La subagencia ya puede iniciar sesión con la nueva contraseña.');
+            ->with('success', $agencyModel->isDirectClient()
+                ? 'Contraseña actualizada. El cliente ya puede iniciar sesión con la nueva contraseña.'
+                : 'Contraseña actualizada. La subagencia ya puede iniciar sesión con la nueva contraseña.');
     }
 
     public function destroy(string $id)
@@ -319,7 +431,7 @@ class AgencyController extends Controller
         $packagesCount = Preregistration::where('agency_id', $agency->id)->count();
         if ($packagesCount > 0) {
             return redirect()->route('agencies.index')
-                ->with('error', "No se puede eliminar la agencia: tiene {$packagesCount} paquete(s) asignado(s). Reasigne o elimine los paquetes antes.");
+                ->with('error', 'No se puede eliminar la cuenta: tiene '.$packagesCount.' paquete(s) asignado(s). Reasigne o elimine los paquetes antes.');
         }
 
         $invoicesCount = $agency->accountingInvoices()->count();
@@ -339,6 +451,13 @@ class AgencyController extends Controller
         });
 
         return redirect()->route('agencies.index')->with('success', 'Cuenta eliminada.');
+    }
+
+    private function ensureAgencyAccessUser(Agency $agency, User $user): void
+    {
+        if ((int) $user->agency_id !== (int) $agency->id) {
+            abort(404);
+        }
     }
 
     private function userEmailTakenMessage(string $email): string

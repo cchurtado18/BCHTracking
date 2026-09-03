@@ -12,7 +12,7 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $query = User::query()->orderBy('name');
+        $query = User::query()->whereNull('agency_id')->orderBy('name');
 
         if ($request->filled('search')) {
             $s = $request->search;
@@ -24,7 +24,7 @@ class UserController extends Controller
 
         $users = $query->paginate(15)->withQueryString();
 
-        $statsQuery = User::query();
+        $statsQuery = User::query()->whereNull('agency_id');
         if ($request->filled('search')) {
             $s = $request->search;
             $statsQuery->where(function ($q) use ($s) {
@@ -70,11 +70,18 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
+        if ($user->isAgencyUser()) {
+            return redirect()->route('agencies.users.edit', [$user->agency_id, $user]);
+        }
+
         return view('users.edit', compact('user'));
     }
 
     public function update(Request $request, User $user)
     {
+        if ($user->isAgencyUser()) {
+            return redirect()->route('agencies.users.edit', [$user->agency_id, $user]);
+        }
         $rules = [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
@@ -104,6 +111,10 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
+        if ($user->isAgencyUser()) {
+            return redirect()->route('users.index')->with('error', 'El acceso de un cliente se gestiona desde su ficha, no desde Usuarios.');
+        }
+
         if ($user->id === auth()->id()) {
             return redirect()->route('users.index')->with('error', 'No puedes eliminar tu propio usuario.');
         }

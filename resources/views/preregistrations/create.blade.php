@@ -155,7 +155,7 @@
                 </div>
                 <div class="preregs-create-grid preregs-create-grid--root">
                 <div class="preregs-field preregs-field--full">
-                    <label for="agency_combobox" class="preregs-field-label">Cuenta (subagencia o SkyLink One) <span class="preregs-req">*</span></label>
+                    <label for="agency_combobox" class="preregs-field-label">Subagencia o SkyLink One <span class="preregs-req">*</span></label>
                     @if($partnerAgencies->isEmpty())
                     <p class="preregs-inline-warn">No hay cuentas activas. <a href="{{ route('agencies.create') }}">Crear cliente</a> antes de registrar un preregistro.</p>
                     @else
@@ -165,7 +165,7 @@
                         $oldIsSloClient = $oldAssigned && $oldAssigned->isDirectClient();
                     @endphp
                     <div id="agency_combobox_wrap" class="preregs-combo-wrap">
-                        <input type="text" id="agency_combobox" class="preregs-input" placeholder="Buscar por nombre o código…" autocomplete="off">
+                        <input type="text" id="agency_combobox" class="preregs-input" placeholder="Escriba para buscar o baje la lista…" autocomplete="off">
                         <input type="hidden" name="partner_agency_id" id="partner_agency_id" value="">
                         <input type="hidden" name="agency_id" id="agency_id" value="{{ old('agency_id') }}" required>
                         <div id="agency_dropdown" class="preregs-combo-dropdown" style="display: none;"></div>
@@ -180,13 +180,11 @@
                 </div>
 
                 <div class="preregs-field" id="slo_client_wrap" style="display: none;">
-                    <label for="slo_client_id" class="preregs-field-label">Cliente de SkyLink One <span class="preregs-req">*</span></label>
-                    <select id="slo_client_id" class="preregs-input preregs-select">
-                        <option value="">— Seleccione el cliente SLO —</option>
-                        @foreach($sloClients ?? [] as $client)
-                        <option value="{{ $client->id }}" @selected((string) old('agency_id') === (string) $client->id)>{{ $client->code }} - {{ $client->name }}</option>
-                        @endforeach
-                    </select>
+                    <label for="slo_client_combobox" class="preregs-field-label">Cliente de SkyLink One <span class="preregs-req">*</span></label>
+                    <div id="slo_combobox_wrap" class="preregs-combo-wrap">
+                        <input type="text" id="slo_client_combobox" class="preregs-input" placeholder="Escriba para buscar el cliente…" autocomplete="off">
+                        <div id="slo_client_dropdown" class="preregs-combo-dropdown" role="listbox"></div>
+                    </div>
                     <p class="preregs-hint">El paquete se asigna a este cliente para control y facturación.</p>
                     @if(($sloClients ?? collect())->isEmpty())
                     <p class="preregs-inline-warn">SLO no tiene clientes propios. <a href="{{ route('agencies.create') }}">Crear cliente SLO</a>.</p>
@@ -751,15 +749,15 @@
     overflow-y: auto;
     z-index: 100;
 }
-#agency_dropdown .agency-combo-item {
+.preregs-combo-dropdown .agency-combo-item {
     padding: 0.72rem 0.95rem;
     cursor: pointer;
     font-size: 0.9rem;
     border-bottom: 1px solid #f1f5f9;
     color: #334155;
 }
-#agency_dropdown .agency-combo-item:last-child { border-bottom: none; }
-#agency_dropdown .agency-combo-item:hover { background: var(--pt-soft); color: var(--pt-navy); }
+.preregs-combo-dropdown .agency-combo-item:last-child { border-bottom: none; }
+.preregs-combo-dropdown .agency-combo-item:hover { background: var(--pt-soft); color: var(--pt-navy); }
 .preregs-combo-empty { padding: 0.7rem 0.95rem; font-size: 0.875rem; color: #64748b; }
 .preregs-create-grid--bulto3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .preregs-cubic-line { margin: 0.45rem 0 0; font-size: 0.8125rem; color: var(--pt-navy); }
@@ -1457,91 +1455,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (el) el.addEventListener('change', updatePreview);
     });
 
-    // Combobox agencia: un solo campo para buscar y elegir
-    (function() {
-        var dataEl = document.getElementById('agencies-data');
-        var combo = document.getElementById('agency_combobox');
-        var hidden = document.getElementById('agency_id');
-        var partnerHidden = document.getElementById('partner_agency_id');
-        var dropdown = document.getElementById('agency_dropdown');
-        var sloWrap = document.getElementById('slo_client_wrap');
-        var sloSelect = document.getElementById('slo_client_id');
-        if (!combo || !hidden || !dropdown) return;
-        var agencies = dataEl ? JSON.parse(dataEl.textContent || '[]') : [];
-        function findAgency(id) {
-            id = String(id);
-            for (var i = 0; i < agencies.length; i++) {
-                if (String(agencies[i].id) === id) return agencies[i];
-            }
-            return null;
-        }
-        function renderList(filter) {
-            var q = (filter || '').trim().toLowerCase();
-            var list = agencies.filter(function(a) {
-                return !q || (a.name || '').toLowerCase().indexOf(q) !== -1 || (a.code || '').toLowerCase().indexOf(q) !== -1;
-            });
-            dropdown.innerHTML = list.length ? list.map(function(a) {
-                var label = (a.code || '') + ' - ' + (a.name || '');
-                return '<div class="agency-combo-item" data-id="' + a.id + '" data-slo="' + (a.is_slo ? '1' : '0') + '" data-label="' + label.replace(/"/g, '&quot;') + '">' + label + '</div>';
-            }).join('') : '<div class="preregs-combo-empty">No hay coincidencias</div>';
-            dropdown.style.display = 'block';
-        }
-        function selectAgency(id, label, isSlo) {
-            if (partnerHidden) partnerHidden.value = id;
-            combo.value = label;
-            dropdown.style.display = 'none';
-            if (isSlo) {
-                if (sloWrap) sloWrap.style.display = '';
-                var clientVal = sloSelect ? sloSelect.value : '';
-                hidden.value = clientVal || '';
-            } else {
-                if (sloWrap) sloWrap.style.display = 'none';
-                if (sloSelect) sloSelect.value = '';
-                hidden.value = id;
-            }
-            if (typeof updatePreview === 'function') updatePreview();
-        }
-        combo.addEventListener('focus', function() {
-            renderList(combo.value);
-        });
-        combo.addEventListener('input', function() {
-            hidden.value = '';
-            if (partnerHidden) partnerHidden.value = '';
-            if (sloWrap) sloWrap.style.display = 'none';
-            renderList(this.value);
-        });
-        combo.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') { dropdown.style.display = 'none'; this.blur(); }
-        });
-        dropdown.addEventListener('click', function(e) {
-            var item = e.target.closest('.agency-combo-item');
-            if (item) selectAgency(item.getAttribute('data-id'), item.getAttribute('data-label'), item.getAttribute('data-slo') === '1');
-        });
-        if (sloSelect) {
-            sloSelect.addEventListener('change', function() {
-                hidden.value = this.value || '';
-                if (typeof updatePreview === 'function') updatePreview();
-            });
-        }
-        document.addEventListener('click', function(e) {
-            if (dropdown.style.display === 'block' && !e.target.closest('#agency_combobox_wrap')) dropdown.style.display = 'none';
-        });
-        var initialId = hidden.value;
-        if (initialId) {
-            var asPartner = findAgency(initialId);
-            if (asPartner) {
-                selectAgency(asPartner.id, (asPartner.code || '') + ' - ' + (asPartner.name || ''), !!asPartner.is_slo);
-            } else if (sloSelect) {
-                var sloPartner = agencies.filter(function(a) { return a.is_slo; })[0];
-                if (sloPartner) {
-                    selectAgency(sloPartner.id, (sloPartner.code || '') + ' - ' + (sloPartner.name || ''), true);
-                    sloSelect.value = initialId;
-                    hidden.value = initialId;
-                }
-            }
-        }
-    })();
-
     // Foto preview
     var photoInput = document.getElementById('photo');
     var preview = document.getElementById('photoPreview');
@@ -1580,5 +1493,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
+@include('preregistrations.partials.agency-slo-combos-script')
 @endpush
 @endsection

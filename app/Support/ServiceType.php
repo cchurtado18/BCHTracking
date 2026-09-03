@@ -12,6 +12,8 @@ class ServiceType
 
     public const CFT = 'CFT';
 
+    public const DELIVERY = 'DELIVERY';
+
     /** @var list<string> */
     public const ALL = [self::AIR, self::SEA, self::CFT];
 
@@ -103,6 +105,7 @@ class ServiceType
             self::AIR => 'Aéreo',
             self::SEA => 'Marítimo',
             self::CFT => 'Pie cúbico',
+            self::DELIVERY => 'Delivery',
             default => $value ?: '—',
         };
     }
@@ -123,12 +126,18 @@ class ServiceType
             self::AIR => 'Flete Aereo',
             self::SEA => 'Flete Maritimo',
             self::CFT => 'Flete Pie Cubico',
+            self::DELIVERY => 'Delivery',
             default => 'Flete',
         };
     }
 
     public static function unit(?string $value): string
     {
+        $key = strtoupper((string) $value);
+        if ($key === self::DELIVERY) {
+            return '';
+        }
+
         return self::isCft($value) ? 'pie³' : 'lb';
     }
 

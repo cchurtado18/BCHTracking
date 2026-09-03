@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -45,6 +47,85 @@ class DeliveryNote extends Model
     public function accountingInvoices(): HasMany
     {
         return $this->hasMany(AccountingInvoice::class);
+    }
+
+    public function linkedInvoices(): BelongsToMany
+    {
+        return $this->belongsToMany(AccountingInvoice::class, 'accounting_invoice_delivery_notes')
+            ->withTimestamps();
+    }
+
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeWithoutActiveInvoice(Builder $query): Builder
+    {
+        return $query
+            ->whereDoesntHave('accountingInvoices', fn ($q) => $q->where('status', '!=', 'void'))
+            ->whereDoesntHave('linkedInvoices', fn ($q) => $q->where('status', '!=', 'void'));
+    }
+
+    /**
+     * Cliente a facturar: si todos los paquetes son de una cuenta, esa; si no, la agencia de la hoja.
+     */
+    public function billingAgency(): ?Agency
+    {
+        $this->loadMissing(['deliveries.preregistration', 'agency']);
+        $packageIds = $this->deliveries
+            ->map(fn ($d) => $d->preregistration?->agency_id)
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $agencyId = $packageIds->count() === 1
+            ? (int) $packageIds->first()
+            : (int) $this->agency_id;
+
+        if (! $agencyId) {
+            return null;
+        }
+
+        if ($this->agency && (int) $this->agency->id === $agencyId) {
+            return $this->agency;
+        }
+
+        return Agency::query()->with('parent.parent.parent')->find($agencyId);
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function invoiceFamilyIds(): array
+    {
+        $agency = $this->billingAgency();
+        if (! $agency) {
+            return [];
+        }
+
+        $ids = $agency->invoiceFamilyIds();
+        sort($ids);
+
+        return $ids;
+    }
+
+    public function invoiceFamilyKey(): string
+    {
+        return implode(',', $this->invoiceFamilyIds());
+    }
+
+    public function currentInvoice(): ?AccountingInvoice
+    {
+        if ($this->accountingInvoice) {
+            return $this->accountingInvoice;
+        }
+
+        $linked = $this->relationLoaded('linkedInvoices')
+            ? $this->linkedInvoices
+            : $this->linkedInvoices()->where('status', '!=', 'void')->orderByDesc('accounting_invoices.id')->get();
+
+        return $linked->first(fn (AccountingInvoice $invoice) => $invoice->status !== 'void');
     }
 
     /**
