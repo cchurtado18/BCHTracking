@@ -206,6 +206,89 @@ class ClientPackageStatusMailTest extends TestCase
         Mail::assertNothingSent();
     }
 
+    public function test_nested_subagency_still_gets_received_in_miami_email(): void
+    {
+        Mail::fake();
+
+        $parent = Agency::create([
+            'name' => 'Padre Aviso',
+            'code' => 'AVP1',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'billing_email' => 'padre@aviso.test',
+        ]);
+        $nested = Agency::create([
+            'name' => 'Anidada Aviso',
+            'code' => 'AVN1',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'parent_agency_id' => $parent->id,
+            'billing_email' => 'anidada@aviso.test',
+        ]);
+
+        $this->actingAs($this->central())
+            ->post(route('preregistrations.store'), [
+                'intake_type' => 'COURIER',
+                'agency_id' => $nested->id,
+                'label_name' => 'Cliente Nested Miami',
+                'service_type' => 'AIR',
+                'intake_weight_lbs' => 4,
+                'tracking_external' => 'TRK-NEST-MIA',
+            ])
+            ->assertRedirect();
+
+        Mail::assertSent(PackageReceivedInMiami::class, function (PackageReceivedInMiami $mail) {
+            return $mail->hasTo('anidada@aviso.test') && ! $mail->hasTo('padre@aviso.test');
+        });
+        Mail::assertNotSent(PackageReadyForPickup::class);
+    }
+
+    public function test_nested_subagency_does_not_get_ready_for_pickup_email(): void
+    {
+        Mail::fake();
+
+        $parent = Agency::create([
+            'name' => 'Padre Ready',
+            'code' => 'AVP2',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'billing_email' => 'padre-ready@aviso.test',
+        ]);
+        $nested = Agency::create([
+            'name' => 'Anidada Ready',
+            'code' => 'AVN2',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'parent_agency_id' => $parent->id,
+            'billing_email' => 'anidada-ready@aviso.test',
+        ]);
+        $package = Preregistration::create([
+            'intake_type' => 'COURIER',
+            'tracking_external' => 'TRK-NEST-READY',
+            'warehouse_code' => '770404',
+            'label_name' => 'Cliente Nested Retiro',
+            'service_type' => 'AIR',
+            'intake_weight_lbs' => 6,
+            'status' => 'IN_WAREHOUSE_NIC',
+            'received_nic_at' => now()->subHour(),
+            'agency_id' => $nested->id,
+        ]);
+
+        $this->actingAs($this->central())
+            ->post(route('packages.process.store', $package->id), [
+                'verified_weight_lbs' => 6.2,
+            ])
+            ->assertRedirect(route('packages.show', $package->id));
+
+        Mail::assertNothingSent();
+        $this->assertSame('READY', $package->fresh()->status);
+        $this->assertNull($package->fresh()->ready_notified_at);
+    }
+
     public function test_miami_receipt_still_saves_if_mail_fails(): void
     {
         Mail::shouldReceive('to')->andThrow(new \RuntimeException('Resend down'));

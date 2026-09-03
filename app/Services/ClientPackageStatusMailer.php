@@ -17,6 +17,11 @@ class ClientPackageStatusMailer
 
     public function notifyReadyForPickup(Preregistration $package): void
     {
+        $package->loadMissing(['agency.parent.parent.parent']);
+        if ($package->agency?->isNestedUnderPartner()) {
+            return;
+        }
+
         $this->sendOnce($package, 'ready_notified_at', fn (Preregistration $p) => new PackageReadyForPickup($p));
     }
 

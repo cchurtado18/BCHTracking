@@ -4,7 +4,7 @@
 
 @section('content')
 @php
-    $sendEmail = $invoice->agency?->billingEmail();
+    $sendEmail = $invoice->agency?->invoiceEmail();
     $balance = $invoice->balanceUsd();
     $paid = (float) $invoice->amount_paid;
     $tz = (string) config('app.display_timezone', config('app.timezone'));

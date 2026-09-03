@@ -137,7 +137,7 @@
                     @forelse($invoices as $invoice)
                     @php
                         $services = $invoice->lines->pluck('service_type')->unique()->filter()->values();
-                        $email = $invoice->agency?->billingEmail();
+                        $email = $invoice->agency?->invoiceEmail();
                     @endphp
                     <tr>
                         <td><span class="inv-folio">{{ $invoice->folio }}</span></td>

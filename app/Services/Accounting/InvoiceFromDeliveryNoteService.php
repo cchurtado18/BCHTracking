@@ -290,27 +290,29 @@ class InvoiceFromDeliveryNoteService
      */
     private function resolveBillToAgencyId(Collection $notes): int
     {
-        $packageAgencies = $notes
+        $packageAgencyIds = $notes
             ->flatMap(fn (DeliveryNote $note) => $note->deliveries->map(fn ($d) => $d->preregistration?->agency_id))
             ->filter()
             ->map(fn ($id) => (int) $id)
             ->unique()
             ->values();
 
-        if ($packageAgencies->count() === 1) {
-            return (int) $packageAgencies->first();
+        $billToIds = Agency::query()
+            ->with('parent.parent.parent')
+            ->whereIn('id', $packageAgencyIds->all())
+            ->get()
+            ->map(fn (Agency $agency) => (int) $agency->commercialBillTo()->id)
+            ->unique()
+            ->values();
+
+        if ($billToIds->count() === 1) {
+            return (int) $billToIds->first();
         }
 
-        $billTo = $notes->first()?->billingAgency();
-        if ($billTo && $packageAgencies->isEmpty()) {
-            return (int) $billTo->id;
-        }
-
-        if ($billTo) {
-            $family = $billTo->invoiceFamilyIds();
-            $outside = $packageAgencies->first(fn (int $id) => ! in_array($id, $family, true));
-            if ($outside === null) {
-                return (int) $billTo->id;
+        if ($packageAgencyIds->isEmpty()) {
+            $fallback = $notes->first()?->billingAgency();
+            if ($fallback) {
+                return (int) $fallback->id;
             }
         }
 

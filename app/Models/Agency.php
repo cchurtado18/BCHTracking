@@ -185,6 +185,28 @@ class Agency extends Model
     }
 
     /**
+     * Cliente al que se cobra y se envía la factura.
+     * Subagencia anidada → el padre comercial al que está afiliada (bajo SLO).
+     */
+    public function commercialBillTo(): self
+    {
+        return $this->invoiceFamilyRoot();
+    }
+
+    /**
+     * Correo de factura: nunca el de una subagencia colgada de otra.
+     */
+    public function invoiceEmail(): ?string
+    {
+        $target = $this->isNestedUnderPartner() ? $this->commercialBillTo() : $this;
+        if (! $target->is($this)) {
+            $target->loadMissing('users');
+        }
+
+        return $target->billingEmail();
+    }
+
+    /**
      * IDs de la misma red facturable: la agencia y sus subagencias (incluyendo subagencia de subagencia).
      *
      * @return list<int>

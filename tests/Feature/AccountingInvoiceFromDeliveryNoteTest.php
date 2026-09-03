@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Mail\InvoiceSentToClient;
 use App\Models\AccountingInvoice;
+use App\Models\AccountingRateCard;
 use App\Models\Agency;
 use App\Models\Delivery;
 use App\Models\DeliveryNote;
@@ -753,6 +754,160 @@ class AccountingInvoiceFromDeliveryNoteTest extends TestCase
             ])
             ->assertRedirect()
             ->assertSessionHas('error');
+    }
+
+    public function test_nested_subagency_invoice_bills_parent_with_parent_rates(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        $parent = Agency::create([
+            'name' => 'CH Logistics',
+            'code' => 'N300',
+            'phone' => '2222-3000',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'billing_email' => 'facturas@ch.test',
+        ]);
+        $nested = Agency::create([
+            'name' => 'Norte Nested',
+            'code' => 'N301',
+            'phone' => '2222-3001',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'parent_agency_id' => $parent->id,
+            'billing_email' => 'anidada@norte.test',
+        ]);
+
+        AccountingRateCard::create([
+            'agency_id' => $parent->id,
+            'service_type' => 'AIR',
+            'price_per_lb' => 2.5,
+            'cost_per_lb' => 1,
+            'currency' => 'USD',
+            'effective_from' => now()->toDateString(),
+        ]);
+        AccountingRateCard::create([
+            'agency_id' => $nested->id,
+            'service_type' => 'AIR',
+            'price_per_lb' => 9.99,
+            'cost_per_lb' => 1,
+            'currency' => 'USD',
+            'effective_from' => now()->toDateString(),
+        ]);
+
+        $note = $this->seedSimpleNote($nested, 'SLO-9301', '930101', 10);
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.create-from-note', $note))
+            ->assertOk()
+            ->assertSee('CH Logistics');
+
+        $this->actingAs($admin)
+            ->post(route('accounting.invoices.store-from-note', $note), [
+                'exchange_rate' => 36.5,
+            ])
+            ->assertRedirect();
+
+        $invoice = AccountingInvoice::first();
+        $this->assertNotNull($invoice);
+        $this->assertSame($parent->id, (int) $invoice->agency_id);
+        $this->assertEquals(25.0, (float) $invoice->total_usd);
+        $this->assertEquals(2.5, (float) $invoice->lines()->first()->rate_per_lb);
+
+        Mail::fake();
+        $this->actingAs($admin)
+            ->from(route('accounting.invoices.index'))
+            ->post(route('accounting.invoices.send', $invoice))
+            ->assertRedirect(route('accounting.invoices.index'))
+            ->assertSessionHas('success');
+
+        Mail::assertSent(InvoiceSentToClient::class, function (InvoiceSentToClient $mail) {
+            return $mail->hasTo('facturas@ch.test') && ! $mail->hasTo('anidada@norte.test');
+        });
+    }
+
+    public function test_invoice_from_nested_note_as_primary_still_bills_parent(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        $parent = Agency::create([
+            'name' => 'Padre Comercial',
+            'code' => 'N310',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+        ]);
+        $nested = Agency::create([
+            'name' => 'Hija Anidada',
+            'code' => 'N311',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'parent_agency_id' => $parent->id,
+        ]);
+
+        $noteParent = $this->seedSimpleNote($parent, 'SLO-9311', '931101', 6);
+        $noteNested = $this->seedSimpleNote($nested, 'SLO-9312', '931102', 4);
+
+        $this->actingAs($admin)
+            ->post(route('accounting.invoices.store-from-note', $noteNested), [
+                'rate_air' => 2,
+                'exchange_rate' => 36.5,
+                'delivery_note_ids' => [$noteNested->id, $noteParent->id],
+            ])
+            ->assertRedirect();
+
+        $invoice = AccountingInvoice::first();
+        $this->assertNotNull($invoice);
+        $this->assertSame($parent->id, (int) $invoice->agency_id);
+        $this->assertEquals(20.0, (float) $invoice->total_usd);
+    }
+
+    public function test_legacy_invoice_on_nested_agency_emails_the_parent(): void
+    {
+        Mail::fake();
+
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        $parent = Agency::create([
+            'name' => 'Padre Legacy',
+            'code' => 'N320',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'billing_email' => 'padre@ch.test',
+        ]);
+        $nested = Agency::create([
+            'name' => 'Anidada Legacy',
+            'code' => 'N321',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'parent_agency_id' => $parent->id,
+            'billing_email' => 'nieta@norte.test',
+        ]);
+        $note = $this->seedSimpleNote($nested, 'SLO-9321', '932101', 5);
+
+        $this->actingAs($admin)
+            ->post(route('accounting.invoices.store-from-note', $note), [
+                'rate_air' => 2,
+                'exchange_rate' => 36.5,
+            ])
+            ->assertRedirect();
+
+        $invoice = AccountingInvoice::first();
+        $this->assertSame($parent->id, (int) $invoice->agency_id);
+
+        $invoice->update(['agency_id' => $nested->id]);
+
+        $this->actingAs($admin)
+            ->from(route('accounting.invoices.index'))
+            ->post(route('accounting.invoices.send', $invoice))
+            ->assertRedirect(route('accounting.invoices.index'))
+            ->assertSessionHas('success');
+
+        Mail::assertSent(InvoiceSentToClient::class, function (InvoiceSentToClient $mail) {
+            return $mail->hasTo('padre@ch.test') && ! $mail->hasTo('nieta@norte.test');
+        });
     }
 
     public function test_slo_direct_client_is_the_bill_to_on_invoice(): void

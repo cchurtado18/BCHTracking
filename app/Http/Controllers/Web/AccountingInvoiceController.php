@@ -157,8 +157,8 @@ class AccountingInvoiceController extends Controller
             return redirect()->back()->with('error', 'No se puede enviar una factura anulada.');
         }
 
-        $invoice->load(['agency.users', 'deliveryNote', 'deliveryNotes', 'lines']);
-        $email = $invoice->agency?->billingEmail();
+        $invoice->load(['agency.parent.parent.parent', 'agency.users', 'deliveryNote', 'deliveryNotes', 'lines']);
+        $email = $invoice->agency?->invoiceEmail();
         if (! $email) {
             return redirect()->back()->with(
                 'error',

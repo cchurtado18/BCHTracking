@@ -67,11 +67,12 @@ class DeliveryNote extends Model
     }
 
     /**
-     * Cliente a facturar: si todos los paquetes son de una cuenta, esa; si no, la agencia de la hoja.
+     * Cliente a facturar: si todos los paquetes son de una cuenta, esa (o su padre comercial
+     * si es subagencia anidada); si no, la agencia de la hoja.
      */
     public function billingAgency(): ?Agency
     {
-        $this->loadMissing(['deliveries.preregistration', 'agency']);
+        $this->loadMissing(['deliveries.preregistration', 'agency.parent.parent.parent']);
         $packageIds = $this->deliveries
             ->map(fn ($d) => $d->preregistration?->agency_id)
             ->filter()
@@ -87,11 +88,17 @@ class DeliveryNote extends Model
             return null;
         }
 
-        if ($this->agency && (int) $this->agency->id === $agencyId) {
-            return $this->agency;
+        $agency = $this->agency && (int) $this->agency->id === $agencyId
+            ? $this->agency
+            : Agency::query()->with('parent.parent.parent')->find($agencyId);
+
+        if (! $agency) {
+            return null;
         }
 
-        return Agency::query()->with('parent.parent.parent')->find($agencyId);
+        $agency->loadMissing('parent.parent.parent');
+
+        return $agency->commercialBillTo();
     }
 
     /**
