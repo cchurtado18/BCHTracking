@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="cx-page">
-    <x-module-banner section="Operaciones" current="Escaneo NIC" title="Escaneo NIC PrimeTrack" subtitle="Sacos enviados listos para recibir en Nicaragua. Escanee el código del saco y luego los paquetes.">
+    <x-module-banner section="Operaciones" current="Escaneo NIC" title="Escaneo NIC PrimeTrack" subtitle="Sacos y contenedores enviados listos para recibir en Nicaragua. Escanee el código y luego los paquetes.">
         <x-slot:icon>
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 6.75h15v10.5h-15V6.75Zm3 3h4.5m-4.5 3h9"/></svg>
         </x-slot:icon>
@@ -23,19 +23,19 @@
     <div class="cx-card cx-scan-card">
         <form method="GET" action="{{ route('nic-consolidations.index') }}" id="saco-scan-form" class="cx-scan-form">
             <div class="cx-scan-field">
-                <label class="cx-label" for="saco_code">Código del saco</label>
+                <label class="cx-label" for="saco_code">Código del saco o contenedor</label>
                 <input type="text" name="saco_code" id="saco_code" class="cx-input cx-input-lg" placeholder="Escanear con pistola…" autofocus value="{{ old('saco_code') }}" autocomplete="off">
             </div>
             <div class="cx-filters-actions">
-                <button type="submit" class="cx-btn cx-btn-primary">Ir al saco</button>
+                <button type="submit" class="cx-btn cx-btn-primary">Abrir consolidación</button>
             </div>
         </form>
-        <p class="cx-scan-hint">Use la pistola sobre el código o la barra del saco; al confirmar se abre el escaneo de paquetes.</p>
+        <p class="cx-scan-hint">Use la pistola sobre el código (SAC- o CNT-); al confirmar se abre el escaneo de paquetes.</p>
     </div>
 
     <div class="cx-kpis">
         <div class="cx-kpi-card">
-            <span class="cx-kpi-label">Sacos enviados</span>
+            <span class="cx-kpi-label">Enviados</span>
             <span class="cx-kpi-value">{{ number_format($statsTotal ?? 0) }}</span>
             <span class="cx-kpi-note">Listos para escanear</span>
         </div>
@@ -52,7 +52,7 @@
         <div class="cx-kpi-card cx-kpi-card--green">
             <span class="cx-kpi-label">Total items</span>
             <span class="cx-kpi-value cx-text-green">{{ number_format($statsTotalItems ?? 0) }}</span>
-            <span class="cx-kpi-note">Paquetes en esos sacos</span>
+            <span class="cx-kpi-note">Paquetes en esas consolidaciones</span>
         </div>
     </div>
 
@@ -126,7 +126,7 @@
                     @empty
                     <tr>
                         <td colspan="7" class="cx-empty">
-                            No hay sacos enviados para escanear.
+                            No hay sacos ni contenedores enviados para escanear.
                             <a href="{{ route('consolidations.index') }}" class="cx-folio">Ver consolidaciones</a>
                         </td>
                     </tr>

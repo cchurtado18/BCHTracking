@@ -499,13 +499,15 @@ class PreregistrationController extends Controller
         $data = $request->validate([
             'agency_id' => 'required|exists:agencies,id',
             'label_name' => 'sometimes|string|max:255',
-            'service_type' => 'sometimes|'.\App\Support\ServiceType::rule(),
+            'service_type' => 'required|'.\App\Support\ServiceType::rule(),
             'intake_weight_lbs' => 'sometimes|numeric|min:0|max:999999.99',
             'tracking_external' => $trackingRules,
             'dimension' => 'nullable|string|max:100',
             'description' => 'nullable|string|max:500',
         ], [
             'tracking_external.unique' => 'Este tracking ya está registrado en otro paquete. Use otro número o elimine el paquete que lo tiene.',
+            'service_type.required' => 'Debe elegir el tipo de servicio.',
+            'service_type.in' => 'Debe elegir el tipo de servicio.',
         ]);
 
         // Cuando estaba en PHOTO_PENDING y ya se completan los datos,
@@ -750,8 +752,10 @@ class PreregistrationController extends Controller
         }
 
         if ($preregistration->consolidationItem()->exists()) {
+            $unit = $preregistration->consolidationItem?->consolidation?->unitNoun() ?? 'saco o contenedor';
+
             return redirect()->route('preregistrations.index', session('preregistrations_index_filters', []))
-                ->with('error', 'No se puede eliminar: el preregistro está en un saco.');
+                ->with('error', 'No se puede eliminar: el preregistro está en un '.$unit.'.');
         }
 
         if ($preregistration->delivery()->exists()) {

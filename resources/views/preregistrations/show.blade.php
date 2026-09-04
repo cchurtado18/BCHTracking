@@ -57,8 +57,19 @@
         </x-slot:icon>
         <x-slot:actions>
             @if($preregistration->status === 'RECEIVED_MIAMI' && !$preregistration->consolidationItem)
-            <form action="{{ route('preregistrations.create-single-consolidation', $preregistration->id) }}" method="POST">
+            <form action="{{ route('preregistrations.create-single-consolidation', $preregistration->id) }}" method="POST" class="mb-inline-cons">
                 @csrf
+                <input
+                    type="text"
+                    name="transport_number"
+                    required
+                    maxlength="80"
+                    autocomplete="off"
+                    class="mb-inline-input"
+                    placeholder="{{ \App\Support\ServiceType::transportNumberLabel($preregistration->service_type) }}"
+                    aria-label="{{ \App\Support\ServiceType::transportNumberLabel($preregistration->service_type) }}"
+                    value="{{ old('transport_number') }}"
+                >
                 <button type="submit" class="mb-btn mb-btn-primary">Enviar solo este paquete</button>
             </form>
             @endif
@@ -96,6 +107,10 @@
             <span class="mb-pill">{{ $statusLabel }}</span>
         </x-slot:strip>
     </x-module-banner>
+
+    @error('transport_number')
+    <div class="prd-flash-err" role="alert">{{ $message }}</div>
+    @enderror
 
     {{-- ===== Franja de datos clave ===== --}}
     <div class="prd-metrics">
@@ -265,25 +280,29 @@
         @if($hasBottomSide)
         <div class="prd-bottom-stack">
             @if($preregistration->consolidationItem?->consolidation)
+            @php $assignedUnit = $preregistration->consolidationItem->consolidation; @endphp
             <section class="prd-card">
                 <header class="prd-card-head">
                     <h2 class="prd-card-title">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="prd-card-icon"><path d="M5 8h14l-1.5 12.5a2 2 0 0 1-2 1.5h-7a2 2 0 0 1-2-1.5Z M8 8V6a4 4 0 0 1 8 0v2"/></svg>
-                        Saco Asignado
+                        {{ $assignedUnit->unitNounTitle() }} asignado
                     </h2>
                 </header>
                 <div class="prd-card-body">
                     <div class="prd-saco-row">
                         <div>
                             <span class="prd-field-label">Código</span>
-                            <span class="prd-field-value prd-mono">{{ $preregistration->consolidationItem->consolidation->code }}</span>
+                            <span class="prd-field-value prd-mono">{{ $assignedUnit->code }}</span>
                         </div>
                         <div class="prd-saco-status">
                             <span class="prd-field-label">Estado</span>
-                            <span class="prd-badge">{{ $preregistration->consolidationItem->consolidation->status }}</span>
+                            <span class="prd-badge">{{ $assignedUnit->status }}</span>
                         </div>
                     </div>
-                    <a href="{{ route('consolidations.show', $preregistration->consolidationItem->consolidation->id) }}" class="prd-side-link">Ver saco completo →</a>
+                    @if($assignedUnit->transport_number)
+                    <p class="prd-saco-scanned">{{ $assignedUnit->transportNumberLabel() }}: {{ $assignedUnit->transport_number }}</p>
+                    @endif
+                    <a href="{{ route('consolidations.show', $assignedUnit->id) }}" class="prd-side-link">Ver {{ $assignedUnit->unitNoun() }} completo →</a>
                 </div>
             </section>
             @endif
@@ -501,6 +520,12 @@
 .preregs-show-page { padding: 1.25rem 1rem 2rem; max-width: 92rem; margin: 0 auto; width: 100%; box-sizing: border-box; }
 @media (min-width: 768px) { .preregs-show-page { padding: 1.5rem 1.5rem 2.5rem; } }
 
+.prd-flash-err {
+    margin: 0 0 1rem; padding: 0.75rem 1rem; border-radius: 0.65rem;
+    background: #FEF2F2; color: #B03030; font-size: 0.875rem; font-weight: 600;
+}
+@media (min-width: 768px) { .preregs-show-page { padding: 1.5rem 1.5rem 2.5rem; } }
+
 .prd-inline { display: inline; margin: 0; }
 
 .prd-btn {
@@ -641,6 +666,7 @@
 .prd-saco-row .prd-field-label { display: block; margin-bottom: 0.25rem; }
 .prd-saco-row .prd-field-value { font-size: 1rem; font-weight: 800; }
 .prd-saco-status { text-align: right; }
+.prd-saco-scanned { margin: 0.75rem 0 0; font-size: 0.78rem; color: #0A2D6F; font-weight: 600; }
 .prd-badge {
     display: inline-block; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.06em;
     padding: 0.25rem 0.55rem; border-radius: 0.35rem; background: #dbeafe; color: #1e40af;

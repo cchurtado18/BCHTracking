@@ -143,7 +143,7 @@
                 <div class="preregs-card-body preregs-form-body">
         <form action="{{ route('preregistrations.store') }}" method="POST" enctype="multipart/form-data" class="preregs-create-formwrap" id="preregForm">
             @csrf
-            <input type="hidden" name="service_type" id="service_type_post" value="AIR">
+            <input type="hidden" name="service_type" id="service_type_post" value="{{ old('service_type') }}">
 
             <div class="preregs-form-panel">
                 <div class="preregs-form-panel-head">
@@ -229,10 +229,14 @@
                     <div class="preregs-field">
                         <label for="service_type" class="preregs-field-label">Tipo de servicio <span class="preregs-req">*</span></label>
                         <select id="service_type" class="preregs-input preregs-select" required>
-                            <option value="AIR">Aéreo</option>
-                            <option value="SEA">Marítimo</option>
-                            <option value="CFT">Pie cúbico</option>
+                            <option value="" disabled {{ old('service_type') ? '' : 'selected' }}>Seleccione un servicio</option>
+                            <option value="AIR" {{ old('service_type') === 'AIR' ? 'selected' : '' }}>Aéreo</option>
+                            <option value="SEA" {{ old('service_type') === 'SEA' ? 'selected' : '' }}>Marítimo</option>
+                            <option value="CFT" {{ old('service_type') === 'CFT' ? 'selected' : '' }}>Pie cúbico</option>
                         </select>
+                        @error('service_type')
+                        <p class="preregs-field-error">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div class="preregs-field">
                         <label for="intake_weight_lbs" class="preregs-field-label">Peso (lb) <span class="preregs-req">*</span></label>
@@ -257,10 +261,11 @@
                     <p class="preregs-multi-lead">Se mostrará un formulario por cada bulto. Al guardar podrás imprimir la etiqueta de ese bulto y luego continuar con el siguiente.</p>
                     <div class="preregs-field preregs-field--inline">
                         <label for="service_type_multi" class="preregs-field-label">Tipo de servicio <span class="preregs-req">*</span></label>
-                        <select id="service_type_multi" class="preregs-input preregs-select preregs-input--narrow">
-                            <option value="AIR">Aéreo</option>
-                            <option value="SEA">Marítimo</option>
-                            <option value="CFT">Pie cúbico</option>
+                        <select id="service_type_multi" class="preregs-input preregs-select preregs-input--narrow" required>
+                            <option value="" disabled {{ old('service_type') ? '' : 'selected' }}>Seleccione un servicio</option>
+                            <option value="AIR" {{ old('service_type') === 'AIR' ? 'selected' : '' }}>Aéreo</option>
+                            <option value="SEA" {{ old('service_type') === 'SEA' ? 'selected' : '' }}>Marítimo</option>
+                            <option value="CFT" {{ old('service_type') === 'CFT' ? 'selected' : '' }}>Pie cúbico</option>
                         </select>
                     </div>
                     <div id="bultos_container" class="preregs-bultos-container"></div>
@@ -1103,8 +1108,26 @@ document.addEventListener('DOMContentLoaded', function() {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             e.stopPropagation();
+            var serviceSelect = isMultiBultos() && document.getElementById('service_type_multi')
+                ? document.getElementById('service_type_multi')
+                : document.getElementById('service_type');
+            var selectedService = serviceSelect ? String(serviceSelect.value || '').trim() : '';
+            if (!selectedService) {
+                var box = document.querySelector('.preregs-alert.preregs-alert-danger');
+                if (!box) {
+                    box = document.createElement('div');
+                    box.className = 'preregs-alert preregs-alert-danger';
+                    var card = form.closest('.preregs-card');
+                    if (card && card.parentNode) card.parentNode.insertBefore(box, card);
+                    else form.parentNode.insertBefore(box, form);
+                }
+                box.innerHTML = '<p class="preregs-alert-title">No se pudo guardar:</p><ul class="preregs-alert-list"><li>Debe elegir el tipo de servicio.</li></ul>';
+                box.scrollIntoView({ behavior: 'smooth' });
+                if (serviceSelect) serviceSelect.focus();
+                return;
+            }
             var serviceTypePost = document.getElementById('service_type_post');
-            if (serviceTypePost) serviceTypePost.value = isMultiBultos() && document.getElementById('service_type_multi') ? document.getElementById('service_type_multi').value : (document.getElementById('service_type') ? document.getElementById('service_type').value : 'AIR');
+            if (serviceTypePost) serviceTypePost.value = selectedService;
             var formData = new FormData(form);
             var submitBtn = form.querySelector('button[type="submit"]');
             var originalText = submitBtn ? submitBtn.textContent : '';
@@ -1120,7 +1143,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (res.status === 422) {
                         return res.json().then(function(data) {
                             var errs = data.errors || {};
-                            var msg = (errs.photo && errs.photo[0]) || (errs.general && errs.general[0]) || (errs['photo_bulto_0'] && errs['photo_bulto_0'][0]) || data.message || 'Error de validación.';
+                            var msg = (errs.service_type && errs.service_type[0]) || (errs.photo && errs.photo[0]) || (errs.general && errs.general[0]) || (errs['photo_bulto_0'] && errs['photo_bulto_0'][0]) || data.message || 'Error de validación.';
                             var box = document.querySelector('.preregs-alert.preregs-alert-danger');
                             if (!box) {
                                 box = document.createElement('div');
@@ -1282,7 +1305,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function currentService() {
         var multi = isMultiBultos() && document.getElementById('service_type_multi');
         var el = multi ? document.getElementById('service_type_multi') : document.getElementById('service_type');
-        return el ? el.value : 'AIR';
+        return el ? el.value : '';
     }
 
     function needsDimension() {
@@ -1351,7 +1374,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function updatePreview() {
         if (!isDropOff()) return;
         var name = (document.getElementById('label_name') && document.getElementById('label_name').value) || '—';
-        var service = (document.getElementById('service_type') && document.getElementById('service_type').selectedOptions[0]) ? document.getElementById('service_type').selectedOptions[0].text : '—';
+        var serviceEl = document.getElementById('service_type');
+        var service = (serviceEl && serviceEl.value && serviceEl.selectedOptions[0]) ? serviceEl.selectedOptions[0].text : '—';
         var weight = (document.getElementById('intake_weight_lbs') && document.getElementById('intake_weight_lbs').value) ? parseFloat(document.getElementById('intake_weight_lbs').value).toFixed(2) : '—';
         var dim = (document.getElementById('dimension') && document.getElementById('dimension').value) || '—';
         var comboAgency = document.getElementById('agency_combobox');

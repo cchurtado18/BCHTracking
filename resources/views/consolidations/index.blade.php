@@ -4,14 +4,14 @@
 
 @section('content')
 <div class="cx-page">
-    <x-module-banner section="Operaciones" current="Consolidaciones" title="Consolidaciones PrimeTrack" subtitle="Sacos Miami → Nicaragua. Cree un saco, filtre por estado o servicio y abra el detalle o el reporte.">
+    <x-module-banner section="Operaciones" current="Consolidaciones" title="Consolidaciones PrimeTrack" subtitle="Sacos aéreos y contenedores marítimos Miami → Nicaragua. Cree uno, filtre por estado o servicio y abra el detalle o el reporte.">
         <x-slot:icon>
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 8.25h16.5M3.75 15.75h16.5M7.5 3.75v16.5m9-16.5v16.5"/></svg>
         </x-slot:icon>
         <x-slot:actions>
             <a href="{{ route('consolidations.create') }}" class="mb-btn mb-btn-primary">
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                Nuevo saco
+                Nueva consolidación
             </a>
         </x-slot:actions>
     </x-module-banner>
@@ -27,7 +27,7 @@
         <div class="cx-kpi-card">
             <span class="cx-kpi-label">Total</span>
             <span class="cx-kpi-value">{{ number_format($statsTotal ?? 0) }}</span>
-            <span class="cx-kpi-note">Sacos en el listado</span>
+            <span class="cx-kpi-note">En el listado</span>
         </div>
         <div class="cx-kpi-card">
             <span class="cx-kpi-label">Abiertos</span>
@@ -96,6 +96,7 @@
                 <thead>
                     <tr>
                         <th>Código</th>
+                        <th>Guía / contenedor</th>
                         <th>Servicio</th>
                         <th>Estado</th>
                         <th>Items</th>
@@ -119,6 +120,14 @@
                             <a href="{{ route('consolidations.show', $consolidation->id) }}" class="cx-folio">{{ $consolidation->code }}</a>
                         </td>
                         <td>
+                            <span class="cx-muted">{{ $consolidation->unitNounTitle() }}</span>
+                            @if($consolidation->transport_number)
+                            <div class="cx-folio">{{ $consolidation->transport_number }}</div>
+                            @else
+                            <span class="cx-muted">—</span>
+                            @endif
+                        </td>
+                        <td>
                             <span class="cx-type-badge {{ ($consolidation->service_type ?? '') === 'SEA' ? 'cx-type-badge--sea' : '' }}">
                                 {{ \App\Support\ServiceType::label($consolidation->service_type) }}
                             </span>
@@ -136,7 +145,7 @@
                             <a href="{{ route('consolidations.report', $consolidation->id) }}" target="_blank" class="cx-action-btn">Reporte</a>
                             <a href="{{ route('consolidations.edit', $consolidation->id) }}" class="cx-action-btn">Editar</a>
                             @if($consolidation->status === 'OPEN')
-                            <form action="{{ route('consolidations.destroy', $consolidation->id) }}" method="POST" class="cx-inline-form" onsubmit="return confirm('¿Eliminar este saco? Se quitarán los items y los preregistros quedarán disponibles de nuevo.');">
+                            <form action="{{ route('consolidations.destroy', $consolidation->id) }}" method="POST" class="cx-inline-form" onsubmit="return confirm('¿Eliminar este {{ $consolidation->unitNoun() }}? Se quitarán los items y los preregistros quedarán disponibles de nuevo.');">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="cx-action-btn cx-action-btn--danger">Eliminar</button>
@@ -146,9 +155,9 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="cx-empty">
+                        <td colspan="7" class="cx-empty">
                             No hay consolidaciones con los filtros actuales.
-                            <a href="{{ route('consolidations.create') }}" class="cx-folio">Crear saco</a>
+                            <a href="{{ route('consolidations.create') }}" class="cx-folio">Crear consolidación</a>
                             ·
                             <a href="{{ route('consolidations.index', ['clear_filters' => 1]) }}" class="cx-folio">Ver todos</a>
                         </td>

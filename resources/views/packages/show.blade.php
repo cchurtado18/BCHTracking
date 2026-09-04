@@ -188,24 +188,28 @@
             @if(($package->consolidationItem && $package->consolidationItem->consolidation) || $package->delivery)
             <div class="prd-mid-row">
                 @if($package->consolidationItem && $package->consolidationItem->consolidation)
+                @php $assignedUnit = $package->consolidationItem->consolidation; @endphp
                 <section class="prd-card">
                     <header class="prd-card-head">
                         <h2 class="prd-card-title">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="prd-card-icon"><path d="M5 8h14l-1.5 12.5a2 2 0 0 1-2 1.5h-7a2 2 0 0 1-2-1.5Z M8 8V6a4 4 0 0 1 8 0v2"/></svg>
-                            Saco Asignado
+                            {{ $assignedUnit->unitNounTitle() }} asignado
                         </h2>
                     </header>
                     <div class="prd-card-body">
                         <div class="prd-saco-row">
                             <div>
                                 <span class="prd-field-label">Código</span>
-                                <span class="prd-field-value prd-mono">{{ $package->consolidationItem->consolidation->code }}</span>
+                                <span class="prd-field-value prd-mono">{{ $assignedUnit->code }}</span>
                             </div>
                             <div class="prd-saco-status">
                                 <span class="prd-field-label">Estado</span>
-                                <span class="prd-badge">{{ $package->consolidationItem->consolidation->status == 'SENT' ? 'Enviado' : ($package->consolidationItem->consolidation->status == 'OPEN' ? 'Abierto' : $package->consolidationItem->consolidation->status) }}</span>
+                                <span class="prd-badge">{{ $assignedUnit->status == 'SENT' ? 'Enviado' : ($assignedUnit->status == 'OPEN' ? 'Abierto' : $assignedUnit->status) }}</span>
                             </div>
                         </div>
+                        @if($assignedUnit->transport_number)
+                        <p class="prd-saco-scanned">{{ $assignedUnit->transportNumberLabel() }}: {{ $assignedUnit->transport_number }}</p>
+                        @endif
                         @if($package->consolidationItem->scanned_at)
                         <p class="prd-saco-scanned">Escaneado: {{ $package->consolidationItem->scanned_at->timezone($displayTz)->format('d/m/Y H:i') }}</p>
                         @endif

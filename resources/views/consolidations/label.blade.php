@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Etiqueta Saco - {{ $consolidation->code }} - PrimeTrack Group</title>
+    @php
+        $unit = $consolidation->unitNoun();
+        $Unit = $consolidation->unitNounTitle();
+    @endphp
+    <title>Etiqueta {{ $Unit }} - {{ $consolidation->code }} - PrimeTrack Group</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -161,13 +165,13 @@
         @if(session('success'))
         <p style="margin-bottom: 12px; padding: 10px; background: #E8EEF8; color: #0A2D6F; border-radius: 6px; font-size: 14px;">{{ session('success') }}</p>
         @endif
-        <button type="button" onclick="window.print();" class="no-print-btn">🖨️ Imprimir etiqueta del saco</button>
+        <button type="button" onclick="window.print();" class="no-print-btn">🖨️ Imprimir etiqueta del {{ $unit }}</button>
         <p class="no-print-hint">Papel <strong>4×6&nbsp;pulgadas</strong>, escala <strong>100&nbsp;%</strong>, sin márgenes. En la impresora térmica, el driver debe coincidir con ese tamaño.</p>
 
         @if($consolidation->status === 'OPEN')
         <div class="edit-prompt">
-            <p class="edit-prompt-title">¿Cómo quieres seguir editando este saco?</p>
-            <p class="edit-prompt-sub">El saco está <strong>abierto</strong>. Puedes seguir agregando paquetes por escaneo o seleccionándolos manualmente. También puedes eliminar cualquier paquete si te equivocaste.</p>
+            <p class="edit-prompt-title">¿Cómo quieres seguir editando este {{ $unit }}?</p>
+            <p class="edit-prompt-sub">El {{ $unit }} está <strong>abierto</strong>. Puedes seguir agregando paquetes por escaneo o seleccionándolos manualmente. También puedes eliminar cualquier paquete si te equivocaste.</p>
             <div class="edit-prompt-actions">
                 <a href="{{ route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'scan']) }}" class="edit-prompt-btn edit-prompt-btn--primary">▦ Seguir escaneando</a>
                 <a href="{{ route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'select']) }}" class="edit-prompt-btn">☰ Seleccionar manualmente</a>
@@ -175,21 +179,24 @@
         </div>
         @endif
 
-        <a href="{{ route('consolidations.show', $consolidation->id) }}">← Volver al saco</a>
+        <a href="{{ route('consolidations.show', $consolidation->id) }}">← Volver al {{ $unit }}</a>
         <a href="{{ route('consolidations.report', $consolidation->id) }}" target="_blank">Reporte detallado</a>
     </div>
 
     <div class="label-sheet">
         <div class="label-header">
-            <div class="company">PrimeTrack Group - Saco</div>
+            <div class="company">PrimeTrack Group - {{ $Unit }}</div>
         </div>
-        <div class="field">Código del saco</div>
+        <div class="field">Código del {{ $unit }}</div>
         <div class="saco-code">{{ $consolidation->code }}</div>
 
         <div class="field">Tipo de servicio</div>
         <div class="value">{{ \App\Support\ServiceType::label($consolidation->service_type) }}</div>
 
-        <div class="field">Items en el saco</div>
+        <div class="field">{{ $consolidation->transportNumberLabel() }}</div>
+        <div class="value">{{ $consolidation->transport_number ?: '—' }}</div>
+
+        <div class="field">Items en el {{ $unit }}</div>
         <div class="value">{{ $consolidation->items->count() }}</div>
 
         <div class="field">Peso total (lbs)</div>

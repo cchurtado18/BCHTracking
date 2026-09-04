@@ -176,4 +176,29 @@ class ServiceType
 
         return (float) ($package->verified_weight_lbs ?? $package->intake_weight_lbs ?? 0);
     }
+
+    /**
+     * Unidad de consolidación: aéreo = saco, marítimo = contenedor.
+     */
+    public static function consolidationNoun(?string $value, bool $plural = false): string
+    {
+        $sea = self::route($value) === self::SEA;
+        if ($plural) {
+            return $sea ? 'contenedores' : 'sacos';
+        }
+
+        return $sea ? 'contenedor' : 'saco';
+    }
+
+    public static function consolidationNounTitle(?string $value, bool $plural = false): string
+    {
+        $noun = self::consolidationNoun($value, $plural);
+
+        return mb_strtoupper(mb_substr($noun, 0, 1)).mb_substr($noun, 1);
+    }
+
+    public static function transportNumberLabel(?string $value): string
+    {
+        return self::route($value) === self::SEA ? 'Número de contenedor' : 'Número de guía aérea';
+    }
 }

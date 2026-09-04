@@ -12,7 +12,7 @@ class NicConsolidationController extends Controller
 {
     public function index(Request $request)
     {
-        // Escaneo por código del saco: pistola envía código + Enter y redirigimos al saco
+        // Escaneo por código de consolidación: pistola envía código + Enter y redirigimos
         if ($request->filled('saco_code')) {
             $code = trim((string) $request->input('saco_code'));
             $consolidation = Consolidation::where('code', $code)->where('status', 'SENT')->first();
@@ -21,7 +21,7 @@ class NicConsolidationController extends Controller
             }
 
             return redirect()->route('nic-consolidations.index')
-                ->with('error', 'Código de saco no encontrado o no está enviado.')
+                ->with('error', 'Código de saco o contenedor no encontrado o no está enviado.')
                 ->withInput($request->only('service_type'));
         }
 
@@ -53,7 +53,7 @@ class NicConsolidationController extends Controller
 
         if ($consolidation->status !== 'SENT') {
             return redirect()->route('nic-consolidations.index')
-                ->with('error', 'Solo se pueden escanear sacos enviados.');
+                ->with('error', 'Solo se pueden escanear '.$consolidation->unitNoun(true).' enviados.');
         }
 
         $items = $consolidation->items;
@@ -86,10 +86,10 @@ class NicConsolidationController extends Controller
 
         if ($consolidation->status !== 'SENT') {
             if ($wantsJson) {
-                return response()->json(['success' => false, 'message' => 'Solo se pueden escanear sacos enviados.'], 422);
+                return response()->json(['success' => false, 'message' => 'Solo se pueden escanear '.$consolidation->unitNoun(true).' enviados.'], 422);
             }
 
-            return back()->with('error', 'Solo se pueden escanear sacos enviados.');
+            return back()->with('error', 'Solo se pueden escanear '.$consolidation->unitNoun(true).' enviados.');
         }
 
         $request->validate(['code' => 'required|string|max:100']);
@@ -125,7 +125,7 @@ class NicConsolidationController extends Controller
                 ->exists();
             $message = $anyInSack
                 ? 'Todos los paquetes con este código ya fueron escaneados.'
-                : 'El paquete no pertenece a este saco.';
+                : 'El paquete no pertenece a este '.$consolidation->unitNoun().'.';
             if ($wantsJson) {
                 return response()->json(['success' => false, 'message' => $message], 422);
             }
@@ -136,8 +136,9 @@ class NicConsolidationController extends Controller
         $preregistration = $item->preregistration ?? Preregistration::find($item->preregistration_id);
         if (! \App\Support\ServiceType::matchesRoute($preregistration->service_type, $consolidation->service_type)) {
             $pkg = \App\Support\ServiceType::routeLabelLower($preregistration->service_type);
-            $saco = \App\Support\ServiceType::routeLabelLower($consolidation->service_type);
-            $msg = "El paquete es {$pkg} y el saco es {$saco}. Use el saco correcto o corrija el tipo de servicio del preregistro.";
+            $unitRoute = \App\Support\ServiceType::routeLabelLower($consolidation->service_type);
+            $unit = $consolidation->unitNoun();
+            $msg = "El paquete es {$pkg} y el {$unit} es {$unitRoute}. Use el {$unit} correcto o corrija el tipo de servicio del preregistro.";
             if ($wantsJson) {
                 return response()->json(['success' => false, 'message' => $msg], 422);
             }

@@ -297,7 +297,7 @@ class DashboardController extends Controller
             $sacosOpenOld = Consolidation::where('status', 'OPEN')->where('created_at', '<', now()->subDays(7))->count();
             if ($sacosOpenOld > 0) {
                 $alerts[] = [
-                    'title' => 'Sacos abiertos hace más de 7 días',
+                    'title' => 'Consolidaciones abiertas hace más de 7 días',
                     'count' => $sacosOpenOld,
                     'url' => route('consolidations.index', ['status' => 'OPEN']),
                 ];

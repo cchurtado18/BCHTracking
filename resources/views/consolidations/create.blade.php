@@ -1,14 +1,14 @@
 @extends('layouts.app')
 
-@section('title', 'Crear saco')
+@section('title', 'Crear consolidación')
 
 @section('content')
 <div class="cons-choose-page">
     <x-module-banner
         section="Operaciones"
-        current="Nuevo saco"
+        current="Nueva consolidación"
         title="Crear consolidación"
-        subtitle="Elija cómo armar el saco: escaneando códigos o seleccionando paquetes en la tabla."
+        subtitle="Aéreo se arma como saco. Marítimo se arma como contenedor. Elija cómo cargar los paquetes."
         back-href="{{ route('consolidations.index') }}"
         back-label="Volver a consolidaciones"
     >
@@ -20,14 +20,14 @@
     <div class="cons-choose-grid">
         <a href="{{ route('consolidations.create-scan') }}" class="cons-choose-card cons-choose-card-scan">
             <span class="cons-choose-icon" aria-hidden="true">▦</span>
-            <h2 class="cons-choose-card-title">Crear saco escaneando tracking</h2>
-            <p class="cons-choose-card-text">Solo campo de código: escanea o pega cada tracking o warehouse. Si el paquete está en preregistro se marca con ✓; si no, verás una advertencia y aun así se guarda en el saco.</p>
+            <h2 class="cons-choose-card-title">Crear escaneando tracking</h2>
+            <p class="cons-choose-card-text">Solo campo de código: escanea o pega cada tracking o warehouse. Si el paquete está en preregistro se marca con ✓; si no, verás una advertencia y aun así se guarda.</p>
             <span class="cons-choose-cta">Continuar →</span>
         </a>
 
         <a href="{{ route('consolidations.create-select') }}" class="cons-choose-card cons-choose-card-select">
             <span class="cons-choose-icon" aria-hidden="true">☰</span>
-            <h2 class="cons-choose-card-title">Crear saco seleccionando</h2>
+            <h2 class="cons-choose-card-title">Crear seleccionando</h2>
             <p class="cons-choose-card-text">Elige los preregistros disponibles en Miami desde la tabla, con filtros por fecha y tipo de servicio (como antes).</p>
             <span class="cons-choose-cta">Continuar →</span>
         </a>

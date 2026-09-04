@@ -66,6 +66,11 @@
 .mb-subtitle { margin: 0.4rem 0 0; font-size: 0.875rem; color: #5E6168; line-height: 1.45; max-width: 44rem; }
 .mb-banner-actions { display: flex; flex-wrap: wrap; gap: 0.55rem; align-self: center; }
 .mb-banner-actions form { margin: 0; display: inline-flex; }
+.mb-inline-cons { align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.mb-inline-input {
+    height: 2.35rem; padding: 0 0.7rem; border: 1px solid #d1d9e6; border-radius: 0.6rem;
+    font-size: 0.8125rem; min-width: 11.5rem; max-width: 16rem; color: #0f172a; background: #fff;
+}
 .mb-btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
     padding: 0.58rem 1.05rem; font-size: 0.875rem; font-weight: 700; border-radius: 0.6rem;

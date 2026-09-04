@@ -246,7 +246,9 @@ class ClientsModuleTest extends TestCase
             ->assertOk()
             ->assertSee('agency_combobox')
             ->assertSee('slo_client_combobox')
-            ->assertSee('Escriba para buscar o baje la lista');
+            ->assertSee('Escriba para buscar o baje la lista')
+            ->assertSee('Seleccione un servicio')
+            ->assertDontSee('id="service_type_post" value="AIR"', false);
 
         $this->actingAs($user)
             ->get(route('preregistrations.edit', $package->id))
@@ -254,6 +256,31 @@ class ClientsModuleTest extends TestCase
             ->assertSee('agency_combobox')
             ->assertSee('slo_client_combobox')
             ->assertSee('Escriba para buscar o baje la lista');
+    }
+
+    public function test_preregistration_requires_choosing_a_service_type(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+        $agency = Agency::create([
+            'name' => 'Agencia Servicio',
+            'code' => 'SV01',
+            'is_active' => true,
+            'is_main' => false,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('preregistrations.store'), [
+                'intake_type' => 'COURIER',
+                'agency_id' => $agency->id,
+                'label_name' => 'Sin servicio',
+                'intake_weight_lbs' => 2,
+                'tracking_external' => 'TRK-NO-SERVICE',
+            ])
+            ->assertSessionHasErrors('service_type');
+
+        $this->assertDatabaseMissing('preregistrations', [
+            'tracking_external' => 'TRK-NO-SERVICE',
+        ]);
     }
 
     public function test_preregistration_cannot_assign_package_to_slo_root(): void

@@ -459,11 +459,15 @@
 </style>
 
 <div class="cons-show-page">
+    @php
+        $unit = $consolidation->unitNoun();
+        $Unit = $consolidation->unitNounTitle();
+    @endphp
     <x-module-banner
         section="Operaciones"
-        current="Detalle del saco"
+        current="Detalle del {{ $unit }}"
         title="{{ $consolidation->code }}"
-        subtitle="Paquetes incluidos en este saco, estado del envío y acciones de etiqueta o reporte."
+        subtitle="Paquetes incluidos en este {{ $unit }}, estado del envío y acciones de etiqueta o reporte."
         back-href="{{ route('consolidations.index', session('consolidations_index_filters', [])) }}"
         back-label="Volver a consolidaciones"
     >
@@ -471,25 +475,25 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 8.25h16.5M3.75 15.75h16.5M7.5 3.75v16.5m9-16.5v16.5"/></svg>
         </x-slot:icon>
         <x-slot:actions>
-            <a href="{{ route('consolidations.label', $consolidation->id) }}" target="_blank" class="mb-btn mb-btn-secondary">Etiqueta del saco</a>
+            <a href="{{ route('consolidations.label', $consolidation->id) }}" target="_blank" class="mb-btn mb-btn-secondary">Etiqueta del {{ $unit }}</a>
             <a href="{{ route('consolidations.report', $consolidation->id) }}" target="_blank" class="mb-btn mb-btn-secondary">Reporte detallado</a>
             @if($consolidation->status === 'OPEN')
                 <a href="{{ route('consolidations.edit', $consolidation->id) }}" class="mb-btn mb-btn-secondary">Editar</a>
                 @if($consolidation->items->count() > 0)
-                    <form action="{{ route('consolidations.send', $consolidation->id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de enviar este saco? Esto cambiará el estado a SENT y los paquetes con preregistro pasarán a IN_TRANSIT.');">
+                    <form action="{{ route('consolidations.send', $consolidation->id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de enviar este {{ $unit }}? Esto cambiará el estado a SENT y los paquetes con preregistro pasarán a IN_TRANSIT.');">
                         @csrf
-                        <button type="submit" class="mb-btn mb-btn-primary">Enviar saco</button>
+                        <button type="submit" class="mb-btn mb-btn-primary">Enviar {{ $unit }}</button>
                     </form>
                 @endif
-                <form action="{{ route('consolidations.destroy', $consolidation->id) }}" method="POST" onsubmit="return confirm('¿Eliminar este saco? Se quitarán los items y los preregistros quedarán disponibles de nuevo.');">
+                <form action="{{ route('consolidations.destroy', $consolidation->id) }}" method="POST" onsubmit="return confirm('¿Eliminar este {{ $unit }}? Se quitarán los items y los preregistros quedarán disponibles de nuevo.');">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="mb-btn mb-btn-danger">Eliminar saco</button>
+                    <button type="submit" class="mb-btn mb-btn-danger">Eliminar {{ $unit }}</button>
                 </form>
             @endif
         </x-slot:actions>
         <x-slot:strip>
-            <span class="mb-strip-label">Saco</span>
+            <span class="mb-strip-label">{{ $Unit }}</span>
             <span class="mb-pill">{{ \App\Support\ServiceType::label($consolidation->service_type) }}</span>
             <span class="mb-pill">{{ $consolidation->status }}</span>
             <span class="mb-pill">{{ $consolidation->items->count() }} {{ $consolidation->items->count() === 1 ? 'paquete' : 'paquetes' }}</span>
@@ -509,9 +513,13 @@
                         <dt class="cons-show-dt">Tipo de servicio</dt>
                         <dd class="cons-show-dd">
                             <span class="cons-show-badge {{ \App\Support\ServiceType::route($consolidation->service_type) == 'AIR' ? 'cons-show-badge-air' : 'cons-show-badge-sea' }}">
-                                {{ \App\Support\ServiceType::routeLabel($consolidation->service_type) }}
+                                {{ \App\Support\ServiceType::routeLabel($consolidation->service_type) }} · {{ $Unit }}
                             </span>
                         </dd>
+                    </div>
+                    <div>
+                        <dt class="cons-show-dt">{{ $consolidation->transportNumberLabel() }}</dt>
+                        <dd class="cons-show-dd">{{ $consolidation->transport_number ?: '—' }}</dd>
                     </div>
                     <div>
                         <dt class="cons-show-dt">Estado</dt>
@@ -566,7 +574,7 @@
                     @if($consolidation->status === 'SENT' && $consolidation->sent_at)
                         <div class="cons-show-sent-note">
                             <span class="cons-show-sent-label">Enviado el:</span> {{ $consolidation->sent_at->format('d/m/Y H:i') }}
-                            <p class="cons-show-sent-hint">Este saco está disponible para escaneo en Nicaragua</p>
+                            <p class="cons-show-sent-hint">Este {{ $unit }} está disponible para escaneo en Nicaragua</p>
                         </div>
                     @endif
                 </div>
@@ -574,7 +582,7 @@
         </div>
 
         <div class="cons-show-card">
-            <div class="cons-show-card-h">Ítems en el saco ({{ $consolidation->items->count() }})</div>
+            <div class="cons-show-card-h">Ítems en el {{ $unit }} ({{ $consolidation->items->count() }})</div>
             <div class="cons-show-card-b">
                 @if($consolidation->items->count() > 0)
                     <div class="cons-show-item-list">
@@ -590,10 +598,10 @@
                                     @endif
                                 </div>
                                 @if($consolidation->status === 'OPEN')
-                                <form action="{{ route('consolidations.items.destroy', [$consolidation->id, $item->id]) }}" method="POST" class="cons-show-item-actions" onsubmit="return confirm('¿Eliminar este paquete del saco? El preregistro quedará disponible para otro saco.');">
+                                <form action="{{ route('consolidations.items.destroy', [$consolidation->id, $item->id]) }}" method="POST" class="cons-show-item-actions" onsubmit="return confirm('¿Eliminar este paquete del {{ $unit }}? El preregistro quedará disponible para otro {{ $unit }}.');">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="cons-show-item-remove" title="Eliminar del saco">Eliminar</button>
+                                    <button type="submit" class="cons-show-item-remove" title="Eliminar del {{ $unit }}">Eliminar</button>
                                 </form>
                                 @endif
                             </div>
@@ -602,13 +610,13 @@
                                 <div class="cons-show-item-main">
                                     <div class="cons-show-item-orphan-label">Sin preregistro</div>
                                     <div class="cons-show-item-orphan-code">{{ $item->unmatched_code }}</div>
-                                    <div class="cons-show-item-orphan-hint">Solo código guardado en el saco</div>
+                                    <div class="cons-show-item-orphan-hint">Solo código guardado en el {{ $unit }}</div>
                                 </div>
                                 @if($consolidation->status === 'OPEN')
-                                <form action="{{ route('consolidations.items.destroy', [$consolidation->id, $item->id]) }}" method="POST" class="cons-show-item-actions" onsubmit="return confirm('¿Eliminar este código del saco?');">
+                                <form action="{{ route('consolidations.items.destroy', [$consolidation->id, $item->id]) }}" method="POST" class="cons-show-item-actions" onsubmit="return confirm('¿Eliminar este código del {{ $unit }}?');">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="cons-show-item-remove" title="Eliminar del saco">Eliminar</button>
+                                    <button type="submit" class="cons-show-item-remove" title="Eliminar del {{ $unit }}">Eliminar</button>
                                 </form>
                                 @endif
                             </div>
@@ -616,7 +624,7 @@
                         @endforeach
                     </div>
                 @else
-                    <p class="cons-show-empty-p">No hay ítems en este saco</p>
+                    <p class="cons-show-empty-p">No hay ítems en este {{ $unit }}</p>
                 @endif
             </div>
         </div>
@@ -626,8 +634,8 @@
         @if(empty($mode))
             {{-- Pregunta inicial: cómo seguir editando el saco --}}
             <div class="cons-show-mode-prompt">
-                <h3 class="cons-show-mode-prompt-title">¿Cómo quieres seguir editando este saco?</h3>
-                <p class="cons-show-mode-prompt-sub">El saco está <strong>abierto</strong>. Puedes seguir agregando paquetes por escaneo (pistola) o seleccionándolos manualmente desde la lista. También puedes eliminar cualquier paquete del saco si te equivocaste.</p>
+                <h3 class="cons-show-mode-prompt-title">¿Cómo quieres seguir editando este {{ $unit }}?</h3>
+                <p class="cons-show-mode-prompt-sub">El {{ $unit }} está <strong>abierto</strong>. Puedes seguir agregando paquetes por escaneo (pistola) o seleccionándolos manualmente desde la lista. También puedes eliminar cualquier paquete si te equivocaste.</p>
                 <div class="cons-show-mode-grid">
                     <a href="{{ route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'scan']) }}" class="cons-show-mode-card">
                         <span class="cons-show-mode-card-icon" aria-hidden="true">▦</span>
@@ -664,17 +672,20 @@
                         'service_type' => $p->service_type,
                         'weight_lbs' => round((float) ($p->verified_weight_lbs ?? $p->intake_weight_lbs ?? 0), 2),
                     ])->values();
+                    $scanMeta = [
+                        'service_type' => $consolidation->service_type,
+                        'unit_noun' => $consolidation->unitNoun(),
+                        'existing_codes' => $consolidation->items->map(function ($it) {
+                            if ($it->preregistration) {
+                                return strtoupper(trim((string) ($it->preregistration->warehouse_code ?? $it->preregistration->tracking_external ?? '')));
+                            }
+
+                            return strtoupper(trim((string) ($it->unmatched_code ?? '')));
+                        })->filter()->values(),
+                    ];
                 @endphp
                 <script type="application/json" id="cons-show-scan-lookup">@json($lookupJson)</script>
-                <script type="application/json" id="cons-show-scan-meta">@json([
-                    'service_type' => $consolidation->service_type,
-                    'existing_codes' => $consolidation->items->map(function ($it) {
-                        if ($it->preregistration) {
-                            return strtoupper(trim((string) ($it->preregistration->warehouse_code ?? $it->preregistration->tracking_external ?? '')));
-                        }
-                        return strtoupper(trim((string) ($it->unmatched_code ?? '')));
-                    })->filter()->values(),
-                ])</script>
+                <script type="application/json" id="cons-show-scan-meta">@json($scanMeta)</script>
 
                 <div class="cons-show-card">
                     <div class="cons-show-card-h">Agregar por escaneo ({{ \App\Support\ServiceType::label($consolidation->service_type) }})</div>
@@ -689,7 +700,7 @@
                                     autocomplete="off" autocapitalize="characters" spellcheck="false" autofocus>
                                 <p id="cons-show-scan-feedback" class="cons-show-scan-feedback" role="status"></p>
                             </div>
-                            <p class="cons-show-scan-hint">Cada Enter o ráfaga de pistola agrega el código al saco. Si no coincide con un preregistro del mismo servicio, se guarda como código sin preregistro. Usa <strong>Eliminar</strong> en cada ítem si te equivocaste.</p>
+                            <p class="cons-show-scan-hint">Cada Enter o ráfaga de pistola agrega el código al {{ $unit }}. Si no coincide con un preregistro del mismo servicio, se guarda como código sin preregistro. Usa <strong>Eliminar</strong> en cada ítem si te equivocaste.</p>
                         </form>
                     </div>
                 </div>
@@ -731,7 +742,7 @@
                         @else
                             <div class="cons-show-empty">
                                 <p class="cons-show-empty-title">No hay preregistros disponibles para agregar</p>
-                                <p class="cons-show-empty-note">Todos los preregistros con estado RECEIVED_MIAMI y tipo {{ $consolidation->service_type }} ya están en otros sacos o no hay disponibles.</p>
+                                <p class="cons-show-empty-note">Todos los preregistros con estado RECEIVED_MIAMI y tipo {{ $consolidation->service_type }} ya están en otros {{ $consolidation->unitNoun(true) }} o no hay disponibles.</p>
                             </div>
                         @endif
                     </div>
@@ -755,6 +766,7 @@
     var lookup = lookupEl ? JSON.parse(lookupEl.textContent || '[]') : [];
     var meta = metaEl ? JSON.parse(metaEl.textContent || '{}') : {};
     var serviceType = meta.service_type || 'AIR';
+    var unitNoun = meta.unit_noun || 'saco';
     var existingCodes = Array.isArray(meta.existing_codes) ? meta.existing_codes : [];
 
     var scanDebounceTimer = null;
@@ -808,7 +820,7 @@
         var code = norm(input.value);
         if (!code) return;
         if (existingCodes.indexOf(code) !== -1) {
-            setFeedback('Ese código ya está en el saco.', 'err');
+            setFeedback('Ese código ya está en el ' + unitNoun + '.', 'err');
             input.select();
             return;
         }
@@ -817,7 +829,7 @@
             var routeLabels = { AIR: 'aéreo', SEA: 'marítimo', CFT: 'marítimo' };
             var sackWord = routeLabels[serviceType] || serviceType;
             var pkgWord = routeLabels[otherSvc.service_type] || otherSvc.service_type;
-            setFeedback('Alerta: el paquete está en preregistro como ' + pkgWord + ', no como ' + sackWord + '. Cambie el saco o use otro código.', 'err');
+            setFeedback('Alerta: el paquete está en preregistro como ' + pkgWord + ', no como ' + sackWord + '. Cambie el ' + unitNoun + ' o use otro código.', 'err');
             input.select();
             return;
         }

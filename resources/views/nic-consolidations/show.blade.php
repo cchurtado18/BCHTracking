@@ -16,7 +16,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 6.75h15v10.5h-15V6.75Zm3 3h4.5m-4.5 3h9"/></svg>
         </x-slot:icon>
         <x-slot:strip>
-            <span class="mb-strip-label">Saco</span>
+            <span class="mb-strip-label">{{ $consolidation->unitNounTitle() }}</span>
             <span class="mb-pill">{{ \App\Support\ServiceType::label($consolidation->service_type) }}</span>
         </x-slot:strip>
     </x-module-banner>
@@ -49,7 +49,7 @@
         <div class="cx-kpi-card">
             <span class="cx-kpi-label">Total items</span>
             <span id="nic-total-items" class="cx-kpi-value">{{ $totalItems }}</span>
-            <span class="cx-kpi-note">En este saco</span>
+            <span class="cx-kpi-note">En este {{ $consolidation->unitNoun() }}</span>
         </div>
         <div class="cx-kpi-card cx-kpi-card--green">
             <span class="cx-kpi-label">Escaneados</span>
@@ -73,7 +73,7 @@
             @if(isset($unmatchedItems) && $unmatchedItems->count() > 0)
             <div class="cx-card">
                 <div class="cx-panel-head">
-                    <h2 class="cx-panel-title">Códigos en saco sin preregistro ({{ $unmatchedItems->count() }})</h2>
+                    <h2 class="cx-panel-title">Códigos en el {{ $consolidation->unitNoun() }} sin preregistro ({{ $unmatchedItems->count() }})</h2>
                 </div>
                 <div class="cx-panel-body">
                     <p class="cx-scan-hint">Estas líneas se guardaron en Miami sin coincidir en el sistema. No requieren escaneo en Nicaragua.</p>

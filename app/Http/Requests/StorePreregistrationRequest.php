@@ -96,6 +96,9 @@ class StorePreregistrationRequest extends FormRequest
             'photo.max' => 'La foto no puede superar 10 MB. Reduzca el tamaño o tome otra foto.',
             'photo.mimes' => 'La foto debe ser JPG, PNG o WEBP. Si usa iPhone, en Ajustes > Cámara puede elegir "Formatos más compatibles".',
             'tracking_external.unique' => 'Este tracking ya está registrado en otro paquete. Use otro número o elimine el paquete que lo tiene.',
+            'service_type.required' => 'Debe elegir el tipo de servicio.',
+            'service_type.required_if' => 'Debe elegir el tipo de servicio.',
+            'service_type.in' => 'Debe elegir el tipo de servicio.',
         ];
         if ($this->isMultiBultoDropoff()) {
             $n = min((int) $this->input('bultos_count', 1), count($this->input('bultos', [])));

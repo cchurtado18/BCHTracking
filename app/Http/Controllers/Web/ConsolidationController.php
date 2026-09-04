@@ -99,12 +99,12 @@ class ConsolidationController extends Controller
     public function store(StoreConsolidationRequest $request)
     {
         $data = $request->validated();
-        $data['code'] = $this->consolidationService->generateCode();
+        $ids = $data['preregistration_ids'] ?? [];
+        unset($data['preregistration_ids']);
+        $data['code'] = $this->consolidationService->generateCode($data['service_type']);
         $data['status'] = 'OPEN';
 
         $consolidation = Consolidation::create($data);
-
-        $ids = $request->input('preregistration_ids', []);
 
         if (is_array($ids)) {
             foreach ($ids as $preregId) {
@@ -119,7 +119,7 @@ class ConsolidationController extends Controller
         }
 
         return redirect()->route('consolidations.label', $consolidation->id)
-            ->with('success', 'Saco creado. Imprime la etiqueta del saco para pegarla al mismo.');
+            ->with('success', $consolidation->unitNounTitle().' creado. Imprime la etiqueta para pegarla.');
     }
 
     public function storeScan(StoreConsolidationScanRequest $request)
@@ -133,7 +133,7 @@ class ConsolidationController extends Controller
         if ($codes->isEmpty()) {
             return redirect()->route('consolidations.create-scan')
                 ->withInput($request->except('entry_codes'))
-                ->with('error', 'Agregue al menos un código escaneado antes de crear el saco.');
+                ->with('error', 'Agregue al menos un código escaneado antes de crear el '.$this->unitNoun($request->input('service_type')).'.');
         }
 
         $sackService = $request->validated()['service_type'];
@@ -146,15 +146,16 @@ class ConsolidationController extends Controller
                 return redirect()->route('consolidations.create-scan')
                     ->withInput($request->except('entry_codes'))
                     ->withErrors([
-                        'entry_codes' => "El código {$code} corresponde a un paquete {$pkgLabel} en preregistro, no {$sackLabel}. Cambie el tipo de servicio del saco o elimine ese código de la lista.",
+                        'entry_codes' => "El código {$code} corresponde a un paquete {$pkgLabel} en preregistro, no {$sackLabel}. Cambie el tipo de servicio o elimine ese código de la lista.",
                     ]);
             }
         }
 
         $consolidation = DB::transaction(function () use ($request, $codes) {
             $consolidation = Consolidation::create([
-                'code' => $this->consolidationService->generateCode(),
+                'code' => $this->consolidationService->generateCode($request->validated()['service_type']),
                 'service_type' => $request->validated()['service_type'],
+                'transport_number' => $request->validated()['transport_number'],
                 'status' => 'OPEN',
                 'notes' => $request->validated()['notes'] ?? null,
             ]);
@@ -184,7 +185,7 @@ class ConsolidationController extends Controller
         });
 
         return redirect()->route('consolidations.label', $consolidation->id)
-            ->with('success', 'Saco creado por escaneo. Imprime la etiqueta del saco para pegarla al mismo.');
+            ->with('success', $consolidation->unitNounTitle().' creado por escaneo. Imprime la etiqueta para pegarla.');
     }
 
     /**
@@ -291,10 +292,17 @@ class ConsolidationController extends Controller
         $consolidation = Consolidation::findOrFail($id);
         if ($consolidation->status !== 'OPEN') {
             return redirect()->route('consolidations.show', $consolidation->id)
-                ->with('error', 'Solo se pueden editar sacos abiertos.');
+                ->with('error', 'Solo se pueden editar '.$consolidation->unitNoun(true).' abiertos.');
         }
-        $request->validate(['notes' => 'nullable|string|max:1000']);
-        $consolidation->update($request->only('notes'));
+        $data = $request->validate([
+            'notes' => 'nullable|string|max:1000',
+            'transport_number' => 'required|string|max:80',
+        ], [
+            'transport_number.required' => 'Indique el '.$consolidation->transportNumberLabel().'.',
+        ]);
+        $data['transport_number'] = strtoupper(trim((string) $data['transport_number']));
+        $consolidation->update($data);
+
         return redirect()->route('consolidations.show', $consolidation->id)->with('success', 'Actualizado.');
     }
 
@@ -302,18 +310,20 @@ class ConsolidationController extends Controller
     {
         $consolidation = Consolidation::findOrFail($id);
         if ($consolidation->status !== 'OPEN') {
-            return redirect()->route('consolidations.index')->with('error', 'Solo se pueden eliminar sacos abiertos.');
+            return redirect()->route('consolidations.index')->with('error', 'Solo se pueden eliminar '.$consolidation->unitNoun(true).' abiertos.');
         }
+        $unit = $consolidation->unitNounTitle();
         $consolidation->items()->delete();
         $consolidation->delete();
-        return redirect()->route('consolidations.index')->with('success', 'Saco eliminado.');
+
+        return redirect()->route('consolidations.index')->with('success', $unit.' eliminado.');
     }
 
     public function addItem(Request $request, string $id)
     {
         $consolidation = Consolidation::findOrFail($id);
         if ($consolidation->status !== 'OPEN') {
-            return back()->with('error', 'Solo se pueden agregar items a sacos abiertos.');
+            return back()->with('error', 'Solo se pueden agregar items a '.$consolidation->unitNoun(true).' abiertos.');
         }
         $preregId = $request->input('preregistration_id');
         $pre = Preregistration::find($preregId);
@@ -324,7 +334,7 @@ class ConsolidationController extends Controller
             return back()->with('error', 'El preregistro debe estar en Miami.');
         }
         if ($pre->consolidationItem) {
-            return back()->with('error', 'El preregistro ya está en otro saco.');
+            return back()->with('error', 'El preregistro ya está en otro '.$pre->consolidationItem->consolidation?->unitNoun().'.');
         }
         if (! ServiceType::matchesRoute($pre->service_type, $consolidation->service_type)) {
             return back()->with('error', 'El tipo de servicio no coincide.');
@@ -337,16 +347,15 @@ class ConsolidationController extends Controller
     }
 
     /**
-     * Agrega un ítem al saco abierto mediante un código escaneado (tracking o warehouse).
-     * Si coincide con un preregistro disponible del mismo servicio se enlaza,
-     * de lo contrario se guarda como código no enlazado (unmatched_code).
+     * Agrega un ítem mediante un código escaneado (tracking o warehouse).
      */
     public function addItemByScan(Request $request, string $id)
     {
         $consolidation = Consolidation::findOrFail($id);
+        $unit = $consolidation->unitNoun();
         if ($consolidation->status !== 'OPEN') {
             return redirect()->route('consolidations.show', $consolidation->id)
-                ->with('error', 'Solo se pueden agregar ítems a sacos abiertos.');
+                ->with('error', 'Solo se pueden agregar ítems a '.$consolidation->unitNoun(true).' abiertos.');
         }
 
         $request->validate([
@@ -368,7 +377,7 @@ class ConsolidationController extends Controller
         })->exists();
         if ($duplicateInSack) {
             return redirect()->route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'scan'])
-                ->with('error', "El código {$code} ya está en este saco.");
+                ->with('error', "El código {$code} ya está en este {$unit}.");
         }
 
         $anyMatch = $this->findPreregistrationByCodeAnyService($code);
@@ -394,7 +403,7 @@ class ConsolidationController extends Controller
             ]);
 
             return redirect()->route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'scan'])
-                ->with('success', "Paquete {$code} agregado al saco.");
+                ->with('success', "Paquete {$code} agregado al {$unit}.");
         }
 
         ConsolidationItem::create([
@@ -404,19 +413,19 @@ class ConsolidationController extends Controller
         ]);
 
         return redirect()->route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'scan'])
-            ->with('warning', "Código {$code} agregado al saco sin preregistro asociado.");
+            ->with('warning', "Código {$code} agregado al {$unit} sin preregistro asociado.");
     }
 
     /**
-     * Eliminar un ítem específico de un saco abierto. Permite corregir errores
-     * (ej. un paquete que no debía ir en el saco) antes de enviarlo.
+     * Eliminar un ítem específico de un consolidado abierto.
      */
     public function removeItem(string $id, string $itemId)
     {
         $consolidation = Consolidation::findOrFail($id);
+        $unit = $consolidation->unitNoun();
         if ($consolidation->status !== 'OPEN') {
             return redirect()->route('consolidations.show', $consolidation->id)
-                ->with('error', 'Solo se pueden eliminar ítems de sacos abiertos.');
+                ->with('error', 'Solo se pueden eliminar ítems de '.$consolidation->unitNoun(true).' abiertos.');
         }
 
         $item = ConsolidationItem::where('consolidation_id', $consolidation->id)
@@ -425,7 +434,7 @@ class ConsolidationController extends Controller
 
         if (! $item) {
             return redirect()->route('consolidations.show', $consolidation->id)
-                ->with('error', 'El ítem no existe en este saco.');
+                ->with('error', 'El ítem no existe en este '.$unit.'.');
         }
 
         $label = $item->preregistration
@@ -435,45 +444,54 @@ class ConsolidationController extends Controller
         $item->delete();
 
         return redirect()->route('consolidations.show', $consolidation->id)
-            ->with('success', "Ítem eliminado del saco" . ($label ? ": {$label}" : '.'));
+            ->with('success', "Ítem eliminado del {$unit}".($label ? ": {$label}" : '.'));
     }
 
     public function send(string $id)
     {
         $consolidation = Consolidation::withCount('items')->findOrFail($id);
+        $unit = $consolidation->unitNoun();
+        $Unit = $consolidation->unitNounTitle();
         if ($consolidation->status !== 'OPEN') {
-            return back()->with('error', 'Solo se pueden enviar sacos abiertos.');
+            return back()->with('error', 'Solo se pueden enviar '.$consolidation->unitNoun(true).' abiertos.');
         }
         if ($consolidation->items_count < 1) {
-            return back()->with('error', 'El saco no tiene items.');
+            return back()->with('error', 'El '.$unit.' no tiene items.');
         }
         try {
             $this->consolidationService->sendConsolidation($consolidation);
-            return back()->with('success', 'Saco enviado. Los paquetes vinculados a un preregistro pasaron a IN_TRANSIT.');
+            return back()->with('success', $Unit.' enviado. Los paquetes vinculados a un preregistro pasaron a IN_TRANSIT.');
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
     }
 
     /**
-     * Crear un saco con un solo preregistro (envío de una sola caja).
-     * Redirige a la etiqueta del saco para imprimir.
+     * Crear un consolidado con un solo preregistro (envío de una sola caja).
      */
-    public function createSingleFromPreregistration(Preregistration $preregistration)
+    public function createSingleFromPreregistration(Request $request, Preregistration $preregistration)
     {
+        $serviceType = ServiceType::route($preregistration->service_type);
+        $unit = ServiceType::consolidationNoun($serviceType);
+        $data = $request->validate([
+            'transport_number' => 'required|string|max:80',
+        ], [
+            'transport_number.required' => 'Indique el '.ServiceType::transportNumberLabel($serviceType).'.',
+        ]);
+
         if ($preregistration->status !== 'RECEIVED_MIAMI') {
             return redirect()->route('preregistrations.show', $preregistration->id)
-                ->with('error', 'Solo se puede crear un saco unitario para preregistros en Miami (RECEIVED_MIAMI).');
+                ->with('error', 'Solo se puede crear un '.$unit.' unitario para preregistros en Miami (RECEIVED_MIAMI).');
         }
         if ($preregistration->consolidationItem) {
             return redirect()->route('preregistrations.show', $preregistration->id)
-                ->with('error', 'Este preregistro ya está en un saco.');
+                ->with('error', 'Este preregistro ya está en un '.$preregistration->consolidationItem->consolidation?->unitNoun().'.');
         }
 
-        $serviceType = $preregistration->service_type ?? 'AIR';
         $consolidation = Consolidation::create([
-            'code' => $this->consolidationService->generateCode(),
-            'service_type' => $serviceType,
+            'code' => $this->consolidationService->generateCode($serviceType),
+            'service_type' => $serviceType === ServiceType::SEA ? ServiceType::SEA : ServiceType::AIR,
+            'transport_number' => strtoupper(trim((string) $data['transport_number'])),
             'status' => 'OPEN',
         ]);
         ConsolidationItem::create([
@@ -482,6 +500,11 @@ class ConsolidationController extends Controller
         ]);
 
         return redirect()->route('consolidations.label', $consolidation->id)
-            ->with('success', 'Saco unitario creado (1 caja). Imprime la etiqueta del saco y pégala a la caja.');
+            ->with('success', $consolidation->unitNounTitle().' unitario creado (1 caja). Imprime la etiqueta y pégala.');
+    }
+
+    private function unitNoun(?string $service, bool $plural = false): string
+    {
+        return ServiceType::consolidationNoun($service, $plural);
     }
 }

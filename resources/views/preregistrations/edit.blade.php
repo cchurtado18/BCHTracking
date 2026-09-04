@@ -145,10 +145,17 @@
 
                                 <div class="preregs-field">
                                     <label for="service_type" class="preregs-field-label">Tipo de servicio <span class="preregs-req">*</span></label>
+                                    @php
+                                        $editService = old(
+                                            'service_type',
+                                            $preregistration->status === 'PHOTO_PENDING' ? '' : $preregistration->service_type
+                                        );
+                                    @endphp
                                     <select name="service_type" id="service_type" required class="preregs-input preregs-select">
-                                        <option value="AIR" {{ old('service_type', $preregistration->service_type) == 'AIR' ? 'selected' : '' }}>Aéreo</option>
-                                        <option value="SEA" {{ old('service_type', $preregistration->service_type) == 'SEA' ? 'selected' : '' }}>Marítimo</option>
-                                        <option value="CFT" {{ old('service_type', $preregistration->service_type) == 'CFT' ? 'selected' : '' }}>Pie cúbico</option>
+                                        <option value="" disabled {{ $editService ? '' : 'selected' }}>Seleccione un servicio</option>
+                                        <option value="AIR" {{ $editService == 'AIR' ? 'selected' : '' }}>Aéreo</option>
+                                        <option value="SEA" {{ $editService == 'SEA' ? 'selected' : '' }}>Marítimo</option>
+                                        <option value="CFT" {{ $editService == 'CFT' ? 'selected' : '' }}>Pie cúbico</option>
                                     </select>
                                     @error('service_type')
                                     <p class="preregs-field-error">{{ $message }}</p>

@@ -3,38 +3,34 @@
 namespace App\Services;
 
 use App\Models\Consolidation;
+use App\Models\ConsolidationItem;
+use App\Models\Preregistration;
+use App\Support\ServiceType;
 use Illuminate\Support\Facades\DB;
 
 class ConsolidationService
 {
     /**
-     * Generate a unique consolidation code in format: SAC-YYYYMM-0001
-     * 
-     * @return string
+     * Código único: SAC-YYYYMM-0001 (aéreo) o CNT-YYYYMM-0001 (marítimo).
      */
-    public function generateCode(): string
+    public function generateCode(string $serviceType): string
     {
-        $yearMonth = now()->format('Y-m');
-        $prefix = 'SAC-' . now()->format('Ym') . '-';
+        $prefix = ServiceType::route($serviceType) === ServiceType::SEA
+            ? 'CNT-'.now()->format('Ym').'-'
+            : 'SAC-'.now()->format('Ym').'-';
 
-        // Get the last code for this month
-        $lastCode = Consolidation::where('code', 'like', $prefix . '%')
+        $lastCode = Consolidation::where('code', 'like', $prefix.'%')
             ->orderBy('code', 'desc')
             ->value('code');
 
         if ($lastCode) {
-            // Extract the number part (last 4 digits)
             $lastNumber = (int) substr($lastCode, -4);
             $nextNumber = $lastNumber + 1;
         } else {
-            // First consolidation of the month
             $nextNumber = 1;
         }
 
-        // Format with leading zeros (4 digits)
-        $formattedNumber = str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
-
-        return $prefix . $formattedNumber;
+        return $prefix.str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -118,6 +114,58 @@ class ConsolidationService
             'missing_count' => $missingCount,
             'unmatched_count' => $unmatchedItems->count(),
         ];
+    }
+
+    /**
+     * Si el paquete coincide con un código ya escaneado en un saco (sin preregistro),
+     * lo enlaza para que el saco reconozca tracking y peso.
+     */
+    public function linkUnmatchedItemsFor(Preregistration $package): void
+    {
+        if ($package->consolidationItem()->exists()) {
+            return;
+        }
+
+        if (in_array($package->status, ['PHOTO_PENDING', 'CANCELLED'], true)) {
+            return;
+        }
+
+        $codes = collect([
+            strtoupper(trim((string) ($package->tracking_external ?? ''))),
+            strtoupper(trim((string) ($package->warehouse_code ?? ''))),
+        ])->filter()->unique()->values();
+
+        if ($codes->isEmpty()) {
+            return;
+        }
+
+        $item = ConsolidationItem::query()
+            ->with('consolidation')
+            ->whereNull('preregistration_id')
+            ->where(function ($query) use ($codes) {
+                foreach ($codes as $code) {
+                    $query->orWhereRaw('UPPER(unmatched_code) = ?', [$code]);
+                }
+            })
+            ->orderBy('id')
+            ->first();
+
+        if (! $item) {
+            return;
+        }
+
+        $sack = $item->consolidation;
+        if ($sack && $package->service_type && ! ServiceType::matchesRoute($package->service_type, $sack->service_type)) {
+            return;
+        }
+
+        $item->update([
+            'preregistration_id' => $package->id,
+        ]);
+
+        if ($sack?->status === 'SENT' && $package->status === 'RECEIVED_MIAMI') {
+            $package->update(['status' => 'IN_TRANSIT']);
+        }
     }
 }
 

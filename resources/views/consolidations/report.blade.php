@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $consolidation->code }} · Reporte de saco · PrimeTrack Group</title>
+    <title>{{ $consolidation->code }} · Reporte de {{ $consolidation->unitNoun() }} · PrimeTrack Group</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, body * { font-family: Arial, Helvetica, sans-serif; }
@@ -123,7 +123,7 @@
 <body>
     <div class="no-print">
         <button type="button" onclick="window.print()" class="btn-print">Imprimir / Guardar PDF</button>
-        <a href="{{ route('consolidations.show', $consolidation->id) }}" class="btn-back">← Volver al saco</a>
+        <a href="{{ route('consolidations.show', $consolidation->id) }}" class="btn-back">← Volver al {{ $consolidation->unitNoun() }}</a>
         <p class="print-hint">Al imprimir, desmarque «Encabezados y pies de página» para no incluir la URL.</p>
     </div>
 
@@ -136,6 +136,8 @@
         ];
         $displayTimezone = config('app.display_timezone') ?: 'America/New_York';
         $serviceWord = \App\Support\ServiceType::route($consolidation->service_type) === 'AIR' ? 'AÉREO' : 'MARÍTIMO';
+        $unit = $consolidation->unitNoun();
+        $UnitUpper = mb_strtoupper($unit);
         $createdAt = $consolidation->created_at?->timezone($displayTimezone);
         $sentAt = $consolidation->sent_at?->timezone($displayTimezone);
     @endphp
@@ -152,7 +154,7 @@
                 </div>
             </div>
             <div class="h-right">
-                <div class="h-title">REPORTE DE SACO</div>
+                <div class="h-title">REPORTE DE {{ $UnitUpper }}</div>
                 <div>
                     <div class="h-code-label">Número</div>
                     <div class="h-code">{{ $consolidation->code }}</div>
@@ -174,8 +176,8 @@
                 <div class="val">{{ $sentAt?->format('d/m/Y H:i') ?? '—' }}</div>
             </div>
             <div class="strip-cell">
-                <span class="lbl">Origen / Destino</span>
-                <div class="val">MIA / NIC</div>
+                <span class="lbl">{{ $consolidation->transportNumberLabel() }}</span>
+                <div class="val">{{ $consolidation->transport_number ?: '—' }}</div>
             </div>
             <div class="strip-cell">
                 <span class="lbl">Cantidad de bultos</span>
@@ -214,7 +216,7 @@
                             <td class="num">{{ $package?->cubic_feet !== null ? number_format((float) $package->cubic_feet, 2) : '—' }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="center" style="padding: 14px 0; color: #94a3b8;">Este saco todavía no contiene ítems.</td></tr>
+                        <tr><td colspan="7" class="center" style="padding: 14px 0; color: #94a3b8;">Este {{ $unit }} todavía no contiene ítems.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -230,7 +232,7 @@
 
         <div class="foot">
             <div class="disclaimer">
-                Reporte del contenido del saco al momento de su generación. Los pesos corresponden al peso verificado o, en su defecto, al peso de ingreso registrado en Miami. Las líneas resaltadas corresponden a códigos escaneados sin preregistro asociado.
+                Reporte del contenido del {{ $unit }} al momento de su generación. Los pesos corresponden al peso verificado o, en su defecto, al peso de ingreso registrado en Miami. Las líneas resaltadas corresponden a códigos escaneados sin preregistro asociado.
             </div>
             <div class="sigs">
                 <div class="sig">

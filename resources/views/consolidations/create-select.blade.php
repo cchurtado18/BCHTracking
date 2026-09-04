@@ -1,14 +1,14 @@
 @extends('layouts.app')
 
-@section('title', 'Crear saco — selección')
+@section('title', 'Crear — selección')
 
 @section('content')
 <div class="cons-page">
     <x-module-banner
         section="Operaciones"
         current="Selección en tabla"
-        title="Crear saco — selección"
-        subtitle="Marque los preregistros en Miami que van en este saco. Para armar por pistola use el modo escaneo."
+        title="Crear — selección"
+        subtitle="Aéreo = saco (guía aérea). Marítimo = contenedor (número de contenedor). Marque los preregistros en Miami."
         back-href="{{ route('consolidations.create') }}"
         back-label="Otros modos"
     >
@@ -16,7 +16,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 8.25h16.5M3.75 15.75h16.5M7.5 3.75v16.5m9-16.5v16.5"/></svg>
         </x-slot:icon>
         <x-slot:actions>
-            <a href="{{ route('consolidations.index') }}" class="mb-btn mb-btn-secondary">Lista de sacos</a>
+            <a href="{{ route('consolidations.index') }}" class="mb-btn mb-btn-secondary">Lista</a>
         </x-slot:actions>
     </x-module-banner>
 
@@ -27,21 +27,29 @@
             <!-- Formulario de Creación -->
             <div class="cons-card cons-form-card">
                 <div class="cons-card-header cons-table-header">
-                    <h2 class="cons-card-title">Información del Saco</h2>
+                    <h2 class="cons-card-title" id="cons_form_title">Información</h2>
                 </div>
                 <div class="cons-card-body">
                     <div class="cons-form-fields">
                         <div class="cons-field">
                             <label for="service_type" class="cons-label">Tipo de Servicio *</label>
                             <select name="service_type" id="service_type" required class="cons-select">
-                                <option value="AIR">Aéreo</option>
-                                <option value="SEA">Marítimo</option>
+                                <option value="AIR" @selected(old('service_type', 'AIR') === 'AIR')>Aéreo (saco)</option>
+                                <option value="SEA" @selected(old('service_type') === 'SEA')>Marítimo (contenedor)</option>
                             </select>
                         </div>
 
                         <div class="cons-field">
+                            <label for="transport_number" class="cons-label" id="cons_transport_label">Número de guía aérea *</label>
+                            <input type="text" name="transport_number" id="transport_number" required class="cons-input" value="{{ old('transport_number') }}" maxlength="80" autocomplete="off">
+                            @error('transport_number')
+                            <p class="cons-field-error">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="cons-field">
                             <label for="notes" class="cons-label">Notas</label>
-                            <textarea name="notes" id="notes" rows="3" class="cons-textarea" placeholder="Notas adicionales sobre el saco..."></textarea>
+                            <textarea name="notes" id="notes" rows="3" class="cons-textarea" placeholder="Notas adicionales...">{{ old('notes') }}</textarea>
                         </div>
                     </div>
 
@@ -52,7 +60,7 @@
                         </div>
                         <div class="cons-form-actions">
                             <a href="{{ route('consolidations.index') }}" class="cons-btn cons-btn-secondary">Cancelar</a>
-                            <button type="submit" class="cons-btn cons-btn-primary">Crear Saco con Seleccionados</button>
+                            <button type="submit" class="cons-btn cons-btn-primary" id="cons_submit_btn">Crear saco con seleccionados</button>
                         </div>
                     </div>
                 </div>
@@ -172,7 +180,7 @@
                     @if($availableByServiceType['AIR']->count() == 0 && $availableByServiceType['SEA']->count() == 0)
                         <div class="cons-empty-state">
                             <p class="cons-empty-state-text">No hay preregistros disponibles</p>
-                            <p class="cons-empty-state-hint">Crea preregistros con estado RECEIVED_MIAMI para poder agregarlos a un saco</p>
+                            <p class="cons-empty-state-hint">Crea preregistros con estado RECEIVED_MIAMI para poder agregarlos a un saco o contenedor</p>
                             <a href="{{ route('preregistrations.create') }}" class="cons-btn cons-btn-outline-primary">→ Crear Preregistro</a>
                         </div>
                     @endif
@@ -351,6 +359,13 @@
             const selectedType = serviceTypeSelect.value;
             availableAir.style.display = selectedType === 'AIR' ? 'block' : 'none';
             availableSea.style.display = selectedType === 'SEA' ? 'block' : 'none';
+            var noun = selectedType === 'SEA' ? 'contenedor' : 'saco';
+            var transport = document.getElementById('cons_transport_label');
+            var formTitle = document.getElementById('cons_form_title');
+            var submitBtn = document.getElementById('cons_submit_btn');
+            if (transport) transport.textContent = selectedType === 'SEA' ? 'Número de contenedor *' : 'Número de guía aérea *';
+            if (formTitle) formTitle.textContent = 'Información del ' + noun;
+            if (submitBtn) submitBtn.textContent = 'Crear ' + noun + ' con seleccionados';
             updateSelectedCount();
         }
 

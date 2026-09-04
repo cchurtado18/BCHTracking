@@ -12,7 +12,7 @@
             <span class="admin-return-panel__label">Administración</span>
             <p class="admin-return-panel__desc">
                 @if($canAdminResetToMiami)
-                    Devuelve el paquete a <strong>Recibido en Miami</strong>, quita el vínculo con el saco y limpia tránsito / Nicaragua / listo en sistema. Queda en <a href="{{ route('audit.index', ['action' => 'admin_reset_to_miami']) }}" class="admin-return-panel__link">Auditoría</a>.
+                    Devuelve el paquete a <strong>Recibido en Miami</strong>, quita el vínculo con el saco o contenedor y limpia tránsito / Nicaragua / listo en sistema. Queda en <a href="{{ route('audit.index', ['action' => 'admin_reset_to_miami']) }}" class="admin-return-panel__link">Auditoría</a>.
                 @else
                     <span class="admin-return-panel__muted">{{ $adminResetBlockReason ?? 'No aplica en el estado actual.' }}</span>
                 @endif
@@ -33,7 +33,7 @@
             <h2 class="admin-return-dialog__title" id="admin-return-title-{{ $preregistration->id }}">Devolver paquete a Miami</h2>
             <button type="button" class="admin-return-dialog__close" aria-label="Cerrar" data-admin-return-close>&times;</button>
         </header>
-        <p class="admin-return-dialog__lead">Indique el motivo y confirme. Esta acción desvincula el paquete del saco actual y restablece el flujo desde Miami.</p>
+        <p class="admin-return-dialog__lead">Indique el motivo y confirme. Esta acción desvincula el paquete de la consolidación actual y restablece el flujo desde Miami.</p>
         <form method="POST" action="{{ route('preregistrations.admin.reset-to-miami', $preregistration->id) }}" class="admin-return-dialog__form">
             @csrf
             @if(!empty($returnToPackage))
@@ -50,7 +50,7 @@
                 <label class="admin-return-dialog__check">
                     <input type="hidden" name="admin_reset_confirm" value="0">
                     <input type="checkbox" name="admin_reset_confirm" value="1" {{ old('admin_reset_confirm') == '1' ? 'checked' : '' }} required>
-                    <span>Confirmo esta corrección y entiendo que el paquete saldrá del saco actual.</span>
+                    <span>Confirmo esta corrección y entiendo que el paquete saldrá del saco o contenedor actual.</span>
                 </label>
                 @error('admin_reset_confirm')
                 <p class="admin-return-dialog__err">{{ $message }}</p>

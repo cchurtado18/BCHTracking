@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Crear saco por escaneo')
+@section('title', 'Crear por escaneo')
 
 @section('content')
 @php
@@ -19,8 +19,8 @@
     <x-module-banner
         section="Operaciones"
         current="Escaneo"
-        title="Crear saco por escaneo"
-        subtitle="Pulse Enter tras cada código (warehouse o tracking). El servidor validará de nuevo al guardar."
+        title="Crear por escaneo"
+        subtitle="Aéreo = saco (guía aérea). Marítimo = contenedor (número de contenedor). Pulse Enter tras cada código."
         back-href="{{ route('consolidations.create') }}"
         back-label="Modos de creación"
     >
@@ -28,7 +28,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.5h16.5v15H3.75V4.5Zm4.5 4.5h3m-3 3h7.5"/></svg>
         </x-slot:icon>
         <x-slot:actions>
-            <a href="{{ route('consolidations.index') }}" class="mb-btn mb-btn-secondary">Lista de sacos</a>
+            <a href="{{ route('consolidations.index') }}" class="mb-btn mb-btn-secondary">Lista</a>
         </x-slot:actions>
     </x-module-banner>
 
@@ -52,13 +52,20 @@
 
         <div class="csscan-panel csscan-panel--form">
             <div class="csscan-panel-section">
-                <h2 class="csscan-section-label">Detalle del saco</h2>
+                <h2 class="csscan-section-label" id="csscan_detail_title">Detalle</h2>
                 <div class="csscan-field">
                     <label for="csscan_service_type" class="csscan-label">Tipo de servicio</label>
                     <select name="service_type" id="csscan_service_type" required class="csscan-select">
-                        <option value="AIR" @selected(old('service_type', 'AIR') === 'AIR')>Aéreo</option>
-                        <option value="SEA" @selected(old('service_type') === 'SEA')>Marítimo</option>
+                        <option value="AIR" @selected(old('service_type', 'AIR') === 'AIR')>Aéreo (saco)</option>
+                        <option value="SEA" @selected(old('service_type') === 'SEA')>Marítimo (contenedor)</option>
                     </select>
+                </div>
+                <div class="csscan-field">
+                    <label for="csscan_transport_number" class="csscan-label" id="csscan_transport_label">Número de guía aérea</label>
+                    <input type="text" name="transport_number" id="csscan_transport_number" required class="csscan-input" value="{{ old('transport_number') }}" maxlength="80" autocomplete="off" placeholder="Obligatorio">
+                    @error('transport_number')
+                    <p class="csscan-feedback err">{{ $message }}</p>
+                    @enderror
                 </div>
                 <div class="csscan-field">
                     <label for="csscan_notes" class="csscan-label">Notas <span class="csscan-label-hint">opcional</span></label>
@@ -80,14 +87,14 @@
             </div>
 
             <div class="csscan-actions">
-                <button type="submit" class="csscan-btn csscan-btn-primary" id="csscan_submit" disabled>Crear saco con esta lista</button>
+                <button type="submit" class="csscan-btn csscan-btn-primary" id="csscan_submit" disabled>Crear con esta lista</button>
             </div>
         </div>
 
         <div class="csscan-list-panel">
             <div class="csscan-list-head">
                 <div>
-                    <h2 class="csscan-list-title">Códigos en el saco</h2>
+                    <h2 class="csscan-list-title" id="csscan_list_title">Códigos en el saco</h2>
                     <p class="csscan-list-sub">Vista previa antes de guardar · peso solo de ítems con preregistro en este servicio</p>
                 </div>
                 <div class="csscan-list-head-stats" aria-live="polite">
@@ -681,6 +688,9 @@
     const emptyEl = document.getElementById('csscan_empty');
     const submitBtn = document.getElementById('csscan_submit');
     const feedback = document.getElementById('csscan_line_feedback');
+    const transportLabel = document.getElementById('csscan_transport_label');
+    const listTitle = document.getElementById('csscan_list_title');
+    const detailTitle = document.getElementById('csscan_detail_title');
 
     const lines = [];
     let scanDebounceTimer = null;
@@ -693,6 +703,23 @@
 
     function packageRoute(st) {
         return st === 'CFT' ? 'SEA' : st;
+    }
+
+    function unitNoun(st) {
+        return packageRoute(st) === 'SEA' ? 'contenedor' : 'saco';
+    }
+
+    function syncUnitLabels() {
+        var st = serviceSelect.value;
+        var noun = unitNoun(st);
+        if (transportLabel) {
+            transportLabel.textContent = packageRoute(st) === 'SEA' ? 'Número de contenedor' : 'Número de guía aérea';
+        }
+        if (listTitle) listTitle.textContent = 'Códigos en el ' + noun;
+        if (detailTitle) detailTitle.textContent = 'Detalle del ' + noun;
+        if (submitBtn && submitBtn.dataset.ready !== '0') {
+            submitBtn.textContent = 'Crear ' + noun + ' con esta lista';
+        }
     }
 
     function findInLookup(code) {
@@ -760,7 +787,7 @@
 
     function render() {
         list.innerHTML = '';
-        lines.forEach(function(entry) {
+        lines.slice().reverse().forEach(function(entry) {
             const li = document.createElement('li');
             li.className = 'csscan-row ' + (entry.matched ? 'match' : 'unmatch');
             const main = document.createElement('div');
@@ -852,7 +879,7 @@
             const routeLabels = { AIR: 'aéreo', SEA: 'marítimo', CFT: 'marítimo' };
             const sackWord = routeLabels[serviceSelect.value] || serviceSelect.value;
             const pkgWord = routeLabels[otherSvc.service_type] || otherSvc.service_type;
-            setFeedback('Alerta: este paquete está en preregistro como ' + pkgWord + ', no como ' + sackWord + '. Cambie el tipo de servicio del saco o use otro código.', 'err');
+            setFeedback('Alerta: este paquete está en preregistro como ' + pkgWord + ', no como ' + sackWord + '. Cambie el tipo de servicio del ' + unitNoun(serviceSelect.value) + ' o use otro código.', 'err');
             input.select();
             return false;
         }
@@ -865,7 +892,7 @@
             weightLbs: hit ? weightFromHit(hit) : 0,
         });
         input.value = '';
-        setFeedback(hit ? 'Agregado (preregistro).' : 'Agregado: sin preregistro — se guardará el código en el saco.', hit ? 'ok' : 'warn');
+        setFeedback(hit ? 'Agregado (preregistro).' : 'Agregado: sin preregistro — se guardará el código en el ' + unitNoun(serviceSelect.value) + '.', hit ? 'ok' : 'warn');
         render();
         input.focus();
         return true;
@@ -889,10 +916,12 @@
     serviceSelect.addEventListener('change', function() {
         clearScanDebounce();
         rematchAllFromLookup();
+        syncUnitLabels();
         render();
         setFeedback('Tipo de servicio cambiado. Se recalculó coincidencia y peso por fila.', '');
     });
 
+    syncUnitLabels();
     render();
 })();
 </script>

@@ -4,14 +4,20 @@ namespace App\Observers;
 
 use App\Models\AuditLog;
 use App\Models\Preregistration;
+use App\Services\ConsolidationService;
 use Illuminate\Support\Facades\Request;
 
 class PreregistrationObserver
 {
+    public function __construct(private ConsolidationService $consolidations)
+    {
+    }
+
     public function created(Preregistration $preregistration): void
     {
         $code = $preregistration->warehouse_code ?? $preregistration->tracking_external ?? '—';
         $this->log('created', $preregistration, null, $preregistration->getAttributes(), "Paquete creado (código/tracking: {$code})");
+        $this->linkSackIfUnmatched($preregistration);
     }
 
     public function updated(Preregistration $preregistration): void
@@ -27,6 +33,7 @@ class PreregistrationObserver
         }
         $summary = $this->buildUpdateSummary($preregistration, $old, $changes);
         $this->log('updated', $preregistration, $old, $changes, $summary);
+        $this->linkSackIfUnmatched($preregistration);
     }
 
     public function deleted(Preregistration $preregistration): void
@@ -85,5 +92,14 @@ class PreregistrationObserver
         }
         $code = $preregistration->warehouse_code ?? $preregistration->tracking_external ?? $preregistration->id;
         return "Paquete modificado ({$code}): " . implode('; ', $parts);
+    }
+
+    private function linkSackIfUnmatched(Preregistration $preregistration): void
+    {
+        try {
+            $this->consolidations->linkUnmatchedItemsFor($preregistration);
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 }
