@@ -85,7 +85,7 @@ class Preregistration extends Model
     protected function setTrackingExternalAttribute(?string $value): void
     {
         $this->attributes['tracking_external'] = $value !== null && $value !== ''
-            ? strtoupper($value)
+            ? strtoupper(trim($value))
             : $value;
     }
 

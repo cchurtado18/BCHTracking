@@ -138,7 +138,7 @@ class ConsolidationController extends Controller
 
         $sackService = $request->validated()['service_type'];
         foreach ($codes as $code) {
-            $anyMatch = $this->findPreregistrationByCodeAnyService($code);
+            $anyMatch = $this->consolidationService->findAvailableForScan($code, $sackService, true);
             if ($anyMatch && ! ServiceType::matchesRoute($anyMatch->service_type, $sackService)) {
                 $sackLabel = ServiceType::routeLabelLower($sackService);
                 $pkgLabel = ServiceType::routeLabelLower($anyMatch->service_type);
@@ -161,7 +161,7 @@ class ConsolidationController extends Controller
             ]);
 
             foreach ($codes as $code) {
-                $pre = $this->findPreregistrationForSackScan($code, $consolidation->service_type);
+                $pre = $this->consolidationService->findAvailableForScan($code, $consolidation->service_type);
                 if ($pre) {
                     if (! filled($pre->tracking_external)) {
                         $pre->tracking_external = $code;
@@ -188,54 +188,9 @@ class ConsolidationController extends Controller
             ->with('success', $consolidation->unitNounTitle().' creado por escaneo. Imprime la etiqueta para pegarla.');
     }
 
-    /**
-     * Busca preregistro en Miami por tracking/warehouse sin filtrar por tipo de servicio.
-     */
-    protected function findPreregistrationByCodeAnyService(string $normalizedCode): ?Preregistration
-    {
-        if ($normalizedCode === '') {
-            return null;
-        }
-
-        return Preregistration::query()
-            ->where('status', 'RECEIVED_MIAMI')
-            ->whereDoesntHave('consolidationItem')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->first(function (Preregistration $p) use ($normalizedCode) {
-                $t = strtoupper(trim((string) ($p->tracking_external ?? '')));
-                $w = strtoupper(trim((string) ($p->warehouse_code ?? '')));
-
-                return $normalizedCode === $t || $normalizedCode === $w;
-            });
-    }
-
-    /**
-     * Preregistro en Miami disponible para saco, coincidiendo por tracking o warehouse (mismo tipo de servicio).
-     */
-    protected function findPreregistrationForSackScan(string $normalizedCode, string $serviceType): ?Preregistration
-    {
-        if ($normalizedCode === '') {
-            return null;
-        }
-
-        return Preregistration::query()
-            ->where('status', 'RECEIVED_MIAMI')
-            ->whereIn('service_type', ServiceType::servicesForRoute($serviceType))
-            ->whereDoesntHave('consolidationItem')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->first(function (Preregistration $p) use ($normalizedCode) {
-                $t = strtoupper(trim((string) ($p->tracking_external ?? '')));
-                $w = strtoupper(trim((string) ($p->warehouse_code ?? '')));
-
-                return $normalizedCode === $t || $normalizedCode === $w;
-            });
-    }
-
     public function label(string $id)
     {
-        $consolidation = Consolidation::with(['items.preregistration'])->findOrFail($id);
+        $consolidation = $this->loadResolvedConsolidation($id);
         $report = $this->consolidationService->getReport($consolidation);
         return view('consolidations.label', compact('consolidation', 'report'));
     }
@@ -250,6 +205,13 @@ class ConsolidationController extends Controller
                 ->with('preregistration.agency')
                 ->orderBy('id'),
         ])->findOrFail($id);
+        if ($this->consolidationService->resolveUnmatchedItems($consolidation) > 0) {
+            $consolidation->load([
+                'items' => fn ($query) => $query
+                    ->with('preregistration.agency')
+                    ->orderBy('id'),
+            ]);
+        }
         $report = $this->consolidationService->getReport($consolidation);
 
         return view('consolidations.report', compact('consolidation', 'report'));
@@ -257,7 +219,7 @@ class ConsolidationController extends Controller
 
     public function show(Request $request, string $id)
     {
-        $consolidation = Consolidation::with(['items.preregistration'])->findOrFail($id);
+        $consolidation = $this->loadResolvedConsolidation($id);
         $report = $this->consolidationService->getReport($consolidation);
 
         $availablePreregistrations = collect();
@@ -380,7 +342,7 @@ class ConsolidationController extends Controller
                 ->with('error', "El código {$code} ya está en este {$unit}.");
         }
 
-        $anyMatch = $this->findPreregistrationByCodeAnyService($code);
+        $anyMatch = $this->consolidationService->findAvailableForScan($code, $consolidation->service_type, true);
         if ($anyMatch && ! ServiceType::matchesRoute($anyMatch->service_type, $consolidation->service_type)) {
             $sackLabel = ServiceType::routeLabelLower($consolidation->service_type);
             $pkgLabel = ServiceType::routeLabelLower($anyMatch->service_type);
@@ -389,7 +351,7 @@ class ConsolidationController extends Controller
                 ->with('error', "El código {$code} corresponde a un paquete {$pkgLabel} en preregistro, no {$sackLabel}.");
         }
 
-        $pre = $this->findPreregistrationForSackScan($code, $consolidation->service_type);
+        $pre = $this->consolidationService->findAvailableForScan($code, $consolidation->service_type);
 
         if ($pre) {
             if (! filled($pre->tracking_external)) {
@@ -450,6 +412,8 @@ class ConsolidationController extends Controller
     public function send(string $id)
     {
         $consolidation = Consolidation::withCount('items')->findOrFail($id);
+        $this->consolidationService->resolveUnmatchedItems($consolidation);
+        $consolidation->loadCount('items');
         $unit = $consolidation->unitNoun();
         $Unit = $consolidation->unitNounTitle();
         if ($consolidation->status !== 'OPEN') {
@@ -501,6 +465,16 @@ class ConsolidationController extends Controller
 
         return redirect()->route('consolidations.label', $consolidation->id)
             ->with('success', $consolidation->unitNounTitle().' unitario creado (1 caja). Imprime la etiqueta y pégala.');
+    }
+
+    private function loadResolvedConsolidation(string $id): Consolidation
+    {
+        $consolidation = Consolidation::with(['items.preregistration'])->findOrFail($id);
+        if ($this->consolidationService->resolveUnmatchedItems($consolidation) > 0) {
+            $consolidation->load(['items.preregistration']);
+        }
+
+        return $consolidation;
     }
 
     private function unitNoun(?string $service, bool $plural = false): string

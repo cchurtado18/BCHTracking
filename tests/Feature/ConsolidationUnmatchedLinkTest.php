@@ -153,4 +153,87 @@ class ConsolidationUnmatchedLinkTest extends TestCase
         $this->assertSame($package->id, (int) ConsolidationItem::where('consolidation_id', $sack->id)->value('preregistration_id'));
         $this->assertSame('IN_TRANSIT', $package->fresh()->status);
     }
+
+    public function test_opening_sack_links_existing_preregistration_to_unmatched_code(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+        $agency = $this->agency();
+
+        Preregistration::create([
+            'intake_type' => 'COURIER',
+            'tracking_external' => 'TBA334243264207',
+            'label_name' => 'Cliente ya existia',
+            'service_type' => 'AIR',
+            'intake_weight_lbs' => 4.25,
+            'status' => 'RECEIVED_MIAMI',
+            'agency_id' => $agency->id,
+        ]);
+
+        $sack = $this->openSackWithUnmatched('TBA334243264207');
+        $item = ConsolidationItem::where('consolidation_id', $sack->id)->first();
+        $this->assertNull($item->preregistration_id);
+
+        $this->actingAs($user)
+            ->get(route('consolidations.show', $sack->id))
+            ->assertOk()
+            ->assertSee('Cliente ya existia')
+            ->assertSee('4.25')
+            ->assertDontSee('Solo código guardado en el saco');
+
+        $this->assertNotNull($item->fresh()->preregistration_id);
+    }
+
+    public function test_opening_sack_links_when_tracking_has_spaces(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+        $agency = $this->agency();
+
+        Preregistration::create([
+            'intake_type' => 'COURIER',
+            'tracking_external' => 'TBA 334300892182',
+            'label_name' => 'Tracking con espacio',
+            'service_type' => 'AIR',
+            'intake_weight_lbs' => 2,
+            'status' => 'RECEIVED_MIAMI',
+            'agency_id' => $agency->id,
+        ]);
+
+        $sack = $this->openSackWithUnmatched('TBA334300892182');
+
+        $this->actingAs($user)
+            ->get(route('consolidations.show', $sack->id))
+            ->assertOk()
+            ->assertSee('Tracking con espacio');
+
+        $this->assertNotNull(ConsolidationItem::where('consolidation_id', $sack->id)->value('preregistration_id'));
+    }
+
+    public function test_opening_sack_drops_unmatched_duplicate_when_package_already_in_same_sack(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+        $agency = $this->agency();
+
+        $package = Preregistration::create([
+            'intake_type' => 'COURIER',
+            'tracking_external' => 'TBA334295077748',
+            'label_name' => 'Ya estaba en el saco',
+            'service_type' => 'AIR',
+            'intake_weight_lbs' => 3,
+            'status' => 'RECEIVED_MIAMI',
+            'agency_id' => $agency->id,
+        ]);
+        $sack = $this->openSackWithUnmatched('TBA334295077748');
+        ConsolidationItem::create([
+            'consolidation_id' => $sack->id,
+            'preregistration_id' => $package->id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('consolidations.show', $sack->id))
+            ->assertOk()
+            ->assertSee('Ya estaba en el saco')
+            ->assertDontSee('Solo código guardado en el saco');
+
+        $this->assertSame(1, ConsolidationItem::where('consolidation_id', $sack->id)->count());
+    }
 }
