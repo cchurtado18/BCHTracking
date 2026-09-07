@@ -41,6 +41,7 @@ class AccountingPayment extends Model
         'cash_general' => '1.1.01 Caja General',
         'bank_bac' => '1.1.02 Banco BAC',
         'bank_lafise' => '1.1.04 Banco Lafise',
+        'bank_zelle' => '1.1.05 Banco Zelle',
     ];
 
     public static function defaultAccountForMethod(string $method): string

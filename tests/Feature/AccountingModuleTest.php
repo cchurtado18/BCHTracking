@@ -520,6 +520,10 @@ class AccountingModuleTest extends TestCase
             ->assertSee('Monto recibido en caja')
             ->assertSee('Guardar cobro')
             ->assertSee('Saldo a favor del cliente')
+            ->assertSee('Escriba para buscar o pulse para ver la lista')
+            ->assertSee('Banco BAC')
+            ->assertSee('Banco Lafise')
+            ->assertSee('Banco Zelle')
             ->assertSee('#'.$invoice->id);
 
         $this->actingAs($admin)->post(route('accounting.payments.store'), [
@@ -542,6 +546,27 @@ class AccountingModuleTest extends TestCase
         $this->assertSame('bank_lafise', $payment->deposit_account);
         $this->assertSame('REF-25', $payment->reference);
         $this->assertStringContainsString('Comisión: 1.50', (string) $payment->notes);
+    }
+
+    public function test_payment_can_be_deposited_to_zelle(): void
+    {
+        $admin = $this->admin();
+        $agency = $this->agency();
+        $invoice = $this->issuedInvoice($agency, 40.0);
+
+        $this->actingAs($admin)->post(route('accounting.payments.store'), [
+            'invoice_id' => $invoice->id,
+            'paid_at' => now()->toDateString(),
+            'amount' => 40,
+            'currency' => 'USD',
+            'method' => 'transfer',
+            'deposit_account' => 'bank_zelle',
+            'reference' => 'ZELLE-40',
+        ])->assertRedirect(route('accounting.payments.index'));
+
+        $payment = AccountingPayment::first();
+        $this->assertSame('bank_zelle', $payment->deposit_account);
+        $this->assertSame('1.1.05 Banco Zelle', $payment->accountLabel());
     }
 
     public function test_nio_payment_converts_with_rate_and_rejects_zero_rate(): void

@@ -64,7 +64,7 @@
                 <li><span>3</span> Depósito</li>
             </ol>
 
-            <div class="cb-card">
+            <div class="cb-card cb-card--combo">
                 <div class="cb-card-head">
                     <div>
                         <h2 class="cb-card-title">Factura a cobrar</h2>
@@ -73,15 +73,15 @@
                 </div>
                 <div class="cb-card-body">
                     <div class="cb-field">
-                        <label class="cb-label" for="invoice_id">Factura</label>
-                        <select name="invoice_id" id="invoice_id" class="cb-input" required>
-                            <option value="">Seleccione una factura…</option>
-                            @foreach($openInvoices as $invoice)
-                            <option value="{{ $invoice->id }}" @selected((int) old('invoice_id', $selectedInvoiceId) === (int) $invoice->id)>
-                                #{{ $invoice->id }} · {{ $invoice->folio }} · {{ $invoice->agency?->name }} · saldo ${{ number_format($invoice->balanceUsd(), 2) }}
-                            </option>
-                            @endforeach
-                        </select>
+                        <label class="cb-label" for="invoice_combobox">Factura</label>
+                        <div id="invoice_combobox_wrap" class="cb-combo-wrap">
+                            <input type="text" id="invoice_combobox" class="cb-input cb-combo-input" placeholder="Escriba para buscar o pulse para ver la lista…" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="invoice_dropdown">
+                            <input type="hidden" name="invoice_id" id="invoice_id" value="{{ old('invoice_id', $selectedInvoiceId) }}" required>
+                            <div id="invoice_dropdown" class="cb-combo-dropdown" role="listbox"></div>
+                        </div>
+                        @error('invoice_id')
+                        <p class="cb-field-error">{{ $message }}</p>
+                        @enderror
                     </div>
                 </div>
             </div>
@@ -272,6 +272,7 @@
     background: #D5DEEA; transform: translate(-100%, -50%);
 }
 .cb-card { background: #fff; border: 1px solid var(--cb-line); border-radius: 0.85rem; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04); overflow: hidden; }
+.cb-card--combo { overflow: visible; position: relative; z-index: 20; }
 .cb-card-head {
     display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem;
     padding: 0.95rem 1.15rem 0.85rem; background: #fff; border-bottom: 1px solid var(--cb-line);
@@ -351,6 +352,40 @@
 .cb-outcome .cb-dl { margin-top: 0.55rem; }
 .cb-text-green { color: var(--cb-green); }
 .cb-text-red { color: var(--cb-red); }
+.cb-combo-wrap { position: relative; }
+.cb-combo-input {
+    padding-right: 2.4rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2364748b' stroke-width='1.8' viewBox='0 0 24 24'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    cursor: pointer;
+}
+.cb-combo-dropdown {
+    display: none;
+    position: absolute;
+    left: 0; right: 0; top: calc(100% + 0.35rem);
+    background: #fff;
+    border: 1px solid var(--cb-border);
+    border-radius: 0.7rem;
+    box-shadow: 0 14px 36px rgba(10, 45, 111, 0.14);
+    max-height: 260px;
+    overflow-y: auto;
+    z-index: 40;
+}
+.cb-combo-dropdown.is-open { display: block; }
+.cb-combo-item {
+    padding: 0.72rem 0.95rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+}
+.cb-combo-item:last-child { border-bottom: none; }
+.cb-combo-item:hover,
+.cb-combo-item.is-active { background: var(--cb-soft); color: var(--cb-navy); }
+.cb-combo-item-meta { display: block; margin-top: 0.15rem; font-size: 0.75rem; color: #64748b; }
+.cb-combo-empty { padding: 0.7rem 0.95rem; font-size: 0.875rem; color: #64748b; }
+.cb-field-error { margin: 0.35rem 0 0; font-size: 0.78rem; color: var(--cb-red); }
 .cb-empty { padding: 2rem 1.25rem; text-align: center; color: #64748b; }
 .cb-empty strong { display: block; margin-bottom: 0.35rem; color: #0f172a; font-size: 1.05rem; }
 .cb-empty p { margin: 0 0 1rem; }
@@ -367,6 +402,10 @@
 document.addEventListener('DOMContentLoaded', function () {
     var invoices = @json($invoicesJson);
     var invoiceSelect = document.getElementById('invoice_id');
+    var invoiceCombo = document.getElementById('invoice_combobox');
+    var invoiceDropdown = document.getElementById('invoice_dropdown');
+    var invoiceWrap = document.getElementById('invoice_combobox_wrap');
+    var invoiceList = Object.keys(invoices).map(function (key) { return invoices[key]; });
     var amountInput = document.getElementById('amount');
     var rateInput = document.getElementById('exchange_rate');
     var currencySelect = document.getElementById('currency');
@@ -380,6 +419,95 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function money(n) {
         return '$' + Number(n || 0).toFixed(2);
+    }
+
+    function invoiceLabel(row) {
+        if (!row) return '';
+        return '#' + row.id + ' · ' + (row.folio || '') + ' · ' + (row.client || '—') + ' · saldo ' + money(row.balance);
+    }
+
+    function invoiceMatches(row, q) {
+        if (!q) return true;
+        var hay = [row.id, row.folio, row.client, row.code, row.status].join(' ').toLowerCase();
+        return hay.indexOf(q) !== -1;
+    }
+
+    function escHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, function (ch) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+        });
+    }
+
+    function setInvoiceOpen(open) {
+        if (!invoiceDropdown || !invoiceCombo) return;
+        invoiceDropdown.classList.toggle('is-open', open);
+        invoiceCombo.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    function renderInvoiceItems(filter) {
+        if (!invoiceDropdown) return;
+        var q = (filter || '').trim().toLowerCase();
+        var filtered = invoiceList.filter(function (row) { return invoiceMatches(row, q); });
+        invoiceDropdown.innerHTML = filtered.length
+            ? filtered.map(function (row) {
+                return '<div class="cb-combo-item" role="option" data-id="' + row.id + '">'
+                    + '<strong>' + escHtml(row.folio || ('#' + row.id)) + '</strong> · ' + escHtml(row.client || '—')
+                    + '<span class="cb-combo-item-meta">#' + row.id + (row.code ? ' · ' + escHtml(row.code) : '') + ' · saldo ' + money(row.balance) + '</span>'
+                    + '</div>';
+            }).join('')
+            : '<div class="cb-combo-empty">No hay coincidencias</div>';
+        setInvoiceOpen(true);
+    }
+
+    function pickInvoice(id) {
+        invoiceSelect.value = id ? String(id) : '';
+        var data = selected();
+        if (invoiceCombo) invoiceCombo.value = data ? invoiceLabel(data) : '';
+        setInvoiceOpen(false);
+        invoiceSelect.dispatchEvent(new Event('change'));
+    }
+
+    if (invoiceCombo && invoiceDropdown && invoiceWrap) {
+        invoiceCombo.addEventListener('click', function () {
+            invoiceCombo.select();
+            renderInvoiceItems(invoiceSelect.value ? '' : invoiceCombo.value);
+        });
+        invoiceCombo.addEventListener('focus', function () {
+            invoiceCombo.select();
+            renderInvoiceItems(invoiceSelect.value ? '' : invoiceCombo.value);
+        });
+        invoiceCombo.addEventListener('input', function () {
+            invoiceSelect.value = '';
+            renderInvoiceItems(invoiceCombo.value);
+            refresh();
+        });
+        invoiceCombo.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                setInvoiceOpen(false);
+                invoiceCombo.blur();
+            }
+            if (e.key === 'Enter') {
+                var first = invoiceDropdown.querySelector('.cb-combo-item');
+                if (first) {
+                    e.preventDefault();
+                    pickInvoice(first.getAttribute('data-id'));
+                }
+            }
+        });
+        invoiceDropdown.addEventListener('mousedown', function (e) {
+            var item = e.target.closest('.cb-combo-item');
+            if (!item) return;
+            e.preventDefault();
+            pickInvoice(item.getAttribute('data-id'));
+        });
+        document.addEventListener('click', function (e) {
+            if (invoiceDropdown.classList.contains('is-open') && !e.target.closest('#invoice_combobox_wrap')) {
+                setInvoiceOpen(false);
+            }
+        });
+        if (invoiceSelect.value && invoices[invoiceSelect.value]) {
+            invoiceCombo.value = invoiceLabel(invoices[invoiceSelect.value]);
+        }
     }
 
     function currentUsd() {
@@ -565,7 +693,14 @@ document.addEventListener('DOMContentLoaded', function () {
     if (form) {
         form.addEventListener('submit', function (e) {
             var data = selected();
-            if (!data) return;
+            if (!data) {
+                e.preventDefault();
+                if (invoiceCombo) {
+                    invoiceCombo.focus();
+                    renderInvoiceItems(invoiceCombo.value || '');
+                }
+                return;
+            }
             var cash = currentUsd();
             var overpay = Math.max(0, cash - data.balance);
             if (overpay <= 0.004) return;
