@@ -183,6 +183,14 @@
             ? ($serviceTypes->first() === 'AIR' ? 'AÉREO' : ($serviceTypes->first() === 'SEA' ? 'MARÍTIMO' : '—'))
             : 'MIXTO';
         $agency = $receiptNote->agency;
+        $accountAgency = $agency?->labelBrandAgency() ?? $agency;
+        $receivedForName = $agency?->name ?? '—';
+        if ($agency?->isRootAccount()) {
+            $clientNames = $items->map(fn ($p) => $p->agency?->name)->filter()->unique()->values();
+            if ($clientNames->isNotEmpty()) {
+                $receivedForName = $clientNames->implode(' · ');
+            }
+        }
         $createdAt = $receiptNote->created_at?->timezone(config('app.display_timezone'));
         $descriptions = $items->pluck('description')->filter()->map(fn($d) => trim($d))->unique()->take(10)->implode(' · ');
         $totalKg = $totalLbs * 0.453592;
@@ -217,7 +225,7 @@
         <div class="row1">
             <div class="row1-cell-l">
                 <span class="lbl">Recibido para</span>
-                <div class="val-strong" style="margin-top: 4px;">{{ $agency?->name ?? '—' }}</div>
+                <div class="val-strong" style="margin-top: 4px;">{{ $receivedForName }}</div>
                 @if($agency?->address)
                 <div class="val" style="font-weight: 500; font-size: 10pt; margin-top: 4px;">{{ $agency->address }}</div>
                 @endif
@@ -232,7 +240,7 @@
                 <div class="mini-grid">
                     <div class="mini-cell">
                         <span class="lbl">Cuenta</span>
-                        <span class="val">{{ \Illuminate\Support\Str::upper($agency?->name ?? '—') }}</span>
+                        <span class="val">{{ \Illuminate\Support\Str::upper($accountAgency?->name ?? '—') }}</span>
                     </div>
                     <div class="mini-cell">
                         <span class="lbl">Fecha</span>

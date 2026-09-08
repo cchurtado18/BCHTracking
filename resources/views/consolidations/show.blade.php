@@ -477,8 +477,10 @@
         <x-slot:actions>
             <a href="{{ route('consolidations.label', $consolidation->id) }}" target="_blank" class="mb-btn mb-btn-secondary">Etiqueta del {{ $unit }}</a>
             <a href="{{ route('consolidations.report', $consolidation->id) }}" target="_blank" class="mb-btn mb-btn-secondary">Reporte detallado</a>
-            @if($consolidation->status === 'OPEN')
+            @if($consolidation->status !== 'CANCELLED')
                 <a href="{{ route('consolidations.edit', $consolidation->id) }}" class="mb-btn mb-btn-secondary">Editar</a>
+            @endif
+            @if($consolidation->status === 'OPEN')
                 @if($consolidation->items->count() > 0)
                     <form action="{{ route('consolidations.send', $consolidation->id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de enviar este {{ $unit }}? Esto cambiará el estado a SENT y los paquetes con preregistro pasarán a IN_TRANSIT.');">
                         @csrf

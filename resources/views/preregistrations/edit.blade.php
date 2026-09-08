@@ -137,7 +137,7 @@
                             <div class="preregs-create-grid preregs-create-grid--nested">
                                 <div class="preregs-field">
                                     <label for="label_name" class="preregs-field-label">Nombre en etiqueta <span class="preregs-req">*</span></label>
-                                    <input type="text" name="label_name" id="label_name" value="{{ old('label_name', $preregistration->label_name) }}" required class="preregs-input">
+                                    <input type="text" name="label_name" id="label_name" value="{{ old('label_name', $preregistration->label_name) }}" required class="preregs-input preregs-input-upper" autocapitalize="characters">
                                     @error('label_name')
                                     <p class="preregs-field-error">{{ $message }}</p>
                                     @enderror
@@ -164,7 +164,7 @@
 
                                 <div class="preregs-field">
                                     <label for="tracking_external" class="preregs-field-label">Tracking externo</label>
-                                    <input type="text" name="tracking_external" id="tracking_external" value="{{ old('tracking_external', $preregistration->tracking_external) }}" class="preregs-input">
+                                    <input type="text" name="tracking_external" id="tracking_external" value="{{ old('tracking_external', $preregistration->tracking_external) }}" class="preregs-input preregs-input-upper" autocapitalize="characters" spellcheck="false">
                                     @error('tracking_external')
                                     <p class="preregs-field-error">{{ $message }}</p>
                                     @enderror
@@ -184,7 +184,7 @@
                                 @if($preregistration->intake_type === 'DROP_OFF')
                                 <div class="preregs-field">
                                     <label for="dimension" class="preregs-field-label">Dimensión</label>
-                                    <input type="text" name="dimension" id="dimension" value="{{ old('dimension', $preregistration->dimension) }}" placeholder="ej: 10 x 8 x 5 in" class="preregs-input">
+                                    <input type="text" name="dimension" id="dimension" value="{{ old('dimension', $preregistration->dimension) }}" placeholder="ej: 10 x 8 x 5 in" class="preregs-input preregs-input-upper" autocapitalize="characters">
                                     @error('dimension')
                                     <p class="preregs-field-error">{{ $message }}</p>
                                     @enderror
@@ -193,7 +193,7 @@
 
                                 <div class="preregs-field preregs-field--full">
                                     <label for="description" class="preregs-field-label">Descripción del contenido <span class="preregs-opt">(opcional)</span></label>
-                                    <textarea name="description" id="description" maxlength="500" rows="3" placeholder="Ej: Ropa, electrónicos, documentos…" class="preregs-input preregs-textarea">{{ old('description', $preregistration->description) }}</textarea>
+                                    <textarea name="description" id="description" maxlength="500" rows="3" placeholder="Ej: Ropa, electrónicos, documentos…" class="preregs-input preregs-textarea preregs-input-upper" autocapitalize="characters">{{ old('description', $preregistration->description) }}</textarea>
                                     @error('description')
                                     <p class="preregs-field-error">{{ $message }}</p>
                                     @enderror
@@ -596,6 +596,8 @@
     box-sizing: border-box;
     transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
 }
+.preregs-edit-page .preregs-input-upper { text-transform: uppercase; }
+.preregs-edit-page .preregs-input-upper::placeholder { text-transform: none; }
 .preregs-edit-page .preregs-textarea { resize: vertical; min-height: 5.4rem; line-height: 1.45; }
 .preregs-edit-page .preregs-input:hover { border-color: #9BB5D9; background: #fcfdff; }
 .preregs-edit-page .preregs-input-affix { position: relative; }

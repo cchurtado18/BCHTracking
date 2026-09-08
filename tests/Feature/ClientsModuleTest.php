@@ -541,6 +541,8 @@ class ClientsModuleTest extends TestCase
         $this->assertFalse($client->canManageDestinatarios());
         $this->assertTrue($slo->canManageDestinatarios());
         $this->assertSame($slo->id, $client->labelBrandAgency()->id);
+        $this->assertSame($slo->name, $client->commercialAccountName());
+        $this->assertSame($slo->name.' · '.$client->name, $client->listingAccountLabel());
 
         $this->actingAs($admin)
             ->get(route('agencies.show', $client))

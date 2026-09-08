@@ -13,6 +13,37 @@ class StorePreregistrationRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $upper = static fn ($value) => is_string($value) ? \App\Models\Preregistration::toUpper($value) : $value;
+
+        $merge = [];
+        foreach (['tracking_external', 'label_name', 'dimension', 'description'] as $field) {
+            if ($this->exists($field) && is_string($this->input($field))) {
+                $merge[$field] = $upper($this->input($field));
+            }
+        }
+
+        $bultos = $this->input('bultos');
+        if (is_array($bultos)) {
+            foreach ($bultos as $i => $bulto) {
+                if (! is_array($bulto)) {
+                    continue;
+                }
+                foreach (['label_name', 'dimension', 'description'] as $field) {
+                    if (isset($bulto[$field]) && is_string($bulto[$field])) {
+                        $bultos[$i][$field] = $upper($bulto[$field]);
+                    }
+                }
+            }
+            $merge['bultos'] = $bultos;
+        }
+
+        if ($merge !== []) {
+            $this->merge($merge);
+        }
+    }
+
     public function rules(): array
     {
         $rules = [

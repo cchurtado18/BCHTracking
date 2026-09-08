@@ -40,8 +40,8 @@
                         </div>
 
                         <div class="cons-field">
-                            <label for="transport_number" class="cons-label" id="cons_transport_label">Número de guía aérea *</label>
-                            <input type="text" name="transport_number" id="transport_number" required class="cons-input" value="{{ old('transport_number') }}" maxlength="80" autocomplete="off">
+                            <label for="transport_number" class="cons-label" id="cons_transport_label">Número de guía aérea</label>
+                            <input type="text" name="transport_number" id="transport_number" class="cons-input" value="{{ old('transport_number') }}" maxlength="80" autocomplete="off" placeholder="Opcional">
                             @error('transport_number')
                             <p class="cons-field-error">{{ $message }}</p>
                             @enderror
@@ -363,7 +363,7 @@
             var transport = document.getElementById('cons_transport_label');
             var formTitle = document.getElementById('cons_form_title');
             var submitBtn = document.getElementById('cons_submit_btn');
-            if (transport) transport.textContent = selectedType === 'SEA' ? 'Número de contenedor *' : 'Número de guía aérea *';
+            if (transport) transport.textContent = selectedType === 'SEA' ? 'Número de contenedor' : 'Número de guía aérea';
             if (formTitle) formTitle.textContent = 'Información del ' + noun;
             if (submitBtn) submitBtn.textContent = 'Crear ' + noun + ' con seleccionados';
             updateSelectedCount();

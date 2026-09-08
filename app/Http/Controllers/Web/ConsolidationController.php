@@ -155,7 +155,7 @@ class ConsolidationController extends Controller
             $consolidation = Consolidation::create([
                 'code' => $this->consolidationService->generateCode($request->validated()['service_type']),
                 'service_type' => $request->validated()['service_type'],
-                'transport_number' => $request->validated()['transport_number'],
+                'transport_number' => $request->validated()['transport_number'] ?? null,
                 'status' => 'OPEN',
                 'notes' => $request->validated()['notes'] ?? null,
             ]);
@@ -252,18 +252,22 @@ class ConsolidationController extends Controller
     public function update(Request $request, string $id)
     {
         $consolidation = Consolidation::findOrFail($id);
-        if ($consolidation->status !== 'OPEN') {
+        if ($consolidation->status === 'CANCELLED') {
             return redirect()->route('consolidations.show', $consolidation->id)
-                ->with('error', 'Solo se pueden editar '.$consolidation->unitNoun(true).' abiertos.');
+                ->with('error', 'No se puede editar un '.$consolidation->unitNoun().' cancelado.');
         }
         $data = $request->validate([
             'notes' => 'nullable|string|max:1000',
-            'transport_number' => 'required|string|max:80',
-        ], [
-            'transport_number.required' => 'Indique el '.$consolidation->transportNumberLabel().'.',
+            'transport_number' => 'nullable|string|max:80',
         ]);
-        $data['transport_number'] = strtoupper(trim((string) $data['transport_number']));
-        $consolidation->update($data);
+        $transport = strtoupper(trim((string) ($data['transport_number'] ?? '')));
+        $payload = [
+            'transport_number' => $transport !== '' ? $transport : null,
+        ];
+        if ($consolidation->status === 'OPEN') {
+            $payload['notes'] = $data['notes'] ?? null;
+        }
+        $consolidation->update($payload);
 
         return redirect()->route('consolidations.show', $consolidation->id)->with('success', 'Actualizado.');
     }
@@ -438,10 +442,9 @@ class ConsolidationController extends Controller
         $serviceType = ServiceType::route($preregistration->service_type);
         $unit = ServiceType::consolidationNoun($serviceType);
         $data = $request->validate([
-            'transport_number' => 'required|string|max:80',
-        ], [
-            'transport_number.required' => 'Indique el '.ServiceType::transportNumberLabel($serviceType).'.',
+            'transport_number' => 'nullable|string|max:80',
         ]);
+        $transport = strtoupper(trim((string) ($data['transport_number'] ?? '')));
 
         if ($preregistration->status !== 'RECEIVED_MIAMI') {
             return redirect()->route('preregistrations.show', $preregistration->id)
@@ -455,7 +458,7 @@ class ConsolidationController extends Controller
         $consolidation = Consolidation::create([
             'code' => $this->consolidationService->generateCode($serviceType),
             'service_type' => $serviceType === ServiceType::SEA ? ServiceType::SEA : ServiceType::AIR,
-            'transport_number' => strtoupper(trim((string) $data['transport_number'])),
+            'transport_number' => $transport !== '' ? $transport : null,
             'status' => 'OPEN',
         ]);
         ConsolidationItem::create([

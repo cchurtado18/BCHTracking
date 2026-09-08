@@ -62,7 +62,7 @@
                 </div>
                 <div class="csscan-field">
                     <label for="csscan_transport_number" class="csscan-label" id="csscan_transport_label">Número de guía aérea</label>
-                    <input type="text" name="transport_number" id="csscan_transport_number" required class="csscan-input" value="{{ old('transport_number') }}" maxlength="80" autocomplete="off" placeholder="Obligatorio">
+                    <input type="text" name="transport_number" id="csscan_transport_number" class="csscan-input" value="{{ old('transport_number') }}" maxlength="80" autocomplete="off" placeholder="Opcional">
                     @error('transport_number')
                     <p class="csscan-feedback err">{{ $message }}</p>
                     @enderror

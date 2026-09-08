@@ -77,6 +77,26 @@ class Agency extends Model
         return $parent ?: $this;
     }
 
+    /**
+     * Cuenta comercial: SkyLink One para clientes propios; la propia agencia en el resto.
+     */
+    public function commercialAccountName(): string
+    {
+        return $this->labelBrandAgency()->name;
+    }
+
+    /**
+     * Listados: el cliente SLO no figura como agencia, sino como cliente de SkyLink One.
+     */
+    public function listingAccountLabel(): string
+    {
+        if ($this->isDirectClient()) {
+            return trim($this->commercialAccountName().' · '.$this->name);
+        }
+
+        return $this->name;
+    }
+
     public function canHaveChildren(): bool
     {
         return $this->is_main || $this->account_type === self::TYPE_SUBAGENCY || $this->account_type === self::TYPE_ROOT;

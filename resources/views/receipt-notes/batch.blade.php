@@ -32,8 +32,18 @@
         <div class="rnb-card">
             <div class="rnb-card-h">1. Datos del cliente que entrega</div>
             <div class="rnb-card-b">
-                <form action="{{ route('receipt-notes.store') }}" method="POST" class="rnb-form">
+                <form action="{{ route('receipt-notes.store') }}" method="POST" class="rnb-form" id="rnb-create-form">
                     @csrf
+                    @php
+                        $oldAgencyId = old('agency_id');
+                        $oldAssigned = $oldAgencyId
+                            ? ($sloClients->firstWhere('id', (int) $oldAgencyId) ?: $partnerAgencies->firstWhere('id', (int) $oldAgencyId))
+                            : null;
+                        $oldIsSloClient = $oldAssigned && $oldAssigned->isDirectClient();
+                        $oldPartnerId = $oldIsSloClient
+                            ? (string) ($slo->id ?? '')
+                            : (string) ($oldAssigned->id ?? old('partner_agency_id', ''));
+                    @endphp
                     <div class="rnb-grid-2">
                         <div class="rnb-field">
                             <label for="delivered_by" class="rnb-label">Nombre completo *</label>
@@ -48,14 +58,37 @@
                             <input type="text" name="delivered_by_phone" id="delivered_by_phone" value="{{ old('delivered_by_phone') }}" class="rnb-input" placeholder="Opcional">
                         </div>
                         <div class="rnb-field">
-                            <label for="agency_id" class="rnb-label">Agencia de recepción *</label>
-                            <select name="agency_id" id="agency_id" required class="rnb-select">
+                            <label for="partner_agency_id" class="rnb-label">Cuenta *</label>
+                            <select id="partner_agency_id" required class="rnb-select">
                                 <option value="">Seleccione…</option>
-                                @foreach($agencies as $a)
-                                <option value="{{ $a->id }}" {{ (string) old('agency_id') === (string) $a->id ? 'selected' : '' }}>{{ $a->name }} @if($a->code)({{ $a->code }})@endif</option>
+                                @foreach($partnerAgencies as $a)
+                                <option
+                                    value="{{ $a->id }}"
+                                    data-is-slo="{{ $a->isRootAccount() ? '1' : '0' }}"
+                                    {{ (string) $oldPartnerId === (string) $a->id ? 'selected' : '' }}
+                                >{{ $a->name }} @if($a->code)({{ $a->code }})@endif</option>
                                 @endforeach
                             </select>
+                            <p class="rnb-hint">Subagencia o SkyLink One. Los clientes propios de SLO no salen aquí como agencia.</p>
                         </div>
+                        <div class="rnb-field" id="slo_client_wrap" hidden>
+                            <label for="slo_client_id" class="rnb-label">Cliente de SkyLink One *</label>
+                            <select id="slo_client_id" class="rnb-select">
+                                <option value="">Seleccione el cliente…</option>
+                                @foreach($sloClients as $c)
+                                <option value="{{ $c->id }}" {{ (string) old('agency_id') === (string) $c->id ? 'selected' : '' }}>{{ $c->name }} @if($c->code)({{ $c->code }})@endif</option>
+                                @endforeach
+                            </select>
+                            @if(($sloClients ?? collect())->isEmpty())
+                            <p class="rnb-hint">SLO no tiene clientes propios. <a href="{{ route('agencies.create') }}">Crear cliente SLO</a>.</p>
+                            @else
+                            <p class="rnb-hint">El nombre del cliente sale en el comprobante; la cuenta queda como SkyLink One.</p>
+                            @endif
+                        </div>
+                        <input type="hidden" name="agency_id" id="agency_id" value="{{ old('agency_id') }}">
+                        @error('agency_id')
+                        <p class="rnb-field-error">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div class="rnb-field">
                         <label for="notes" class="rnb-label">Notas (opcional)</label>
@@ -86,9 +119,15 @@
                     <div class="rnb-info-value">{{ $receiptNote->delivered_by_phone ?: '—' }}</div>
                 </div>
                 <div>
-                    <div class="rnb-info-label">Agencia de recepción</div>
-                    <div class="rnb-info-value">{{ $receiptNote->agency?->name ?? '—' }}</div>
+                    <div class="rnb-info-label">Cuenta</div>
+                    <div class="rnb-info-value">{{ $receiptNote->agency?->commercialAccountName() ?? '—' }}</div>
                 </div>
+                @if($receiptNote->agency?->isDirectClient())
+                <div>
+                    <div class="rnb-info-label">Cliente</div>
+                    <div class="rnb-info-value">{{ $receiptNote->agency->name }}</div>
+                </div>
+                @endif
                 <div>
                     <div class="rnb-info-label">Operador</div>
                     <div class="rnb-info-value">{{ $receiptNote->receivedBy?->name ?? '—' }}</div>
@@ -177,7 +216,7 @@
                                 <th>Destinatario</th>
                                 <th>Peso lbs</th>
                                 <th>Servicio</th>
-                                <th>Agencia</th>
+                                <th>Cliente</th>
                                 <th>Fecha</th>
                                 <th></th>
                             </tr>
@@ -323,22 +362,52 @@
 
 .rnb-alert { margin-bottom: 1rem; padding: 0.85rem 1.1rem; border-radius: 0.5rem; font-size: 0.875rem; line-height: 1.45; }
 .rnb-alert-err { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
-.rnb-alert-ul { margin: 0; padding-left: 1.2rem; }
+.rnb-field-error { margin: 0; font-size: 0.8125rem; color: #b91c1c; }
 </style>
 
 @push('scripts')
 <script>
 (function () {
+    var partner = document.getElementById('partner_agency_id');
+    var client = document.getElementById('slo_client_id');
+    var hidden = document.getElementById('agency_id');
+    var wrap = document.getElementById('slo_client_wrap');
+    var form = document.getElementById('rnb-create-form');
+    if (partner && client && hidden && wrap) {
+        function partnerIsSlo() {
+            var opt = partner.options[partner.selectedIndex];
+            return !!(opt && opt.getAttribute('data-is-slo') === '1');
+        }
+        function syncAgencyId() {
+            var isSlo = partnerIsSlo();
+            wrap.hidden = !isSlo;
+            client.required = isSlo;
+            if (!isSlo) {
+                hidden.value = partner.value || '';
+            } else {
+                hidden.value = client.value || '';
+            }
+        }
+        partner.addEventListener('change', syncAgencyId);
+        client.addEventListener('change', syncAgencyId);
+        if (form) {
+            form.addEventListener('submit', function () {
+                syncAgencyId();
+            });
+        }
+        syncAgencyId();
+    }
+
     var input = document.getElementById('rnb-scan-input');
-    var form = document.getElementById('rnb-scan-form');
-    if (!input || !form) return;
+    var scanForm = document.getElementById('rnb-scan-form');
+    if (!input || !scanForm) return;
     var submitted = false;
     function trySubmit() {
         if (submitted) return;
         var v = (input.value || '').trim();
         if (v.length === 6 && /^\d{6}$/.test(v)) {
             submitted = true;
-            form.submit();
+            scanForm.submit();
         }
     }
     input.addEventListener('input', function() {

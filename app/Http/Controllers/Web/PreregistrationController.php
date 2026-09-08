@@ -492,6 +492,15 @@ class PreregistrationController extends Controller
     {
         $preregistration = Preregistration::findOrFail($id);
         $wasPhotoPending = $preregistration->status === 'PHOTO_PENDING';
+        $upperMerge = [];
+        foreach (['tracking_external', 'label_name', 'dimension', 'description'] as $field) {
+            if ($request->exists($field) && is_string($request->input($field))) {
+                $upperMerge[$field] = Preregistration::toUpper($request->input($field));
+            }
+        }
+        if ($upperMerge !== []) {
+            $request->merge($upperMerge);
+        }
         $trackingRules = ['nullable', 'string', 'max:255'];
         if ($request->filled('tracking_external')) {
             $trackingRules[] = \Illuminate\Validation\Rule::unique('preregistrations', 'tracking_external')->ignore($preregistration->id);
@@ -557,6 +566,9 @@ class PreregistrationController extends Controller
      */
     public function storeQuickCourier(Request $request)
     {
+        if ($request->exists('tracking_external') && is_string($request->input('tracking_external'))) {
+            $request->merge(['tracking_external' => Preregistration::toUpper($request->input('tracking_external'))]);
+        }
         $data = $request->validate([
             'tracking_external' => [
                 'nullable',

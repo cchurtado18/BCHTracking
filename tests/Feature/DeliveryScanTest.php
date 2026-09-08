@@ -193,9 +193,9 @@ class DeliveryScanTest extends TestCase
                 'delivery_note_id' => $note->id,
             ]))
             ->assertOk()
-            ->assertSee('Pendiente Visible')
+            ->assertSee('PENDIENTE VISIBLE')
             ->assertSee('Escaneados')
-            ->assertSee('Ya Escaneado')
+            ->assertSee('YA ESCANEADO')
             ->assertSee('TRK-SCANNED')
             ->assertSee('Warehouse o tracking')
             ->assertDontSee('Nº factura');
@@ -332,7 +332,7 @@ class DeliveryScanTest extends TestCase
             ->get(route('salidas.create', ['agency_id' => $agency->id]))
             ->assertOk()
             ->assertSee('334455')
-            ->assertSee('Cliente Listo')
+            ->assertSee('CLIENTE LISTO')
             ->assertSee('Iniciar salida');
     }
 

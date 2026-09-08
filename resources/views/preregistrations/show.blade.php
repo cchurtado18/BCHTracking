@@ -62,11 +62,10 @@
                 <input
                     type="text"
                     name="transport_number"
-                    required
                     maxlength="80"
                     autocomplete="off"
                     class="mb-inline-input"
-                    placeholder="{{ \App\Support\ServiceType::transportNumberLabel($preregistration->service_type) }}"
+                    placeholder="{{ \App\Support\ServiceType::transportNumberLabel($preregistration->service_type) }} (opcional)"
                     aria-label="{{ \App\Support\ServiceType::transportNumberLabel($preregistration->service_type) }}"
                     value="{{ old('transport_number') }}"
                 >

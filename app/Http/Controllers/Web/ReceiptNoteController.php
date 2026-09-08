@@ -18,7 +18,12 @@ class ReceiptNoteController extends Controller
             ->orderByDesc('id');
 
         if ($request->filled('agency_id')) {
-            $query->where('agency_id', (int) $request->agency_id);
+            $filterAgency = Agency::find((int) $request->agency_id);
+            if ($filterAgency) {
+                $query->whereIn('agency_id', $filterAgency->deliveryNetworkIds());
+            } else {
+                $query->where('agency_id', (int) $request->agency_id);
+            }
         }
         if ($request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->date_from);
@@ -36,7 +41,7 @@ class ReceiptNoteController extends Controller
         }
 
         $notes = $query->paginate(20)->withQueryString();
-        $agencies = Agency::orderBy('name')->get(['id', 'code', 'name']);
+        $agencies = $this->partnerAgenciesForSelect();
 
         return view('receipt-notes.index', compact('notes', 'agencies'));
     }
@@ -52,27 +57,31 @@ class ReceiptNoteController extends Controller
                 ->find((int) $request->receipt_note_id);
         }
 
-        $agencies = Agency::where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'code', 'name', 'parent_agency_id']);
+        ['slo' => $slo, 'sloClients' => $sloClients, 'partnerAgencies' => $partnerAgencies] = $this->sloReceiptAccountOptions();
 
         $availablePreregistrations = collect();
         if ($receiptNote) {
+            $allowedAgencyIds = $receiptNote->agency
+                ? $receiptNote->agency->deliveryNetworkIds()
+                : array_filter([(int) $receiptNote->agency_id]);
+
             $availablePreregistrations = Preregistration::with('agency')
                 ->where('intake_type', 'DROP_OFF')
                 ->whereNull('receipt_note_id')
-                ->where(function ($q) use ($receiptNote) {
-                    if ($receiptNote->agency_id) {
-                        $q->where('agency_id', $receiptNote->agency_id);
-                    }
-                })
+                ->when($allowedAgencyIds !== [], fn ($q) => $q->whereIn('agency_id', $allowedAgencyIds))
                 ->whereDate('created_at', '>=', now()->subDays(30))
                 ->orderByDesc('id')
                 ->limit(200)
                 ->get();
         }
 
-        return view('receipt-notes.batch', compact('receiptNote', 'agencies', 'availablePreregistrations'));
+        return view('receipt-notes.batch', compact(
+            'receiptNote',
+            'slo',
+            'sloClients',
+            'partnerAgencies',
+            'availablePreregistrations'
+        ));
     }
 
     public function store(Request $request)
@@ -81,7 +90,16 @@ class ReceiptNoteController extends Controller
             'delivered_by' => 'required|string|max:200',
             'delivered_by_id_number' => 'nullable|string|max:50',
             'delivered_by_phone' => 'nullable|string|max:50',
-            'agency_id' => 'required|exists:agencies,id',
+            'agency_id' => [
+                'required',
+                'exists:agencies,id',
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    $agency = Agency::find($value);
+                    if ($agency && $agency->isRootAccount()) {
+                        $fail('Si la recepción es de SkyLink One, seleccione el cliente final. No se puede dejar SLO como cuenta genérica.');
+                    }
+                },
+            ],
             'notes' => 'nullable|string|max:2000',
         ]);
 
@@ -186,7 +204,11 @@ class ReceiptNoteController extends Controller
             }
             return [false, 'Ya pertenece a otra nota de recepción.'];
         }
-        if ($note->agency_id && $pre->agency_id && (int) $pre->agency_id !== (int) $note->agency_id) {
+        $noteAgency = $note->relationLoaded('agency') ? $note->agency : $note->agency()->first();
+        $allowedAgencyIds = $noteAgency
+            ? $noteAgency->deliveryNetworkIds()
+            : array_filter([(int) $note->agency_id]);
+        if ($allowedAgencyIds !== [] && $pre->agency_id && ! in_array((int) $pre->agency_id, $allowedAgencyIds, true)) {
             return [false, "El paquete va a otra agencia ({$pre->agency?->name}). No se puede mezclar con esta nota."];
         }
 
@@ -233,7 +255,7 @@ class ReceiptNoteController extends Controller
             'preregistrations' => function ($q) {
                 $q->orderBy('warehouse_code')->orderByRaw('COALESCE(bulto_index, 1) ASC');
             },
-            'preregistrations.agency',
+            'preregistrations.agency.parent',
             'agency.parent',
             'receivedBy',
         ])->findOrFail($id);
@@ -284,5 +306,40 @@ class ReceiptNoteController extends Controller
 
         return redirect()->route('receipt-notes.print', $receiptNote->id)
             ->with('success', "Comprobante {$receiptNote->code} generado.");
+    }
+
+    /**
+     * Subagencias y SLO: los clientes propios no figuran como agencia.
+     *
+     * @return \Illuminate\Support\Collection<int, Agency>
+     */
+    private function partnerAgenciesForSelect()
+    {
+        return Agency::query()
+            ->where('is_active', true)
+            ->where(function ($q) {
+                $q->whereNull('account_type')
+                    ->orWhere('account_type', '!=', Agency::TYPE_DIRECT_CLIENT);
+            })
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'parent_agency_id', 'account_type', 'is_main']);
+    }
+
+    /**
+     * @return array{slo: ?Agency, sloClients: \Illuminate\Support\Collection<int, Agency>, partnerAgencies: \Illuminate\Support\Collection<int, Agency>}
+     */
+    private function sloReceiptAccountOptions(): array
+    {
+        $agencies = Agency::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'parent_agency_id', 'account_type', 'is_main']);
+
+        $slo = $agencies->first(fn (Agency $a) => $a->isRootAccount());
+        $sloClients = $slo
+            ? $agencies->filter(fn (Agency $a) => $a->isDirectClient() && (int) $a->parent_agency_id === (int) $slo->id)->values()
+            : collect();
+        $partnerAgencies = $agencies->filter(fn (Agency $a) => ! $a->isDirectClient())->values();
+
+        return compact('slo', 'sloClients', 'partnerAgencies');
     }
 }

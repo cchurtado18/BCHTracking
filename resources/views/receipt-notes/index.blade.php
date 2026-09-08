@@ -24,7 +24,7 @@
                     <input type="text" name="q" id="q" value="{{ request('q') }}" class="rn-input" placeholder="REC-… o nombre">
                 </div>
                 <div class="rn-field">
-                    <label for="agency_id" class="rn-label">Agencia</label>
+                    <label for="agency_id" class="rn-label">Cuenta</label>
                     <select name="agency_id" id="agency_id" class="rn-select">
                         <option value="">— Todas —</option>
                         @foreach($agencies as $a)
@@ -61,7 +61,7 @@
                         <th>Fecha</th>
                         <th>Entregado por</th>
                         <th>ID</th>
-                        <th>Agencia</th>
+                        <th>Cuenta</th>
                         <th>Bultos</th>
                         <th>Recibió</th>
                         <th class="rn-th-actions">Opciones</th>
@@ -74,7 +74,7 @@
                         <td class="rn-muted">{{ $note->created_at?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') ?? '—' }}</td>
                         <td class="rn-name">{{ $note->delivered_by }}</td>
                         <td class="rn-muted rn-code-mono">{{ $note->delivered_by_id_number ?: '—' }}</td>
-                        <td class="rn-muted">{{ $note->agency?->name ?? '—' }}</td>
+                        <td class="rn-muted">{{ $note->agency?->listingAccountLabel() ?? '—' }}</td>
                         <td class="rn-num">{{ $note->preregistrations_count }}</td>
                         <td class="rn-muted">{{ $note->receivedBy?->name ?? '—' }}</td>
                         <td class="rn-actions">

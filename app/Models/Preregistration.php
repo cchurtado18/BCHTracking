@@ -80,13 +80,60 @@ class Preregistration extends Model
     }
 
     /**
-     * Siempre guardar tracking en mayúsculas.
+     * Texto de preregistro: siempre mayúsculas (nombres con tilde incluidos).
      */
+    public static function toUpper(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        return mb_strtoupper($trimmed, 'UTF-8');
+    }
+
     protected function setTrackingExternalAttribute(?string $value): void
     {
-        $this->attributes['tracking_external'] = $value !== null && $value !== ''
-            ? strtoupper(trim($value))
-            : $value;
+        $this->attributes['tracking_external'] = self::toUpper($value);
+    }
+
+    protected function getTrackingExternalAttribute(?string $value): ?string
+    {
+        return self::toUpper($value);
+    }
+
+    protected function setLabelNameAttribute(?string $value): void
+    {
+        $this->attributes['label_name'] = self::toUpper($value);
+    }
+
+    protected function getLabelNameAttribute(?string $value): ?string
+    {
+        return self::toUpper($value);
+    }
+
+    protected function setDimensionAttribute(?string $value): void
+    {
+        $this->attributes['dimension'] = self::toUpper($value);
+    }
+
+    protected function getDimensionAttribute(?string $value): ?string
+    {
+        return self::toUpper($value);
+    }
+
+    protected function setDescriptionAttribute(?string $value): void
+    {
+        $this->attributes['description'] = self::toUpper($value);
+    }
+
+    protected function getDescriptionAttribute(?string $value): ?string
+    {
+        return self::toUpper($value);
     }
 
     protected $casts = [

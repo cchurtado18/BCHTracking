@@ -44,7 +44,9 @@
                             name="tracking_external" 
                             id="tracking_external" 
                             value="{{ old('tracking_external') }}"
-                            class="preregs-input"
+                            class="preregs-input preregs-input-upper"
+                            autocapitalize="characters"
+                            spellcheck="false"
                             placeholder="1Z999AA10123456784"
                         >
                         <p class="quick-help">Si el paquete trae tracking de courier, ingrésalo aquí para poder buscarlo luego.</p>
@@ -251,6 +253,8 @@ document.addEventListener('DOMContentLoaded', function() {
 .preregs-btn-secondary:hover { background: #e5e7eb; color: #111827; }
 .preregs-label { display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 0.35rem; }
 .preregs-input { width: 100%; padding: 0.5rem 0.75rem; font-size: 0.875rem; border: 1px solid #d1d5db; border-radius: 0.5rem; background: #fff; color: #111827; box-sizing: border-box; }
+.preregs-input-upper { text-transform: uppercase; }
+.preregs-input-upper::placeholder { text-transform: none; }
 .preregs-input:focus { outline: none; border-color: #0A2D6F; box-shadow: 0 0 0 3px rgba(30, 79, 168, 0.15); }
 
 .quick-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 0.5rem; }

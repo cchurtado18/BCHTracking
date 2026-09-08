@@ -60,7 +60,7 @@
                             <div class="preregs-create-grid preregs-create-grid--root">
                             <div class="preregs-field">
                                 <label for="dropoff_label_name" class="preregs-field-label">Nombre en etiqueta <span class="preregs-req">*</span></label>
-                                <input type="text" name="label_name" id="dropoff_label_name" class="preregs-input" required>
+                                <input type="text" name="label_name" id="dropoff_label_name" class="preregs-input preregs-input-upper" autocapitalize="characters" required>
                             </div>
                             <div class="preregs-field">
                                 <label for="dropoff_intake_weight_lbs" class="preregs-field-label">Peso (lb) <span class="preregs-req">*</span></label>
@@ -71,11 +71,11 @@
                             </div>
                             <div class="preregs-field preregs-field--full">
                                 <label for="dropoff_dimension" class="preregs-field-label">Dimensión <span class="preregs-req">*</span></label>
-                                <input type="text" name="dimension" id="dropoff_dimension" class="preregs-input" required placeholder="Ej: 10 x 8 x 5 in">
+                                <input type="text" name="dimension" id="dropoff_dimension" class="preregs-input preregs-input-upper" autocapitalize="characters" required placeholder="Ej: 10 x 8 x 5 in">
                             </div>
                             <div class="preregs-field preregs-field--full">
                                 <label for="dropoff_description" class="preregs-field-label">Descripción <span class="preregs-opt">(opcional)</span></label>
-                                <input type="text" name="description" id="dropoff_description" class="preregs-input" maxlength="500">
+                                <input type="text" name="description" id="dropoff_description" class="preregs-input preregs-input-upper" autocapitalize="characters" maxlength="500">
                             </div>
                             <div class="preregs-field preregs-field--full">
                                 <label for="dropoff_photo" class="preregs-field-label">Foto del bulto <span class="preregs-req">*</span></label>
@@ -201,7 +201,7 @@
 
                 <div id="wrap_tracking" class="preregs-field">
                     <label for="tracking_external" class="preregs-field-label">Tracking externo</label>
-                    <input type="text" name="tracking_external" id="tracking_external" class="preregs-input" placeholder="1Z999AA10123456784">
+                    <input type="text" name="tracking_external" id="tracking_external" class="preregs-input preregs-input-upper" autocapitalize="characters" spellcheck="false" placeholder="1Z999AA10123456784">
                     <p class="preregs-hint">Obligatorio en Courier.</p>
                 </div>
 
@@ -224,7 +224,7 @@
                 <div id="wrap_single_bulto" class="preregs-create-grid preregs-create-grid--nested">
                     <div class="preregs-field">
                         <label for="label_name" class="preregs-field-label">Nombre en etiqueta <span class="preregs-req">*</span></label>
-                        <input type="text" name="label_name" id="label_name" class="preregs-input" placeholder="Nombre del destinatario">
+                        <input type="text" name="label_name" id="label_name" class="preregs-input preregs-input-upper" autocapitalize="characters" placeholder="Nombre del destinatario">
                     </div>
                     <div class="preregs-field">
                         <label for="service_type" class="preregs-field-label">Tipo de servicio <span class="preregs-req">*</span></label>
@@ -247,12 +247,12 @@
                     </div>
                     <div id="wrap_dimension" class="preregs-field" style="display: none;">
                         <label for="dimension" class="preregs-field-label">Dimensión <span class="preregs-req">*</span></label>
-                        <input type="text" name="dimension" id="dimension" class="preregs-input" placeholder="Ej. 10 x 8 x 5 in">
+                        <input type="text" name="dimension" id="dimension" class="preregs-input preregs-input-upper" autocapitalize="characters" placeholder="Ej. 10 x 8 x 5 in">
                         <p class="preregs-cubic-line"><span class="preregs-cubic-label">Pie cúbico</span> <span id="cubic_feet_display" class="preregs-cubic-value">—</span></p>
                     </div>
                     <div class="preregs-field preregs-field--full">
                         <label for="description" class="preregs-field-label">Descripción del contenido <span class="preregs-opt">(opcional)</span></label>
-                        <textarea name="description" id="description" class="preregs-input preregs-textarea" maxlength="500" rows="3" placeholder="Ej: Ropa, electrónicos, documentos…">{{ old('description') }}</textarea>
+                        <textarea name="description" id="description" class="preregs-input preregs-textarea preregs-input-upper" autocapitalize="characters" maxlength="500" rows="3" placeholder="Ej: Ropa, electrónicos, documentos…">{{ old('description') }}</textarea>
                         <p class="preregs-hint">Ayuda a identificar qué viene dentro del paquete.</p>
                     </div>
                 </div>
@@ -688,6 +688,8 @@
     box-sizing: border-box;
     transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
 }
+.preregs-input-upper { text-transform: uppercase; }
+.preregs-input-upper::placeholder { text-transform: none; }
 .preregs-textarea { resize: vertical; min-height: 5.4rem; line-height: 1.45; }
 .preregs-input::placeholder { color: #94a3b8; }
 .preregs-input:hover { border-color: #9BB5D9; background: #fcfdff; }
@@ -1289,11 +1291,11 @@ document.addEventListener('DOMContentLoaded', function() {
         div.innerHTML =
             '<h4>Bulto 1 de ' + n + '</h4>' +
             '<div class="preregs-create-grid preregs-create-grid--nested preregs-create-grid--bulto3">' +
-            '<div class="preregs-field"><label class="preregs-field-label">Nombre en etiqueta <span class="preregs-req">*</span></label><input type="text" name="label_name" class="preregs-input" required placeholder="Nombre del destinatario"></div>' +
+            '<div class="preregs-field"><label class="preregs-field-label">Nombre en etiqueta <span class="preregs-req">*</span></label><input type="text" name="label_name" class="preregs-input preregs-input-upper" autocapitalize="characters" required placeholder="Nombre del destinatario"></div>' +
             '<div class="preregs-field"><label class="preregs-field-label">Peso (lbs) <span class="preregs-req">*</span></label><input type="number" step="0.01" name="intake_weight_lbs" class="preregs-input" required placeholder="0.00"></div>' +
-            '<div class="preregs-field preregs-field--full"><label class="preregs-field-label">Dimensión <span class="preregs-req">*</span> <span class="preregs-field-label-muted">(L × A × H pulg.)</span></label><input type="text" name="dimension" class="preregs-input dimension-input-multi" required placeholder="10 x 8 x 5 in"><p class="preregs-cubic-line"><span class="preregs-cubic-label">Pie cúbico</span> <span class="cubic-feet-display preregs-cubic-value">—</span></p></div>' +
+            '<div class="preregs-field preregs-field--full"><label class="preregs-field-label">Dimensión <span class="preregs-req">*</span> <span class="preregs-field-label-muted">(L × A × H pulg.)</span></label><input type="text" name="dimension" class="preregs-input preregs-input-upper dimension-input-multi" autocapitalize="characters" required placeholder="10 x 8 x 5 in"><p class="preregs-cubic-line"><span class="preregs-cubic-label">Pie cúbico</span> <span class="cubic-feet-display preregs-cubic-value">—</span></p></div>' +
             '</div>' +
-            '<div class="preregs-field preregs-field--full" style="margin-top:0.75rem"><label class="preregs-field-label">Descripción <span class="preregs-opt">(opcional)</span></label><input type="text" name="description" class="preregs-input" maxlength="500" placeholder="Ej: Ropa, electrónicos…"></div>' +
+            '<div class="preregs-field preregs-field--full" style="margin-top:0.75rem"><label class="preregs-field-label">Descripción <span class="preregs-opt">(opcional)</span></label><input type="text" name="description" class="preregs-input preregs-input-upper" autocapitalize="characters" maxlength="500" placeholder="Ej: Ropa, electrónicos…"></div>' +
             '<div class="preregs-field preregs-field--full" style="margin-top:0.75rem"><label class="preregs-field-label">Foto del bulto <span class="preregs-req">*</span></label><input type="file" name="photo" class="preregs-input preregs-input--file" accept="' + photoAccept + '" required><p class="preregs-hint">Al guardar podrá imprimir la etiqueta 1/' + n + '. Luego continúa con el siguiente. JPG, PNG o WEBP. Máx. 10MB.</p></div>';
         bultosContainer.appendChild(div);
         var dropoffStepInput = document.getElementById('dropoff_step_input');

@@ -8,7 +8,7 @@
         section="Operaciones"
         current="Editar {{ $consolidation->unitNoun() }}"
         title="Editar {{ $consolidation->unitNoun() }}"
-        subtitle="{{ $consolidation->code }}. Ajuste la guía o el número de contenedor y las observaciones."
+        subtitle="{{ $consolidation->code }}. Puede cargar o corregir la guía / número de contenedor{{ $consolidation->status === 'OPEN' ? ' y las observaciones' : ' aunque el envío ya esté en tránsito' }}."
         back-href="{{ route('consolidations.show', $consolidation->id) }}"
         back-label="Volver al {{ $consolidation->unitNoun() }}"
     >
@@ -64,10 +64,11 @@
                             name="transport_number"
                             id="transport_number"
                             value="{{ old('transport_number', $consolidation->transport_number) }}"
-                            required
                             maxlength="80"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                            placeholder="Opcional — se puede agregar después"
                         >
+                        <p class="mt-1 text-sm text-gray-500">No es obligatorio. Si aún no lo tiene, puede guardarlo después de enviar el {{ $consolidation->unitNoun() }}.</p>
                         @error('transport_number')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -79,9 +80,13 @@
                             name="notes" 
                             id="notes" 
                             rows="4"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm {{ $consolidation->status !== 'OPEN' ? 'bg-gray-100' : '' }}"
                             placeholder="Notas adicionales sobre la consolidación"
+                            @disabled($consolidation->status !== 'OPEN')
                         >{{ old('notes', $consolidation->notes) }}</textarea>
+                        @if($consolidation->status !== 'OPEN')
+                        <p class="mt-1 text-sm text-gray-500">Las notas solo se editan mientras el {{ $consolidation->unitNoun() }} está abierto.</p>
+                        @endif
                         @error('notes')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror

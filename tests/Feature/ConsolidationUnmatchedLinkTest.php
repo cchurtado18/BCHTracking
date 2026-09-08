@@ -74,7 +74,7 @@ class ConsolidationUnmatchedLinkTest extends TestCase
         $this->actingAs($user)
             ->get(route('consolidations.show', $sack->id))
             ->assertOk()
-            ->assertSee('Cliente tarde')
+            ->assertSee('CLIENTE TARDE')
             ->assertDontSee('Solo código guardado en el saco');
 
         $this->actingAs($user)
@@ -176,7 +176,7 @@ class ConsolidationUnmatchedLinkTest extends TestCase
         $this->actingAs($user)
             ->get(route('consolidations.show', $sack->id))
             ->assertOk()
-            ->assertSee('Cliente ya existia')
+            ->assertSee('CLIENTE YA EXISTIA')
             ->assertSee('4.25')
             ->assertDontSee('Solo código guardado en el saco');
 
@@ -203,7 +203,7 @@ class ConsolidationUnmatchedLinkTest extends TestCase
         $this->actingAs($user)
             ->get(route('consolidations.show', $sack->id))
             ->assertOk()
-            ->assertSee('Tracking con espacio');
+            ->assertSee('TRACKING CON ESPACIO');
 
         $this->assertNotNull(ConsolidationItem::where('consolidation_id', $sack->id)->value('preregistration_id'));
     }
@@ -231,7 +231,7 @@ class ConsolidationUnmatchedLinkTest extends TestCase
         $this->actingAs($user)
             ->get(route('consolidations.show', $sack->id))
             ->assertOk()
-            ->assertSee('Ya estaba en el saco')
+            ->assertSee('YA ESTABA EN EL SACO')
             ->assertDontSee('Solo código guardado en el saco');
 
         $this->assertSame(1, ConsolidationItem::where('consolidation_id', $sack->id)->count());

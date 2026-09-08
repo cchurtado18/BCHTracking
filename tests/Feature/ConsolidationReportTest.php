@@ -59,7 +59,7 @@ class ConsolidationReportTest extends TestCase
             ->assertSee('SAC-202607-9999')
             ->assertSee('8307 NW 68TH ST')
             ->assertSee('TRK-REPORT-001')
-            ->assertSee('Cliente de Prueba')
+            ->assertSee('CLIENTE DE PRUEBA')
             ->assertSee('Agencia Reporte')
             ->assertSee('12.50')
             ->assertSee('Cantidad de bultos')
@@ -112,7 +112,7 @@ class ConsolidationReportTest extends TestCase
         ]);
     }
 
-    public function test_air_consolidation_requires_awb_and_uses_sack_prefix(): void
+    public function test_air_consolidation_uses_sack_prefix_without_requiring_awb(): void
     {
         $user = User::factory()->create(['agency_id' => null]);
         $agency = Agency::create([
@@ -134,30 +134,21 @@ class ConsolidationReportTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->from(route('consolidations.create-select'))
             ->post(route('consolidations.store'), [
                 'service_type' => 'AIR',
-                'preregistration_ids' => [$package->id],
-            ])
-            ->assertRedirect(route('consolidations.create-select'))
-            ->assertSessionHasErrors('transport_number');
-
-        $this->actingAs($user)
-            ->post(route('consolidations.store'), [
-                'service_type' => 'AIR',
-                'transport_number' => '176-98765432',
                 'preregistration_ids' => [$package->id],
             ])
             ->assertRedirect();
 
-        $air = Consolidation::where('service_type', 'AIR')->where('transport_number', '176-98765432')->first();
+        $air = Consolidation::where('service_type', 'AIR')->latest('id')->first();
         $this->assertNotNull($air);
+        $this->assertNull($air->transport_number);
         $this->assertStringStartsWith('SAC-', $air->code);
         $this->assertSame('saco', $air->unitNoun());
         $this->assertSame('Número de guía aérea', $air->transportNumberLabel());
     }
 
-    public function test_sea_consolidation_requires_container_number_and_uses_container_prefix(): void
+    public function test_sea_consolidation_uses_container_prefix_and_optional_container_number(): void
     {
         $user = User::factory()->create(['agency_id' => null]);
         $agency = Agency::create([
@@ -177,15 +168,6 @@ class ConsolidationReportTest extends TestCase
             'status' => 'RECEIVED_MIAMI',
             'agency_id' => $agency->id,
         ]);
-
-        $this->actingAs($user)
-            ->from(route('consolidations.create-select'))
-            ->post(route('consolidations.store'), [
-                'service_type' => 'SEA',
-                'preregistration_ids' => [$package->id],
-            ])
-            ->assertRedirect(route('consolidations.create-select'))
-            ->assertSessionHasErrors('transport_number');
 
         $this->actingAs($user)
             ->post(route('consolidations.store'), [
@@ -210,7 +192,7 @@ class ConsolidationReportTest extends TestCase
             ->assertDontSee('REPORTE DE SACO');
     }
 
-    public function test_unitary_air_package_requires_awb(): void
+    public function test_unitary_air_package_can_be_created_without_awb(): void
     {
         $user = User::factory()->create(['agency_id' => null]);
         $agency = Agency::create([
@@ -232,20 +214,62 @@ class ConsolidationReportTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->from(route('preregistrations.show', $package->id))
             ->post(route('preregistrations.create-single-consolidation', $package->id))
-            ->assertRedirect(route('preregistrations.show', $package->id))
-            ->assertSessionHasErrors('transport_number');
-
-        $this->actingAs($user)
-            ->post(route('preregistrations.create-single-consolidation', $package->id), [
-                'transport_number' => '176-11112222',
-            ])
             ->assertRedirect();
 
-        $air = Consolidation::where('transport_number', '176-11112222')->first();
+        $air = Consolidation::whereHas('items', fn ($q) => $q->where('preregistration_id', $package->id))->first();
         $this->assertNotNull($air);
+        $this->assertNull($air->transport_number);
         $this->assertSame('AIR', $air->service_type);
         $this->assertStringStartsWith('SAC-', $air->code);
+    }
+
+    public function test_transport_number_can_be_added_after_sack_is_sent(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+        $agency = Agency::create([
+            'name' => 'Agencia Enviado',
+            'code' => 'R006',
+            'phone' => '555-0106',
+            'is_active' => true,
+            'is_main' => false,
+        ]);
+        $package = Preregistration::create([
+            'intake_type' => 'COURIER',
+            'tracking_external' => 'TRK-SENT-AWB',
+            'warehouse_code' => '004444',
+            'label_name' => 'Ya viajo',
+            'service_type' => 'AIR',
+            'intake_weight_lbs' => 3,
+            'status' => 'IN_TRANSIT',
+            'agency_id' => $agency->id,
+        ]);
+        $sack = Consolidation::create([
+            'code' => 'SAC-202609-8888',
+            'service_type' => 'AIR',
+            'status' => 'SENT',
+            'sent_at' => now(),
+            'notes' => 'No tocar',
+        ]);
+        ConsolidationItem::create([
+            'consolidation_id' => $sack->id,
+            'preregistration_id' => $package->id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('consolidations.show', $sack->id))
+            ->assertOk()
+            ->assertSee('Editar');
+
+        $this->actingAs($user)
+            ->put(route('consolidations.update', $sack->id), [
+                'transport_number' => '176-55556666',
+                'notes' => 'Intento cambiar notas',
+            ])
+            ->assertRedirect(route('consolidations.show', $sack->id));
+
+        $sack->refresh();
+        $this->assertSame('176-55556666', $sack->transport_number);
+        $this->assertSame('No tocar', $sack->notes);
     }
 }
