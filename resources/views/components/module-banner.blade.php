@@ -83,6 +83,10 @@
 .mb-btn-danger { background: #fff; color: #B03030; border-color: #F6C9C9; }
 .mb-btn-danger:hover { background: #FDECEC; color: #B03030; }
 .mb-btn:disabled, .mb-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+@media (max-width: 768px) {
+    .mb-banner-actions { width: 100%; }
+    .mb-banner-actions .mb-btn { min-height: 2.75rem; flex: 1 1 auto; }
+}
 .mb-strip {
     display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
     margin-top: 0.95rem; padding-top: 0.85rem; border-top: 1px solid #E8EEF8;

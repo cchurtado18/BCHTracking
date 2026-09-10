@@ -86,7 +86,14 @@ document.addEventListener('DOMContentLoaded', function() {
     combo.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') { dropdown.style.display = 'none'; combo.blur(); }
     });
-    dropdown.addEventListener('mousedown', function(e) {
+    dropdown.addEventListener('pointerdown', function(e) {
+        var item = e.target.closest('.agency-combo-item');
+        if (!item) return;
+        e.preventDefault();
+        var row = findById(agencies, item.getAttribute('data-id'));
+        selectPartner(item.getAttribute('data-id'), item.getAttribute('data-label'), !!(row && row.is_slo));
+    });
+    dropdown.addEventListener('click', function(e) {
         var item = e.target.closest('.agency-combo-item');
         if (!item) return;
         e.preventDefault();
@@ -114,13 +121,54 @@ document.addEventListener('DOMContentLoaded', function() {
         sloCombo.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') { sloDropdown.style.display = 'none'; sloCombo.blur(); }
         });
-        sloDropdown.addEventListener('mousedown', function(e) {
+        sloDropdown.addEventListener('pointerdown', function(e) {
+            var item = e.target.closest('.agency-combo-item');
+            if (!item) return;
+            e.preventDefault();
+            selectSloClient(item.getAttribute('data-id'), item.getAttribute('data-label'));
+        });
+        sloDropdown.addEventListener('click', function(e) {
             var item = e.target.closest('.agency-combo-item');
             if (!item) return;
             e.preventDefault();
             selectSloClient(item.getAttribute('data-id'), item.getAttribute('data-label'));
         });
     }
+
+    window.skylinkResolvePreregAgency = function() {
+        if (!hidden) return false;
+        if (String(hidden.value || '').trim()) return true;
+        var typed = (combo.value || '').trim();
+        if (!typed) return false;
+        var typedLower = typed.toLowerCase();
+        function isMatch(row) {
+            return labelOf(row).toLowerCase() === typedLower
+                || String(row.name || '').toLowerCase() === typedLower
+                || String(row.code || '').toLowerCase() === typedLower;
+        }
+        var exact = agencies.filter(isMatch);
+        if (exact.length === 1) {
+            selectPartner(exact[0].id, labelOf(exact[0]), !!exact[0].is_slo);
+            return !!String(hidden.value || '').trim();
+        }
+        var partial = agencies.filter(function(row) { return matches(row, typedLower); });
+        if (partial.length === 1) {
+            selectPartner(partial[0].id, labelOf(partial[0]), !!partial[0].is_slo);
+            return !!String(hidden.value || '').trim();
+        }
+        if (sloClients.length && sloCombo) {
+            var clientExact = sloClients.filter(isMatch);
+            if (clientExact.length === 1) {
+                var sloPartner = agencies.filter(function(a) { return a.is_slo; })[0];
+                if (sloPartner) {
+                    selectPartner(sloPartner.id, labelOf(sloPartner), true);
+                    selectSloClient(clientExact[0].id, labelOf(clientExact[0]));
+                    return !!String(hidden.value || '').trim();
+                }
+            }
+        }
+        return false;
+    };
 
     var initialId = hidden.value;
     if (!initialId) return;

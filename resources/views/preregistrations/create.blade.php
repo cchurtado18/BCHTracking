@@ -50,7 +50,7 @@
                     @if($dropoffAgencyName)
                     <p class="preregs-dropoff-meta"><strong>Agencia:</strong> {{ $dropoffAgencyName }} · <strong>Servicio:</strong> {{ \App\Support\ServiceType::label($dropoffServiceType) }}</p>
                     @endif
-                    <form action="{{ route('preregistrations.store') }}" method="POST" enctype="multipart/form-data" id="preregFormDropoffStep" class="preregs-create-formwrap">
+                    <form action="{{ route('preregistrations.store') }}" method="POST" enctype="multipart/form-data" id="preregFormDropoffStep" class="preregs-create-formwrap" novalidate>
                         @csrf
                         <input type="hidden" name="intake_type" value="DROP_OFF">
                         <input type="hidden" name="dropoff_step" value="{{ $dropoffStep }}">
@@ -79,7 +79,7 @@
                             </div>
                             <div class="preregs-field preregs-field--full">
                                 <label for="dropoff_photo" class="preregs-field-label">Foto del bulto <span class="preregs-req">*</span></label>
-                                <input type="file" name="photo" id="dropoff_photo" class="preregs-input preregs-input--file" accept="image/jpeg,image/jpg,image/png,image/webp" required>
+                                <input type="file" name="photo" id="dropoff_photo" class="preregs-input preregs-input--file" accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif,image/*">
                                 <p class="preregs-hint">JPG, PNG o WEBP. Máx. 10MB.</p>
                             </div>
                             </div>
@@ -141,7 +141,7 @@
                     </div>
                 </div>
                 <div class="preregs-card-body preregs-form-body">
-        <form action="{{ route('preregistrations.store') }}" method="POST" enctype="multipart/form-data" class="preregs-create-formwrap" id="preregForm">
+        <form action="{{ route('preregistrations.store') }}" method="POST" enctype="multipart/form-data" class="preregs-create-formwrap" id="preregForm" novalidate>
             @csrf
             <input type="hidden" name="service_type" id="service_type_post" value="{{ old('service_type') }}">
 
@@ -167,7 +167,7 @@
                     <div id="agency_combobox_wrap" class="preregs-combo-wrap">
                         <input type="text" id="agency_combobox" class="preregs-input" placeholder="Escriba para buscar o baje la lista…" autocomplete="off">
                         <input type="hidden" name="partner_agency_id" id="partner_agency_id" value="">
-                        <input type="hidden" name="agency_id" id="agency_id" value="{{ old('agency_id') }}" required>
+                        <input type="hidden" name="agency_id" id="agency_id" value="{{ old('agency_id') }}">
                         <div id="agency_dropdown" class="preregs-combo-dropdown" style="display: none;"></div>
                     </div>
                     <p class="preregs-hint">Subagencia: el paquete queda en esa cuenta. SkyLink One: después elige el cliente propio de SLO.</p>
@@ -228,7 +228,7 @@
                     </div>
                     <div class="preregs-field">
                         <label for="service_type" class="preregs-field-label">Tipo de servicio <span class="preregs-req">*</span></label>
-                        <select id="service_type" class="preregs-input preregs-select" required>
+                        <select id="service_type" class="preregs-input preregs-select">
                             <option value="" disabled {{ old('service_type') ? '' : 'selected' }}>Seleccione un servicio</option>
                             <option value="AIR" {{ old('service_type') === 'AIR' ? 'selected' : '' }}>Aéreo</option>
                             <option value="SEA" {{ old('service_type') === 'SEA' ? 'selected' : '' }}>Marítimo</option>
@@ -261,7 +261,7 @@
                     <p class="preregs-multi-lead">Se mostrará un formulario por cada bulto. Al guardar podrás imprimir la etiqueta de ese bulto y luego continuar con el siguiente.</p>
                     <div class="preregs-field preregs-field--inline">
                         <label for="service_type_multi" class="preregs-field-label">Tipo de servicio <span class="preregs-req">*</span></label>
-                        <select id="service_type_multi" class="preregs-input preregs-select preregs-input--narrow" required>
+                        <select id="service_type_multi" class="preregs-input preregs-select preregs-input--narrow">
                             <option value="" disabled {{ old('service_type') ? '' : 'selected' }}>Seleccione un servicio</option>
                             <option value="AIR" {{ old('service_type') === 'AIR' ? 'selected' : '' }}>Aéreo</option>
                             <option value="SEA" {{ old('service_type') === 'SEA' ? 'selected' : '' }}>Marítimo</option>
@@ -317,7 +317,7 @@
                     </div>
                     <div class="preregs-field" style="margin:0;flex:1;min-width:0">
                         <label for="photo" class="preregs-field-label">Seleccionar o tomar foto</label>
-                        <input type="file" name="photo" id="photo" class="preregs-input preregs-input--file" accept="image/jpeg,image/jpg,image/png,image/webp" required>
+                        <input type="file" name="photo" id="photo" class="preregs-input preregs-input--file" accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif,image/*">
                         <p class="preregs-file-state" id="photoFileState">Ningún archivo seleccionado.</p>
                     </div>
                 </div>
@@ -762,6 +762,11 @@
     font-size: 0.9rem;
     border-bottom: 1px solid #f1f5f9;
     color: #334155;
+    min-height: 2.75rem;
+    display: flex;
+    align-items: center;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(10, 45, 111, 0.12);
 }
 .preregs-combo-dropdown .agency-combo-item:last-child { border-bottom: none; }
 .preregs-combo-dropdown .agency-combo-item:hover { background: var(--pt-soft); color: var(--pt-navy); }
@@ -1098,39 +1103,105 @@
     .preregs-form-header-text { padding: 1rem; }
     .preregs-photo-drop { flex-direction: column; }
     .preregs-form-actions { position: static; }
+    .preregs-combo-dropdown { max-height: min(50vh, 320px); }
+    .preregs-btn { min-height: 2.75rem; touch-action: manipulation; }
 }
 </style>
 
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    function showFormAlert(form, messages) {
+        var list = Array.isArray(messages) ? messages : [messages];
+        var box = document.querySelector('.preregs-alert.preregs-alert-danger');
+        if (!box) {
+            box = document.createElement('div');
+            box.className = 'preregs-alert preregs-alert-danger';
+            var card = form ? form.closest('.preregs-card') : null;
+            if (card && card.parentNode) card.parentNode.insertBefore(box, card);
+            else if (form && form.parentNode) form.parentNode.insertBefore(box, form);
+            else document.body.insertBefore(box, document.body.firstChild);
+        }
+        box.innerHTML = '<p class="preregs-alert-title">No se pudo guardar:</p><ul class="preregs-alert-list">' +
+            list.map(function(msg) { return '<li>' + msg + '</li>'; }).join('') +
+            '</ul>';
+        box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return box;
+    }
+
+    function setContainerEnabled(container, enabled) {
+        if (!container) return;
+        var nodes = container.querySelectorAll('input, select, textarea');
+        for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i];
+            if (el.id === 'service_type_post' || el.name === '_token') continue;
+            el.disabled = !enabled;
+        }
+    }
+
+    function firstFile(formData, key) {
+        var file = formData.get(key);
+        return file && typeof file === 'object' && file.size > 0 ? file : null;
+    }
+
     // — Registrar PRIMERO el envío del formulario para que siempre se intercepte (evita fallos en móvil por caché) —
     var form = document.getElementById('preregForm');
     if (form) {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             e.stopPropagation();
+            if (typeof window.skylinkResolvePreregAgency === 'function') {
+                window.skylinkResolvePreregAgency();
+            }
+            var agencyId = document.getElementById('agency_id');
+            if (!agencyId || !String(agencyId.value || '').trim()) {
+                showFormAlert(form, 'Seleccione la subagencia o el cliente de SkyLink One. En el teléfono toque una opción de la lista.');
+                var combo = document.getElementById('agency_combobox');
+                if (combo) combo.focus();
+                return;
+            }
+            var sloWrap = document.getElementById('slo_client_wrap');
+            var sloVisible = sloWrap && sloWrap.style.display !== 'none';
+            if (sloVisible) {
+                var sloCombo = document.getElementById('slo_client_combobox');
+                if (sloCombo && !String(sloCombo.value || '').trim()) {
+                    showFormAlert(form, 'Seleccione el cliente de SkyLink One.');
+                    sloCombo.focus();
+                    return;
+                }
+            }
             var serviceSelect = isMultiBultos() && document.getElementById('service_type_multi')
                 ? document.getElementById('service_type_multi')
                 : document.getElementById('service_type');
             var selectedService = serviceSelect ? String(serviceSelect.value || '').trim() : '';
             if (!selectedService) {
-                var box = document.querySelector('.preregs-alert.preregs-alert-danger');
-                if (!box) {
-                    box = document.createElement('div');
-                    box.className = 'preregs-alert preregs-alert-danger';
-                    var card = form.closest('.preregs-card');
-                    if (card && card.parentNode) card.parentNode.insertBefore(box, card);
-                    else form.parentNode.insertBefore(box, form);
-                }
-                box.innerHTML = '<p class="preregs-alert-title">No se pudo guardar:</p><ul class="preregs-alert-list"><li>Debe elegir el tipo de servicio.</li></ul>';
-                box.scrollIntoView({ behavior: 'smooth' });
-                if (serviceSelect) serviceSelect.focus();
+                showFormAlert(form, 'Debe elegir el tipo de servicio.');
+                if (serviceSelect && !serviceSelect.disabled) serviceSelect.focus();
                 return;
             }
             var serviceTypePost = document.getElementById('service_type_post');
             if (serviceTypePost) serviceTypePost.value = selectedService;
+
+            if (isDropOff() && !isMultiBultos()) {
+                var dim = document.getElementById('dimension');
+                if (dim && !String(dim.value || '').trim()) {
+                    showFormAlert(form, 'En Drop Off la dimensión es obligatoria.');
+                    dim.focus();
+                    return;
+                }
+            }
+
             var formData = new FormData(form);
+            if (isMultiBultos()) {
+                if (!firstFile(formData, 'photo')) {
+                    showFormAlert(form, 'Tome o seleccione la foto del bulto.');
+                    return;
+                }
+            } else if (!firstFile(formData, 'photo')) {
+                showFormAlert(form, 'Tome o seleccione la foto del paquete.');
+                return;
+            }
+
             var submitBtn = form.querySelector('button[type="submit"]');
             var originalText = submitBtn ? submitBtn.textContent : '';
 
@@ -1142,31 +1213,39 @@ document.addEventListener('DOMContentLoaded', function() {
                     credentials: 'same-origin',
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                 }).then(function(res) {
-                    if (res.status === 422) {
-                        return res.json().then(function(data) {
+                    var ct = (res.headers.get('content-type') || '');
+                    var parse = ct.indexOf('json') !== -1
+                        ? res.json().catch(function() { return {}; })
+                        : Promise.resolve({});
+                    return parse.then(function(data) {
+                        data = data || {};
+                        if (res.status === 422) {
                             var errs = data.errors || {};
-                            var msg = (errs.service_type && errs.service_type[0]) || (errs.photo && errs.photo[0]) || (errs.general && errs.general[0]) || (errs['photo_bulto_0'] && errs['photo_bulto_0'][0]) || data.message || 'Error de validación.';
-                            var box = document.querySelector('.preregs-alert.preregs-alert-danger');
-                            if (!box) {
-                                box = document.createElement('div');
-                                box.className = 'preregs-alert preregs-alert-danger';
-                                var card = form.closest('.preregs-card');
-                                if (card && card.parentNode) card.parentNode.insertBefore(box, card);
-                                else form.parentNode.insertBefore(box, form);
-                            }
-                            box.innerHTML = '<p class="preregs-alert-title">No se pudo guardar:</p><ul class="preregs-alert-list"><li>' + msg + '</li></ul>';
-                            box.scrollIntoView({ behavior: 'smooth' });
-                        });
-                    } else if (res.redirected && res.url) {
-                        window.location.href = res.url;
-                        return;
-                    } else {
-                        return res.text().then(function() {
-                            alert('Error al guardar. Intente de nuevo.');
-                        });
-                    }
-                }).catch(function() {
-                    alert('Error de conexión. Revise la red e intente de nuevo.');
+                            var msg = (errs.service_type && errs.service_type[0])
+                                || (errs.agency_id && errs.agency_id[0])
+                                || (errs.photo && errs.photo[0])
+                                || (errs.general && errs.general[0])
+                                || (errs['photo_bulto_0'] && errs['photo_bulto_0'][0])
+                                || data.message
+                                || 'Error de validación.';
+                            showFormAlert(form, msg);
+                            return;
+                        }
+                        if (data.redirect_url) {
+                            window.location.href = data.redirect_url;
+                            return;
+                        }
+                        if ((res.redirected || res.ok) && res.url && res.url !== window.location.href) {
+                            window.location.href = res.url;
+                            return;
+                        }
+                        if (!res.ok) {
+                            throw new Error(data.message || 'No se pudo guardar.');
+                        }
+                        showFormAlert(form, data.message || 'No se pudo guardar. Intente de nuevo.');
+                    });
+                }).catch(function(err) {
+                    alert((err && err.message) || 'Error de conexión. Revise la red e intente de nuevo.');
                 }).finally(function() {
                     if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalText; }
                 });
@@ -1175,8 +1254,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (isMultiBultos()) {
                 var dropoffStep = form.querySelector('input[name="dropoff_step"]');
                 if (dropoffStep && parseInt(dropoffStep.value, 10) >= 1) {
-                    var photoFile = formData.get('photo');
-                    if (photoFile && photoFile.size > 0) {
+                    var photoFile = firstFile(formData, 'photo');
+                    if (photoFile) {
                         compressImage(photoFile, 1280, 0.8).then(function(blobOrFile) {
                             formData.set('photo', blobOrFile, blobOrFile.name || 'photo.jpg');
                             sendFormData(formData);
@@ -1191,11 +1270,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 var n = getBultosCount();
                 var promises = [];
                 for (var i = 0; i < n; i++) {
-                    var file = formData.get('photo_bulto_' + i);
-                    if (file && file.size > 0) {
-                        (function(idx) {
-                            promises.push(compressImage(file, 1280, 0.8).then(function(f) { return { i: idx, f: f }; }).catch(function() { return { i: idx, f: file }; }));
-                        })(i);
+                    var file = firstFile(formData, 'photo_bulto_' + i);
+                    if (file) {
+                        (function(idx, current) {
+                            promises.push(compressImage(current, 1280, 0.8).then(function(f) { return { i: idx, f: f }; }).catch(function() { return { i: idx, f: current }; }));
+                        })(i, file);
                     }
                 }
                 if (promises.length === 0) {
@@ -1207,8 +1286,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     sendFormData(formData);
                 });
             } else {
-                var photoFile = formData.get('photo');
-                if (photoFile && photoFile.size > 0) {
+                var photoFile = firstFile(formData, 'photo');
+                if (photoFile) {
                     compressImage(photoFile, 1280, 0.8).then(function(blobOrFile) {
                         formData.set('photo', blobOrFile, blobOrFile.name || 'photo.jpg');
                         sendFormData(formData);
@@ -1222,9 +1301,60 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    var dropoffStepForm = document.getElementById('preregFormDropoffStep');
+    if (dropoffStepForm) {
+        dropoffStepForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var photo = document.getElementById('dropoff_photo');
+            var file = photo && photo.files && photo.files[0];
+            if (!file) {
+                showFormAlert(dropoffStepForm, 'Tome o seleccione la foto de este bulto.');
+                if (photo) photo.focus();
+                return;
+            }
+            var submitBtn = dropoffStepForm.querySelector('button[type="submit"]');
+            var originalText = submitBtn ? submitBtn.textContent : '';
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Subiendo…'; }
+            var fd = new FormData(dropoffStepForm);
+            compressImage(file, 1280, 0.8).then(function(blobOrFile) {
+                fd.set('photo', blobOrFile, blobOrFile.name || 'photo.jpg');
+            }).catch(function() {}).finally(function() {
+                fetch(dropoffStepForm.action, {
+                    method: 'POST',
+                    body: fd,
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                }).then(function(res) {
+                    var ct = (res.headers.get('content-type') || '');
+                    var parse = ct.indexOf('json') !== -1 ? res.json().catch(function() { return {}; }) : Promise.resolve({});
+                    return parse.then(function(data) {
+                        data = data || {};
+                        if (res.status === 422) {
+                            showFormAlert(dropoffStepForm, data.message || 'No se pudo guardar este bulto.');
+                            return;
+                        }
+                        if (data.redirect_url) {
+                            window.location.href = data.redirect_url;
+                            return;
+                        }
+                        if ((res.redirected || res.ok) && res.url && res.url !== window.location.href) {
+                            window.location.href = res.url;
+                            return;
+                        }
+                        throw new Error(data.message || 'No se pudo guardar.');
+                    });
+                }).catch(function(err) {
+                    alert((err && err.message) || 'Error de conexión. Revise la red e intente de nuevo.');
+                }).finally(function() {
+                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalText; }
+                });
+            });
+        });
+    }
+
     function compressImage(file, maxWidth, quality) {
         return new Promise(function(resolve) {
-            if (!file.type || !file.type.match(/^image\/(jpeg|jpg|png|webp|heic)$/i)) {
+            if (!file || !file.type || !file.type.match(/^image\/(jpeg|jpg|png|webp|heic|heif)$/i)) {
                 resolve(file);
                 return;
             }
@@ -1283,7 +1413,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!bultosContainer) return;
         var n = getBultosCount();
         bultosContainer.innerHTML = '';
-        var photoAccept = 'image/jpeg,image/jpg,image/png,image/webp';
+            var photoAccept = 'image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif,image/*';
         // Un solo bloque: Bulto 1 de N. Al guardar se imprime etiqueta 1/N y luego el usuario continúa con el siguiente.
         var div = document.createElement('div');
         div.className = 'preregs-bulto-block bulto-block bulto-block-step';
@@ -1324,6 +1454,8 @@ document.addEventListener('DOMContentLoaded', function() {
             var multi = isMultiBultos();
             if (wrapSingleBulto) wrapSingleBulto.style.display = multi ? 'none' : 'grid';
             if (wrapMultiBultos) wrapMultiBultos.style.display = multi ? 'block' : 'none';
+            setContainerEnabled(wrapSingleBulto, !multi);
+            setContainerEnabled(wrapMultiBultos, multi);
             if (multi) buildBultosBlocks();
             if (photoInput) photoInput.removeAttribute('required');
             if (wrapPhotoSection) wrapPhotoSection.style.display = multi ? 'none' : 'block';
@@ -1334,6 +1466,8 @@ document.addEventListener('DOMContentLoaded', function() {
             wrapLabelPreview.style.display = 'none';
             if (wrapSingleBulto) wrapSingleBulto.style.display = 'grid';
             if (wrapMultiBultos) wrapMultiBultos.style.display = 'none';
+            setContainerEnabled(wrapSingleBulto, true);
+            setContainerEnabled(wrapMultiBultos, false);
             if (dimensionInput) { dimensionInput.removeAttribute('required'); dimensionInput.value = ''; }
             if (photoInput) photoInput.setAttribute('required', 'required');
             if (wrapPhotoSection) wrapPhotoSection.style.display = 'block';
@@ -1349,6 +1483,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var multi = isMultiBultos();
         if (wrapSingleBulto) wrapSingleBulto.style.display = multi ? 'none' : 'grid';
         if (wrapMultiBultos) wrapMultiBultos.style.display = multi ? 'block' : 'none';
+        setContainerEnabled(wrapSingleBulto, !multi);
+        setContainerEnabled(wrapMultiBultos, multi);
         if (multi) {
             buildBultosBlocks();
             var ln = document.getElementById('label_name'), w = document.getElementById('intake_weight_lbs'), d = document.getElementById('dimension');

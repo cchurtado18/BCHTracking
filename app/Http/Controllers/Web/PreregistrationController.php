@@ -10,10 +10,13 @@ use App\Models\PreregistrationPhoto;
 use App\Services\ClientPackageStatusMailer;
 use App\Services\PreregistrationPhotoService;
 use App\Services\WarehouseService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\Response;
 
 class PreregistrationController extends Controller
 {
@@ -214,41 +217,54 @@ class PreregistrationController extends Controller
         } catch (\Throwable $e) {
             \Log::error('Preregistration store failed', ['exception' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'data' => $data]);
 
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['general' => 'No se pudo guardar el preregistro. '.$e->getMessage()]);
+            return $this->storeError($request, 'No se pudo guardar el preregistro. '.$e->getMessage());
         }
 
         if ($request->hasFile('photo')) {
             try {
                 $photo = $request->file('photo');
                 if ($photo->getSize() > 10 * 1024 * 1024) {
-                    return redirect()->route('preregistrations.show', $preregistration->id)
-                        ->with('error', 'La foto excede el tamaño máximo de 10MB.');
+                    return $this->storeRedirect(
+                        $request,
+                        route('preregistrations.show', $preregistration->id),
+                        'Preregistro creado, pero la foto excede el tamaño máximo de 10MB.'
+                    );
                 }
                 if (! in_array($photo->getMimeType(), ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'])) {
-                    return redirect()->route('preregistrations.show', $preregistration->id)
-                        ->with('error', 'El formato de la foto no es válido.');
+                    return $this->storeRedirect(
+                        $request,
+                        route('preregistrations.show', $preregistration->id),
+                        'Preregistro creado, pero el formato de la foto no es válido.'
+                    );
                 }
                 $this->photoService->uploadPhoto($preregistration, $photo);
 
-                return redirect()->route('preregistrations.label', $preregistration->id)
-                    ->with('success', 'Preregistro creado con foto. Imprime la etiqueta para pegarla al paquete.');
+                return $this->storeRedirect(
+                    $request,
+                    route('preregistrations.label', $preregistration->id),
+                    'Preregistro creado con foto. Imprime la etiqueta para pegarla al paquete.'
+                );
             } catch (\Exception $e) {
-                return redirect()->route('preregistrations.show', $preregistration->id)
-                    ->with('error', 'Error al subir la foto: '.$e->getMessage());
+                return $this->storeRedirect(
+                    $request,
+                    route('preregistrations.show', $preregistration->id),
+                    'Preregistro creado, pero hubo un error al subir la foto: '.$e->getMessage()
+                );
             }
         }
 
-        return redirect()->route('preregistrations.label', $preregistration->id)
-            ->with('success', 'Preregistro creado. Imprime la etiqueta.')
-            ->with('warning', 'No se subió foto.');
+        return $this->storeRedirect(
+            $request,
+            route('preregistrations.label', $preregistration->id),
+            'Preregistro creado. Imprime la etiqueta.',
+            'No se subió foto.'
+        );
     }
 
     /**
      * Drop off paso a paso: guardar un bulto, redirigir a imprimir su etiqueta, luego el usuario continúa con el siguiente.
      */
-    protected function storeDropoffBultoStep(StorePreregistrationRequest $request, array $data): \Illuminate\Http\RedirectResponse
+    protected function storeDropoffBultoStep(StorePreregistrationRequest $request, array $data): Response
     {
         $step = (int) $request->input('dropoff_step', 1);
         $total = (int) $request->input('bultos_count', 1);
@@ -295,12 +311,15 @@ class PreregistrationController extends Controller
                     'dropoff_created_ids' => [$preregistration->id],
                 ]);
 
-                return redirect()->route('preregistrations.label', $preregistration->id)
-                    ->with('success', "Bulto 1 de {$total} guardado. Imprime esta etiqueta y luego continúa con el siguiente.");
+                return $this->storeRedirect(
+                    $request,
+                    route('preregistrations.label', $preregistration->id),
+                    "Bulto 1 de {$total} guardado. Imprime esta etiqueta y luego continúa con el siguiente."
+                );
             } catch (\Throwable $e) {
                 \Log::error('Preregistration storeDropoffBultoStep step 1 failed', ['exception' => $e->getMessage()]);
 
-                return redirect()->back()->withInput()->withErrors(['general' => 'No se pudo guardar. '.$e->getMessage()]);
+                return $this->storeError($request, 'No se pudo guardar. '.$e->getMessage());
             }
         }
 
@@ -315,8 +334,13 @@ class PreregistrationController extends Controller
         if (! $warehouseCode || $sessionTotal < 2 || $step > $sessionTotal || $step !== count($createdIds) + 1) {
             session()->forget(['dropoff_warehouse_code', 'dropoff_bultos_total', 'dropoff_agency_id', 'dropoff_service_type', 'dropoff_tracking_external', 'dropoff_created_ids']);
 
-            return redirect()->route('preregistrations.create')
-                ->with('error', 'Sesión de drop off expirada o inválida. Comienza de nuevo con el bulto 1.');
+            return $this->storeRedirect(
+                $request,
+                route('preregistrations.create'),
+                'Sesión de drop off expirada o inválida. Comienza de nuevo con el bulto 1.',
+                null,
+                'error'
+            );
         }
 
         try {
@@ -350,26 +374,32 @@ class PreregistrationController extends Controller
             if ($step >= $sessionTotal) {
                 session()->forget(['dropoff_warehouse_code', 'dropoff_bultos_total', 'dropoff_agency_id', 'dropoff_service_type', 'dropoff_tracking_external', 'dropoff_created_ids']);
 
-                return redirect()->route('preregistrations.label', $preregistration->id)
-                    ->with('success', "Bulto {$step} de {$sessionTotal} guardado. Ya completaste todos los bultos. Imprime esta etiqueta.");
+                return $this->storeRedirect(
+                    $request,
+                    route('preregistrations.label', $preregistration->id),
+                    "Bulto {$step} de {$sessionTotal} guardado. Ya completaste todos los bultos. Imprime esta etiqueta."
+                );
             }
 
-            return redirect()->route('preregistrations.label', $preregistration->id)
-                ->with('success', "Bulto {$step} de {$sessionTotal} guardado. Imprime esta etiqueta y luego continúa con el siguiente.");
+            return $this->storeRedirect(
+                $request,
+                route('preregistrations.label', $preregistration->id),
+                "Bulto {$step} de {$sessionTotal} guardado. Imprime esta etiqueta y luego continúa con el siguiente."
+            );
         } catch (\Throwable $e) {
             \Log::error('Preregistration storeDropoffBultoStep step > 1 failed', ['exception' => $e->getMessage()]);
 
-            return redirect()->back()->withInput()->withErrors(['general' => 'No se pudo guardar. '.$e->getMessage()]);
+            return $this->storeError($request, 'No se pudo guardar. '.$e->getMessage());
         }
     }
 
     /** Drop Off con varios bultos: un warehouse code, N preregistros (envío único de todos). */
-    protected function storeMultiBultoDropoff(StorePreregistrationRequest $request, array $data): \Illuminate\Http\RedirectResponse
+    protected function storeMultiBultoDropoff(StorePreregistrationRequest $request, array $data): Response
     {
         $bultos = $request->input('bultos', []);
         $n = min((int) $request->input('bultos_count', 1), count($bultos));
         if ($n < 1) {
-            return redirect()->back()->withInput()->withErrors(['bultos' => 'Indique al menos un bulto.']);
+            return $this->storeError($request, 'Indique al menos un bulto.', 'bultos');
         }
 
         try {
@@ -409,15 +439,55 @@ class PreregistrationController extends Controller
             }
             $idsParam = implode(',', $ids);
 
-            return redirect()->route('preregistrations.dropoff-labels', ['ids' => $idsParam])
-                ->with('success', "Se crearon {$n} bultos con el mismo código de almacén ({$warehouseCode}). Imprime una etiqueta por cada bulto.");
+            return $this->storeRedirect(
+                $request,
+                route('preregistrations.dropoff-labels', ['ids' => $idsParam]),
+                "Se crearon {$n} bultos con el mismo código de almacén ({$warehouseCode}). Imprime una etiqueta por cada bulto."
+            );
         } catch (\Throwable $e) {
             \Log::error('Preregistration storeMultiBultoDropoff failed', ['exception' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['general' => 'No se pudo guardar los bultos. '.$e->getMessage()]);
+            return $this->storeError($request, 'No se pudo guardar los bultos. '.$e->getMessage());
         }
+    }
+
+    private function wantsStoreJson(Request $request): bool
+    {
+        return $request->expectsJson() || $request->ajax();
+    }
+
+    private function storeRedirect(Request $request, string $url, string $message, ?string $warning = null, string $flash = 'success'): JsonResponse|RedirectResponse
+    {
+        if ($this->wantsStoreJson($request)) {
+            $payload = [
+                'message' => $message,
+                'redirect_url' => $url,
+            ];
+            if ($warning) {
+                $payload['warning'] = $warning;
+            }
+
+            return response()->json($payload);
+        }
+
+        $redirect = redirect()->to($url)->with($flash, $message);
+        if ($warning) {
+            $redirect->with('warning', $warning);
+        }
+
+        return $redirect;
+    }
+
+    private function storeError(Request $request, string $message, string $key = 'general'): JsonResponse|RedirectResponse
+    {
+        if ($this->wantsStoreJson($request)) {
+            return response()->json([
+                'message' => $message,
+                'errors' => [$key => [$message]],
+            ], 422);
+        }
+
+        return redirect()->back()->withInput()->withErrors([$key => $message]);
     }
 
     public function show(string $id)

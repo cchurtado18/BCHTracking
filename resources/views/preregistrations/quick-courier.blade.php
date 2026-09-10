@@ -8,7 +8,7 @@
         section="General"
         current="Captura rápida"
         title="Captura rápida – Courier"
-        subtitle="Tome la foto del paquete y, si quiere, el tracking. Otro usuario podrá completar los datos después."
+        subtitle="La cámara lee primero el tracking de la etiqueta y, cuando lo encuentra, le pide la foto del paquete."
         back-href="{{ route('preregistrations.index') }}"
         back-label="Volver a preregistros"
     >
@@ -38,7 +38,7 @@
 
                 <div class="quick-grid">
                     <div class="quick-field">
-                        <label for="tracking_external" class="preregs-label">Tracking externo (opcional)</label>
+                        <label for="tracking_external" class="preregs-label">Tracking externo</label>
                         <input 
                             type="text" 
                             name="tracking_external" 
@@ -49,13 +49,13 @@
                             spellcheck="false"
                             placeholder="1Z999AA10123456784"
                         >
-                        <p class="quick-help">Si el paquete trae tracking de courier, ingrésalo aquí para poder buscarlo luego.</p>
+                        <p class="quick-help">Se llena al escanear la etiqueta con la cámara. Puede corregirlo a mano si hace falta.</p>
                     </div>
                 </div>
 
                 <div class="preregs-form-section preregs-photo-section">
                     <h3 class="preregs-section-title">Foto del paquete *</h3>
-                    <p class="quick-help">Puedes tomar hasta 3 fotos. Toma 1, 2 o 3 y luego pulsa Guardar.</p>
+                    <p class="quick-help">Primero apunte el código de barras. Hasta que lo lea no se habilita la foto. Hasta 3 fotos.</p>
 
                     <div class="quick-field">
                         <label for="photo" class="preregs-label">Cámara del teléfono</label>
@@ -68,8 +68,7 @@
                             style="display:none;"
                         >
                         <div class="quick-actions" style="margin-top:8px;">
-                            <button type="button" id="quickTakePhoto" class="preregs-btn preregs-btn-primary">Tomar foto</button>
-                            <button type="button" id="quickStopCamera" class="preregs-btn preregs-btn-secondary">Detener cámara</button>
+                            <button type="button" id="quickTakePhoto" class="preregs-btn preregs-btn-primary">Abrir cámara</button>
                         </div>
                         <p class="quick-help" id="quickCounterText">Fotos: 0/3</p>
                         <div id="quickPendingWrap" class="preregs-hidden" style="margin-top:10px;">
@@ -90,6 +89,8 @@
     </div>
 </div>
 
+@include('preregistrations.partials.camera-scan-photo')
+
 @push('scripts')
 @include('partials.compress-image-script')
 <script>
@@ -97,21 +98,27 @@ document.addEventListener('DOMContentLoaded', function() {
     var form = document.getElementById('quickCourierForm');
     var input = document.getElementById('photo');
     var btnTake = document.getElementById('quickTakePhoto');
-    var btnStop = document.getElementById('quickStopCamera');
     var counter = document.getElementById('quickCounterText');
     var pendingWrap = document.getElementById('quickPendingWrap');
     var pendingGrid = document.getElementById('quickPendingGrid');
+    var trackingInput = document.getElementById('tracking_external');
     var maxPhotos = 3;
-    var keepCameraOpen = true;
     var files = [];
 
     function refreshCounter() {
         if (counter) counter.textContent = 'Fotos: ' + files.length + '/3';
         if (btnTake) {
             btnTake.disabled = files.length >= maxPhotos;
-            btnTake.textContent = files.length >= maxPhotos ? 'Límite alcanzado (3/3)' : 'Tomar foto';
+            btnTake.textContent = files.length >= maxPhotos ? 'Límite alcanzado (3/3)' : 'Abrir cámara';
         }
         if (pendingWrap) pendingWrap.classList.toggle('preregs-hidden', files.length === 0);
+    }
+
+    function addPhoto(file) {
+        if (!file || files.length >= maxPhotos) return;
+        files.push({ file: file, previewUrl: URL.createObjectURL(file) });
+        renderGrid();
+        refreshCounter();
     }
 
     function renderGrid() {
@@ -143,17 +150,23 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    if (btnTake && input) {
-        btnTake.addEventListener('click', function() {
-            keepCameraOpen = true;
-            if (files.length >= maxPhotos) return;
-            input.click();
-        });
+    function openNativeCamera() {
+        if (input) input.click();
     }
 
-    if (btnStop) {
-        btnStop.addEventListener('click', function() {
-            keepCameraOpen = false;
+    if (btnTake) {
+        btnTake.addEventListener('click', function() {
+            if (files.length >= maxPhotos) return;
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof window.skylinkOpenScanPhotoCamera !== 'function') {
+                openNativeCamera();
+                return;
+            }
+            window.skylinkOpenScanPhotoCamera({
+                trackingInput: trackingInput,
+                onPhoto: addPhoto,
+            }).catch(function () {
+                openNativeCamera();
+            });
         });
     }
 
@@ -166,18 +179,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.target.value = '';
                 return;
             }
-            if (btnTake) btnTake.disabled = true;
             try {
                 file = await window.skylinkCompressImage(file);
             } catch (err) {}
-            files.push({ file: file, previewUrl: URL.createObjectURL(file) });
-            renderGrid();
-            refreshCounter();
+            addPhoto(file);
             e.target.value = '';
-
-            if (keepCameraOpen && files.length < maxPhotos) {
-                setTimeout(function() { input.click(); }, 200);
-            }
         });
     }
 
@@ -261,6 +267,7 @@ document.addEventListener('DOMContentLoaded', function() {
 .quick-field { max-width: 32rem; }
 .quick-help { font-size: 0.8125rem; color: #6b7280; margin-top: 0.25rem; margin-bottom: 0; }
 .quick-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.preregs-hidden { display: none !important; }
 .quick-photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 8px; }
 .quick-photo-item { border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; text-align: center; }
 .quick-photo-img { width: 100%; height: auto; border-radius: 6px; border: 1px solid #d1d5db; }
