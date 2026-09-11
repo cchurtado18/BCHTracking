@@ -165,6 +165,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 trackingInput: trackingInput,
                 onPhoto: addPhoto,
             }).catch(function () {
+                var overlay = document.getElementById('cspOverlay');
+                if (overlay && !overlay.hidden) return;
                 openNativeCamera();
             });
         });
