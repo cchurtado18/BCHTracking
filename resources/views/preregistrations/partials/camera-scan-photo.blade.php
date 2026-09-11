@@ -1,5 +1,5 @@
 {{-- Visor: escanea el tracking una vez; luego solo toma fotos. --}}
-<div id="cspOverlay" class="csp-overlay" hidden data-csp-build="5">
+<div id="cspOverlay" class="csp-overlay" hidden data-csp-build="6">
     <div id="cspReader" class="csp-reader"></div>
     <video id="cspVideo" class="csp-video" autoplay muted playsinline webkit-playsinline hidden></video>
     <div class="csp-frame" aria-hidden="true"></div>
@@ -10,8 +10,7 @@
     </div>
     <div class="csp-bar csp-bar-bottom">
         <div id="cspConfirmRow" class="csp-confirm-row" hidden>
-            <button type="button" id="cspReject" class="csp-manual-btn">Seguir buscando</button>
-            <button type="button" id="cspAccept" class="csp-shutter">Aceptar tracking</button>
+            <button type="button" id="cspReject" class="csp-manual-btn">No es este — seguir buscando</button>
         </div>
         <button type="button" id="cspShutter" class="csp-shutter" hidden>Tomar foto del paquete</button>
         <button type="button" id="cspManualBtn" class="csp-manual-btn">No lee el código — escribir tracking</button>
@@ -142,7 +141,6 @@ window.skylinkOpenScanPhotoCamera = function (options) {
     var manualInput = document.getElementById('cspManualInput');
     var manualOk = document.getElementById('cspManualOk');
     var confirmRow = document.getElementById('cspConfirmRow');
-    var btnAccept = document.getElementById('cspAccept');
     var btnReject = document.getElementById('cspReject');
     if (!overlay || !readerHost) return Promise.reject(new Error('Visor no disponible'));
     if (!overlay.hidden) return Promise.resolve();
@@ -185,26 +183,24 @@ window.skylinkOpenScanPhotoCamera = function (options) {
     function pauseScanner() {
         scanning = false;
         if (timer) { clearInterval(timer); timer = null; }
-        if (html5Scanner && typeof html5Scanner.pause === 'function') {
-            try { html5Scanner.pause(false); } catch (e) {}
-        }
     }
 
     function resumeScanner() {
         scanning = true;
         photoMode = false;
         pendingCode = '';
+        if (trackingField) {
+            trackingField.value = '';
+            trackingField.dispatchEvent(new Event('input', { bubbles: true }));
+        }
         overlay.classList.remove('is-photo', 'is-confirm');
         if (confirmRow) confirmRow.hidden = true;
         if (btnShutter) btnShutter.hidden = true;
         if (btnManual) btnManual.hidden = false;
         if (readEl) { readEl.hidden = true; readEl.textContent = ''; }
         setHint('Apunte el código de barras del tracking');
-        if (html5Scanner && typeof html5Scanner.resume === 'function') {
-            try { html5Scanner.resume(); } catch (e) {}
-        }
         var el = liveVideo();
-        if (el && window.BarcodeDetector && !html5Scanner) startNativeOn(el);
+        if (el && window.BarcodeDetector) startNativeOn(el);
     }
 
     function enterPhotoMode() {
@@ -213,7 +209,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         pauseScanner();
         overlay.classList.remove('is-confirm');
         overlay.classList.add('is-photo');
-        if (confirmRow) confirmRow.hidden = true;
+        if (confirmRow) confirmRow.hidden = skipScan;
         if (btnManual) btnManual.hidden = true;
         if (manualWrap) manualWrap.hidden = true;
         if (btnShutter) {
@@ -238,27 +234,12 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         enterPhotoMode();
     }
 
-    function proposeCode(code) {
-        if (!scanning || isStale() || photoMode) return false;
-        pendingCode = code;
-        pauseScanner();
-        overlay.classList.add('is-confirm');
-        if (readEl) {
-            readEl.textContent = code;
-            readEl.hidden = false;
-        }
-        if (confirmRow) confirmRow.hidden = false;
-        if (btnManual) btnManual.hidden = true;
-        if (manualWrap) manualWrap.hidden = true;
-        setHint('¿Este es el tracking?');
-        try { if (navigator.vibrate) navigator.vibrate(40); } catch (e) {}
-        return true;
-    }
-
     function consider(raw) {
         var code = normalize(raw);
         if (!isPlausible(code)) return false;
-        return proposeCode(code);
+        if (!scanning || isStale() || photoMode) return false;
+        applyTracking(code);
+        return true;
     }
 
     function stopAll() {
@@ -396,12 +377,6 @@ window.skylinkOpenScanPhotoCamera = function (options) {
     document.body.style.overflow = 'hidden';
 
     btnClose.onclick = function () { close(); };
-    if (btnAccept) {
-        btnAccept.onclick = function () {
-            if (!pendingCode) return;
-            applyTracking(pendingCode);
-        };
-    }
     if (btnReject) {
         btnReject.onclick = function () { resumeScanner(); };
     }
@@ -451,13 +426,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         return startPhotoCamera();
     }
 
-    if (window.BarcodeDetector) {
-        setHint('Buscando el código de barras…');
-        return startPhotoCamera().catch(function () {
-            return window.skylinkLoadHtml5Qrcode().then(startHtml5);
-        });
-    }
-
+    setHint('Buscando el código de barras…');
     return window.skylinkLoadHtml5Qrcode().then(startHtml5).catch(function () {
         setHint('Usando lector de respaldo…');
         return startPhotoCamera();
