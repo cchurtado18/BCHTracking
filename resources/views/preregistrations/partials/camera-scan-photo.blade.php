@@ -1,5 +1,5 @@
 {{-- Visor: escanea el tracking una vez; luego solo toma fotos. --}}
-<div id="cspOverlay" class="csp-overlay" hidden data-csp-build="6">
+<div id="cspOverlay" class="csp-overlay" hidden data-csp-build="7">
     <div id="cspReader" class="csp-reader"></div>
     <video id="cspVideo" class="csp-video" autoplay muted playsinline webkit-playsinline hidden></video>
     <div class="csp-frame" aria-hidden="true"></div>
@@ -30,24 +30,32 @@
 .csp-reader {
     position: absolute; inset: 0; overflow: hidden; background: #000;
 }
-.csp-reader video,
-.csp-reader img,
-.csp-reader canvas {
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: cover !important;
+.csp-reader video {
+    position: absolute !important; inset: 0 !important;
+    width: 100% !important; height: 100% !important;
+    object-fit: cover !important; z-index: 1 !important; background: #000;
 }
+.csp-reader canvas,
+.csp-reader img,
+[id$="__dashboard_section"] {
+    opacity: 0 !important; pointer-events: none !important;
+    z-index: 0 !important;
+}
+#qr-shaded-region { display: none !important; }
 .csp-video {
     position: absolute; inset: 0; width: 100%; height: 100%;
-    object-fit: cover; background: #000;
+    object-fit: cover; background: #000; z-index: 1;
 }
 .csp-video[hidden] { display: none !important; }
 .csp-frame {
-    position: absolute; left: 6%; right: 6%; top: 24%; bottom: 32%;
+    position: absolute; left: 5%; right: 5%; top: 36%; bottom: 38%;
     border: 2px solid rgba(255,255,255,0.9); border-radius: 12px;
-    box-shadow: 0 0 0 9999px rgba(0,0,0,0.32); pointer-events: none;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.32); pointer-events: none; z-index: 2;
 }
-.csp-overlay.is-photo .csp-frame { border-color: #2BB673; }
+.csp-overlay.is-photo .csp-frame {
+    left: 4%; right: 4%; top: 12%; bottom: 22%;
+    border-color: #2BB673;
+}
 .csp-overlay.is-confirm .csp-frame { border-color: #fbbf24; }
 .csp-bar {
     position: relative; z-index: 2; padding: 14px 16px;
@@ -166,7 +174,19 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         return closed || session !== window.__cspSession;
     }
     function liveVideo() {
+        var videos = overlay.querySelectorAll('video');
+        for (var i = 0; i < videos.length; i++) {
+            if (!videos[i].hidden && videos[i].videoWidth) return videos[i];
+        }
         return overlay.querySelector('video');
+    }
+    function prepareVideo(el) {
+        if (!el) return;
+        el.setAttribute('playsinline', '');
+        el.setAttribute('webkit-playsinline', '');
+        el.muted = true;
+        el.playsInline = true;
+        try { el.play(); } catch (e) {}
     }
     function normalize(raw) {
         return String(raw || '').replace(/\s+/g, '').trim().toUpperCase();
@@ -291,7 +311,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
 
     function startNativeOn(videoEl) {
         if (!window.BarcodeDetector || !videoEl || timer) return;
-        var formats = ['code_128', 'code_39', 'code_93', 'itf', 'qr_code'];
+        var formats = ['code_128', 'code_39', 'code_93', 'itf'];
         try {
             var detector = new BarcodeDetector({ formats: formats });
             var busy = false;
@@ -323,6 +343,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
             }
             stream = media;
             video.srcObject = stream;
+            prepareVideo(video);
             return video.play();
         }).then(function () {
             if (skipScan) enterPhotoMode();
@@ -337,12 +358,23 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         var lib = window.__Html5QrcodeLibrary__ || window;
         if (lib.Html5QrcodeSupportedFormats) {
             var F = lib.Html5QrcodeSupportedFormats;
-            formats = [F.CODE_128, F.CODE_39, F.CODE_93, F.ITF, F.QR_CODE].filter(function (v) {
+            formats = [F.CODE_128, F.CODE_39, F.CODE_93, F.ITF, F.CODABAR].filter(function (v) {
                 return typeof v !== 'undefined';
             });
         }
         html5Scanner = new Ctor('cspReader', { verbose: false });
-        var config = { fps: 24, disableFlip: false };
+        var config = {
+            fps: 16,
+            disableFlip: false,
+            aspectRatio: window.innerHeight > window.innerWidth ? 1.777778 : 1.333334,
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+            qrbox: function (viewW, viewH) {
+                return {
+                    width: Math.max(240, Math.floor(viewW * 0.92)),
+                    height: Math.max(90, Math.floor(viewH * 0.22)),
+                };
+            },
+        };
         if (formats && formats.length) config.formatsToSupport = formats;
         setHint('Buscando el código de barras…');
         return html5Scanner.start(
@@ -351,6 +383,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
             function (decodedText) { consider(decodedText); },
             function () {}
         ).then(function () {
+            prepareVideo(liveVideo());
             startNativeOn(liveVideo());
         });
     }
