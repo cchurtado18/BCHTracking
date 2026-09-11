@@ -1,14 +1,18 @@
 @extends('layouts.app')
 
-@section('title', 'Captura rápida Courier')
+@php
+    $scanThenPhoto = ! empty($scanThenPhoto);
+@endphp
+
+@section('title', $scanThenPhoto ? 'Captura tracking + foto' : 'Captura rápida Courier')
 
 @section('content')
 <div class="preregs-page preregs-form-page">
     <x-module-banner
         section="General"
-        current="Captura rápida"
-        title="Captura rápida – Courier"
-        subtitle="La cámara lee el tracking una vez. Después solo toma fotos, salvo que borre el tracking."
+        current="{{ $scanThenPhoto ? 'Tracking + foto' : 'Captura rápida' }}"
+        title="{{ $scanThenPhoto ? 'Captura tracking + foto – Courier' : 'Captura rápida – Courier' }}"
+        subtitle="{{ $scanThenPhoto ? 'La cámara intenta leer el tracking y luego toma la foto del paquete.' : 'Tome la foto del paquete y, si quiere, el tracking. Otro usuario podrá completar los datos después.' }}"
         back-href="{{ route('preregistrations.index') }}"
         back-label="Volver a preregistros"
     >
@@ -38,7 +42,7 @@
 
                 <div class="quick-grid">
                     <div class="quick-field">
-                        <label for="tracking_external" class="preregs-label">Tracking externo</label>
+                        <label for="tracking_external" class="preregs-label">{{ $scanThenPhoto ? 'Tracking externo' : 'Tracking externo (opcional)' }}</label>
                         <input 
                             type="text" 
                             name="tracking_external" 
@@ -49,13 +53,13 @@
                             spellcheck="false"
                             placeholder="1Z999AA10123456784"
                         >
-                        <p class="quick-help">Se llena al escanear la etiqueta. Si lo borra, la cámara vuelve a buscar el código.</p>
+                        <p class="quick-help">{{ $scanThenPhoto ? 'Se llena al escanear la etiqueta. Si lo borra, la cámara vuelve a buscar el código.' : 'Si el paquete trae tracking de courier, ingrésalo aquí para poder buscarlo luego.' }}</p>
                     </div>
                 </div>
 
                 <div class="preregs-form-section preregs-photo-section">
                     <h3 class="preregs-section-title">Foto del paquete *</h3>
-                    <p class="quick-help">Si el tracking está vacío, primero lee el código. Si ya está lleno, abre directo a la foto. Hasta 3 fotos.</p>
+                    <p class="quick-help">{{ $scanThenPhoto ? 'Si el tracking está vacío, primero lee el código. Si ya está lleno, abre directo a la foto. Hasta 3 fotos.' : 'Puedes tomar hasta 3 fotos. Toma 1, 2 o 3 y luego pulsa Guardar.' }}</p>
 
                     <div class="quick-field">
                         <label for="photo" class="preregs-label">Cámara del teléfono</label>
@@ -68,7 +72,10 @@
                             style="display:none;"
                         >
                         <div class="quick-actions" style="margin-top:8px;">
-                            <button type="button" id="quickTakePhoto" class="preregs-btn preregs-btn-primary">Abrir cámara</button>
+                            <button type="button" id="quickTakePhoto" class="preregs-btn preregs-btn-primary">{{ $scanThenPhoto ? 'Escanear y fotografiar' : 'Tomar foto' }}</button>
+                            @unless($scanThenPhoto)
+                            <button type="button" id="quickStopCamera" class="preregs-btn preregs-btn-secondary">Detener cámara</button>
+                            @endunless
                         </div>
                         <p class="quick-help" id="quickCounterText">Fotos: 0/3</p>
                         <div id="quickPendingWrap" class="preregs-hidden" style="margin-top:10px;">
@@ -89,20 +96,25 @@
     </div>
 </div>
 
+@if($scanThenPhoto)
 @include('preregistrations.partials.camera-scan-photo')
+@endif
 
 @push('scripts')
 @include('partials.compress-image-script')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    var scanThenPhoto = @json($scanThenPhoto);
     var form = document.getElementById('quickCourierForm');
     var input = document.getElementById('photo');
     var btnTake = document.getElementById('quickTakePhoto');
+    var btnStop = document.getElementById('quickStopCamera');
     var counter = document.getElementById('quickCounterText');
     var pendingWrap = document.getElementById('quickPendingWrap');
     var pendingGrid = document.getElementById('quickPendingGrid');
     var trackingInput = document.getElementById('tracking_external');
     var maxPhotos = 3;
+    var keepCameraOpen = true;
     var files = [];
 
     function trackingReady() {
@@ -114,7 +126,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (btnTake) {
             btnTake.disabled = files.length >= maxPhotos;
             if (files.length >= maxPhotos) btnTake.textContent = 'Límite alcanzado (3/3)';
-            else btnTake.textContent = trackingReady() ? 'Tomar foto' : 'Escanear y fotografiar';
+            else if (scanThenPhoto) btnTake.textContent = trackingReady() ? 'Tomar foto' : 'Escanear y fotografiar';
+            else btnTake.textContent = 'Tomar foto';
         }
         if (pendingWrap) pendingWrap.classList.toggle('preregs-hidden', files.length === 0);
     }
@@ -168,6 +181,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (btnTake) {
         btnTake.addEventListener('click', function() {
             if (files.length >= maxPhotos) return;
+            if (!scanThenPhoto) {
+                keepCameraOpen = true;
+                openNativeCamera();
+                return;
+            }
+            @if($scanThenPhoto)
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof window.skylinkOpenScanPhotoCamera !== 'function') {
                 openNativeCamera();
                 return;
@@ -181,6 +200,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (overlay && !overlay.hidden) return;
                 openNativeCamera();
             });
+            @endif
+        });
+    }
+
+    if (btnStop) {
+        btnStop.addEventListener('click', function() {
+            keepCameraOpen = false;
         });
     }
 
@@ -198,6 +224,9 @@ document.addEventListener('DOMContentLoaded', function() {
             } catch (err) {}
             addPhoto(file);
             e.target.value = '';
+            if (!scanThenPhoto && keepCameraOpen && files.length < maxPhotos) {
+                setTimeout(function() { input.click(); }, 200);
+            }
         });
     }
 

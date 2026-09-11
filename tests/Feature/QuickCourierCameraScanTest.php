@@ -11,12 +11,27 @@ class QuickCourierCameraScanTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_quick_courier_page_includes_scan_then_photo_camera(): void
+    public function test_quick_courier_page_opens_native_camera_only(): void
     {
         $user = User::factory()->create(['agency_id' => null]);
 
         $this->actingAs($user)
             ->get(route('preregistrations.quick-courier'))
+            ->assertOk()
+            ->assertDontSee('id="cspOverlay"', false)
+            ->assertDontSee('skylinkOpenScanPhotoCamera', false)
+            ->assertSee('Tomar foto')
+            ->assertSee('Detener cámara')
+            ->assertSee('Tome la foto del paquete y, si quiere, el tracking')
+            ->assertSee('id="quickTakePhoto"', false);
+    }
+
+    public function test_tracking_photo_page_includes_scan_then_photo_camera(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+
+        $this->actingAs($user)
+            ->get(route('preregistrations.tracking-photo'))
             ->assertOk()
             ->assertSee('id="cspOverlay"', false)
             ->assertSee('data-csp-build="11"', false)
@@ -31,7 +46,18 @@ class QuickCourierCameraScanTest extends TestCase
             ->assertSee('Si el tracking está vacío');
     }
 
-    public function test_agency_user_cannot_open_quick_courier(): void
+    public function test_preregistration_index_shows_both_capture_buttons(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+
+        $this->actingAs($user)
+            ->get(route('preregistrations.index'))
+            ->assertOk()
+            ->assertSee('Captura rápida Courier')
+            ->assertSee('Captura tracking + foto');
+    }
+
+    public function test_agency_user_cannot_open_quick_courier_or_tracking_photo(): void
     {
         $agency = Agency::create([
             'name' => 'Subagencia Camara',
@@ -43,6 +69,10 @@ class QuickCourierCameraScanTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('preregistrations.quick-courier'))
+            ->assertRedirect(route('packages.index'));
+
+        $this->actingAs($user)
+            ->get(route('preregistrations.tracking-photo'))
             ->assertRedirect(route('packages.index'));
     }
 }

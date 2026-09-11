@@ -624,11 +624,19 @@ class PreregistrationController extends Controller
     }
 
     /**
-     * Formulario de captura rápida para Courier: solo tracking (opcional) + foto.
+     * Formulario de captura rápida para Courier: tracking opcional + foto nativa.
      */
     public function quickCourier()
     {
-        return view('preregistrations.quick-courier');
+        return view('preregistrations.quick-courier', ['scanThenPhoto' => false]);
+    }
+
+    /**
+     * Captura Courier que primero intenta leer el tracking y luego toma la foto.
+     */
+    public function trackingPhoto()
+    {
+        return view('preregistrations.quick-courier', ['scanThenPhoto' => true]);
     }
 
     /**

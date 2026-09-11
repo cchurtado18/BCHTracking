@@ -429,6 +429,7 @@
         </x-slot:icon>
         <x-slot:actions>
             <a href="{{ route('preregistrations.quick-courier') }}" class="mb-btn mb-btn-secondary">Captura rápida Courier</a>
+            <a href="{{ route('preregistrations.tracking-photo') }}" class="mb-btn mb-btn-secondary">Captura tracking + foto</a>
             <a href="{{ route('preregistrations.create') }}" class="mb-btn mb-btn-primary">
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
                 Nuevo preregistro

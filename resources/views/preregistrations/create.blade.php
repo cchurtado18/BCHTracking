@@ -17,6 +17,7 @@
         </x-slot:icon>
         <x-slot:actions>
             <a href="{{ route('preregistrations.quick-courier') }}" class="mb-btn mb-btn-secondary">Captura rápida Courier</a>
+            <a href="{{ route('preregistrations.tracking-photo') }}" class="mb-btn mb-btn-secondary">Captura tracking + foto</a>
         </x-slot:actions>
     </x-module-banner>
 
