@@ -20,8 +20,10 @@ class QuickCourierCameraScanTest extends TestCase
             ->assertOk()
             ->assertSee('id="cspOverlay"', false)
             ->assertSee('skylinkOpenScanPhotoCamera', false)
+            ->assertSee('skylinkLoadZxing', false)
             ->assertSee('Tomar foto del paquete')
             ->assertSee('Apunte el código de barras del tracking')
+            ->assertSee('No lee el código — escribir tracking')
             ->assertSee('id="quickTakePhoto"', false)
             ->assertSee('Hasta que lo lea no se habilita la foto');
     }
