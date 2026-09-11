@@ -1,5 +1,5 @@
-{{-- Visor: lee el tracking en vivo; el obturador aparece cuando lo encuentra. --}}
-<div id="cspOverlay" class="csp-overlay" hidden data-csp-build="4">
+{{-- Visor: escanea el tracking una vez; luego solo toma fotos. --}}
+<div id="cspOverlay" class="csp-overlay" hidden data-csp-build="5">
     <div id="cspReader" class="csp-reader"></div>
     <video id="cspVideo" class="csp-video" autoplay muted playsinline webkit-playsinline hidden></video>
     <div class="csp-frame" aria-hidden="true"></div>
@@ -9,11 +9,15 @@
         <button type="button" id="cspClose" class="csp-close">Cerrar</button>
     </div>
     <div class="csp-bar csp-bar-bottom">
+        <div id="cspConfirmRow" class="csp-confirm-row" hidden>
+            <button type="button" id="cspReject" class="csp-manual-btn">Seguir buscando</button>
+            <button type="button" id="cspAccept" class="csp-shutter">Aceptar tracking</button>
+        </div>
         <button type="button" id="cspShutter" class="csp-shutter" hidden>Tomar foto del paquete</button>
         <button type="button" id="cspManualBtn" class="csp-manual-btn">No lee el código — escribir tracking</button>
         <div id="cspManualWrap" class="csp-manual-wrap" hidden>
             <input type="text" id="cspManualInput" class="csp-manual-input" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Tracking de la etiqueta">
-            <button type="button" id="cspManualOk" class="csp-shutter">Usar este tracking</button>
+            <button type="button" id="cspManualOk" class="csp-shutter">Aceptar tracking</button>
         </div>
     </div>
 </div>
@@ -45,6 +49,7 @@
     box-shadow: 0 0 0 9999px rgba(0,0,0,0.32); pointer-events: none;
 }
 .csp-overlay.is-photo .csp-frame { border-color: #2BB673; }
+.csp-overlay.is-confirm .csp-frame { border-color: #fbbf24; }
 .csp-bar {
     position: relative; z-index: 2; padding: 14px 16px;
     display: flex; flex-direction: column; align-items: center; gap: 8px;
@@ -75,6 +80,8 @@
     background: transparent; color: #e2e8f0; border: 1px solid rgba(255,255,255,0.35);
     border-radius: 999px; padding: 0.45rem 0.9rem; font-weight: 600; cursor: pointer;
 }
+.csp-confirm-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; }
+.csp-confirm-row[hidden] { display: none !important; }
 .csp-manual-wrap { width: min(22rem, 92vw); display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .csp-manual-wrap[hidden] { display: none !important; }
 .csp-manual-input {
@@ -89,7 +96,7 @@
         return new Promise(function (resolve, reject) {
             var existing = document.querySelector('script[src="' + src + '"]');
             if (existing) {
-                if (window.Html5Qrcode || (window.__Html5QrcodeLibrary__ && window.__Html5QrcodeLibrary__.Html5Qrcode) || window.ZXing) {
+                if (window.Html5Qrcode || (window.__Html5QrcodeLibrary__ && window.__Html5QrcodeLibrary__.Html5Qrcode)) {
                     resolve();
                     return;
                 }
@@ -134,18 +141,25 @@ window.skylinkOpenScanPhotoCamera = function (options) {
     var manualWrap = document.getElementById('cspManualWrap');
     var manualInput = document.getElementById('cspManualInput');
     var manualOk = document.getElementById('cspManualOk');
+    var confirmRow = document.getElementById('cspConfirmRow');
+    var btnAccept = document.getElementById('cspAccept');
+    var btnReject = document.getElementById('cspReject');
     if (!overlay || !readerHost) return Promise.reject(new Error('Visor no disponible'));
     if (!overlay.hidden) return Promise.resolve();
+
+    var trackingField = options.trackingInput || document.getElementById('tracking_external');
+    var existingTracking = trackingField ? String(trackingField.value || '').replace(/\s+/g, '').trim() : '';
+    var skipScan = !!options.skipScan || existingTracking.length >= 6;
 
     window.__cspSession = (window.__cspSession || 0) + 1;
     var session = window.__cspSession;
     var html5Scanner = null;
     var stream = null;
     var timer = null;
-    var scanning = true;
+    var scanning = !skipScan;
+    var photoMode = skipScan;
     var closed = false;
-    var last = '';
-    var hits = 0;
+    var pendingCode = '';
 
     function setHint(text) {
         if (hint) hint.textContent = text;
@@ -155,6 +169,96 @@ window.skylinkOpenScanPhotoCamera = function (options) {
     }
     function liveVideo() {
         return overlay.querySelector('video');
+    }
+    function normalize(raw) {
+        return String(raw || '').replace(/\s+/g, '').trim().toUpperCase();
+    }
+    function isUrl(code) {
+        return /^HTTPS?:\/\//.test(code) || /^WWW\./.test(code);
+    }
+    function isPlausible(code) {
+        if (!code || code.length < 6) return false;
+        if (isUrl(code)) return false;
+        return /[A-Z0-9]/.test(code);
+    }
+
+    function pauseScanner() {
+        scanning = false;
+        if (timer) { clearInterval(timer); timer = null; }
+        if (html5Scanner && typeof html5Scanner.pause === 'function') {
+            try { html5Scanner.pause(false); } catch (e) {}
+        }
+    }
+
+    function resumeScanner() {
+        scanning = true;
+        photoMode = false;
+        pendingCode = '';
+        overlay.classList.remove('is-photo', 'is-confirm');
+        if (confirmRow) confirmRow.hidden = true;
+        if (btnShutter) btnShutter.hidden = true;
+        if (btnManual) btnManual.hidden = false;
+        if (readEl) { readEl.hidden = true; readEl.textContent = ''; }
+        setHint('Apunte el código de barras del tracking');
+        if (html5Scanner && typeof html5Scanner.resume === 'function') {
+            try { html5Scanner.resume(); } catch (e) {}
+        }
+        var el = liveVideo();
+        if (el && window.BarcodeDetector && !html5Scanner) startNativeOn(el);
+    }
+
+    function enterPhotoMode() {
+        photoMode = true;
+        scanning = false;
+        pauseScanner();
+        overlay.classList.remove('is-confirm');
+        overlay.classList.add('is-photo');
+        if (confirmRow) confirmRow.hidden = true;
+        if (btnManual) btnManual.hidden = true;
+        if (manualWrap) manualWrap.hidden = true;
+        if (btnShutter) {
+            btnShutter.hidden = false;
+            btnShutter.disabled = false;
+            btnShutter.textContent = 'Tomar foto del paquete';
+        }
+        setHint('Tome la foto del paquete');
+    }
+
+    function applyTracking(code) {
+        pendingCode = '';
+        if (trackingField) {
+            trackingField.value = code;
+            trackingField.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        if (readEl) {
+            readEl.textContent = code;
+            readEl.hidden = false;
+        }
+        try { if (navigator.vibrate) navigator.vibrate(80); } catch (e) {}
+        enterPhotoMode();
+    }
+
+    function proposeCode(code) {
+        if (!scanning || isStale() || photoMode) return false;
+        pendingCode = code;
+        pauseScanner();
+        overlay.classList.add('is-confirm');
+        if (readEl) {
+            readEl.textContent = code;
+            readEl.hidden = false;
+        }
+        if (confirmRow) confirmRow.hidden = false;
+        if (btnManual) btnManual.hidden = true;
+        if (manualWrap) manualWrap.hidden = true;
+        setHint('¿Este es el tracking?');
+        try { if (navigator.vibrate) navigator.vibrate(40); } catch (e) {}
+        return true;
+    }
+
+    function consider(raw) {
+        var code = normalize(raw);
+        if (!isPlausible(code)) return false;
+        return proposeCode(code);
     }
 
     function stopAll() {
@@ -178,58 +282,14 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         if (session === window.__cspSession) window.__cspSession += 1;
         stopAll();
         overlay.hidden = true;
-        overlay.classList.remove('is-photo');
+        overlay.classList.remove('is-photo', 'is-confirm');
         if (btnShutter) btnShutter.hidden = true;
         if (readEl) readEl.hidden = true;
         if (manualWrap) manualWrap.hidden = true;
+        if (confirmRow) confirmRow.hidden = true;
         if (btnManual) btnManual.hidden = false;
         if (video) video.hidden = true;
         document.body.style.overflow = '';
-    }
-
-    function normalize(raw) {
-        return String(raw || '').replace(/\s+/g, '').trim().toUpperCase();
-    }
-    function isUrl(code) {
-        return /^HTTPS?:\/\//.test(code) || /^WWW\./.test(code);
-    }
-    function isPlausible(code) {
-        if (!code || code.length < 6) return false;
-        if (isUrl(code)) return false;
-        return /[A-Z0-9]/.test(code);
-    }
-
-    function onFound(code) {
-        if (!scanning || isStale()) return;
-        scanning = false;
-        if (timer) { clearInterval(timer); timer = null; }
-        var field = options.trackingInput || document.getElementById('tracking_external');
-        if (field) {
-            field.value = code;
-            field.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-        if (readEl) {
-            readEl.textContent = code;
-            readEl.hidden = false;
-        }
-        overlay.classList.add('is-photo');
-        setHint('Código leído. Ahora tome la foto del paquete');
-        if (btnShutter) btnShutter.hidden = false;
-        if (btnManual) btnManual.hidden = true;
-        if (manualWrap) manualWrap.hidden = true;
-        try { if (navigator.vibrate) navigator.vibrate(80); } catch (e) {}
-    }
-
-    function consider(raw) {
-        var code = normalize(raw);
-        if (!isPlausible(code)) return false;
-        if (code === last) hits += 1;
-        else { last = code; hits = 1; }
-        if (hits >= 1) {
-            onFound(code);
-            return true;
-        }
-        return false;
     }
 
     function captureFrame() {
@@ -244,25 +304,49 @@ window.skylinkOpenScanPhotoCamera = function (options) {
             canvas.toBlob(function (blob) {
                 if (!blob) { reject(new Error('No se pudo capturar la foto')); return; }
                 resolve(new File([blob], 'paquete.jpg', { type: 'image/jpeg', lastModified: Date.now() }));
-            }, 'image/jpeg', 0.86);
+            }, 'image/jpeg', 0.9);
         });
     }
 
     function startNativeOn(videoEl) {
-        if (!window.BarcodeDetector || !videoEl) return;
-        var formats = ['code_128', 'code_39', 'code_93', 'codabar', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'itf', 'qr_code', 'data_matrix', 'pdf417'];
+        if (!window.BarcodeDetector || !videoEl || timer) return;
+        var formats = ['code_128', 'code_39', 'code_93', 'itf', 'qr_code'];
         try {
             var detector = new BarcodeDetector({ formats: formats });
+            var busy = false;
             timer = setInterval(function () {
-                if (!scanning || isStale() || !videoEl.videoWidth) return;
+                if (!scanning || isStale() || busy || !videoEl.videoWidth) return;
+                busy = true;
                 detector.detect(videoEl).then(function (codes) {
                     if (!codes) return;
                     for (var i = 0; i < codes.length; i++) {
                         if (consider(codes[i].rawValue)) return;
                     }
-                }).catch(function () {});
-            }, 120);
+                }).catch(function () {}).finally(function () { busy = false; });
+            }, 70);
         } catch (e) {}
+    }
+
+    function startPhotoCamera() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            return Promise.reject(new Error('Sin cámara'));
+        }
+        if (video) video.hidden = false;
+        return navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } },
+        }).then(function (media) {
+            if (isStale()) {
+                media.getTracks().forEach(function (t) { t.stop(); });
+                return;
+            }
+            stream = media;
+            video.srcObject = stream;
+            return video.play();
+        }).then(function () {
+            if (skipScan) enterPhotoMode();
+            else startNativeOn(video);
+        });
     }
 
     function startHtml5() {
@@ -272,12 +356,12 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         var lib = window.__Html5QrcodeLibrary__ || window;
         if (lib.Html5QrcodeSupportedFormats) {
             var F = lib.Html5QrcodeSupportedFormats;
-            formats = [F.CODE_128, F.CODE_39, F.CODE_93, F.CODABAR, F.ITF, F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E, F.QR_CODE, F.DATA_MATRIX, F.PDF_417].filter(function (v) {
+            formats = [F.CODE_128, F.CODE_39, F.CODE_93, F.ITF, F.QR_CODE].filter(function (v) {
                 return typeof v !== 'undefined';
             });
         }
         html5Scanner = new Ctor('cspReader', { verbose: false });
-        var config = { fps: 12, aspectRatio: 1.333 };
+        var config = { fps: 24, disableFlip: false };
         if (formats && formats.length) config.formatsToSupport = formats;
         setHint('Buscando el código de barras…');
         return html5Scanner.start(
@@ -290,59 +374,37 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         });
     }
 
-    function startZxingFallback() {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            return Promise.reject(new Error('Sin cámara'));
-        }
-        if (video) video.hidden = false;
-        setHint('Usando lector de respaldo…');
-        return navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' } } }).then(function (media) {
-            if (isStale()) {
-                media.getTracks().forEach(function (t) { t.stop(); });
-                return;
-            }
-            stream = media;
-            video.srcObject = stream;
-            return video.play();
-        }).then(function () {
-            startNativeOn(video);
-            return new Promise(function (resolve, reject) {
-                var s = document.createElement('script');
-                s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
-                s.onload = resolve;
-                s.onerror = reject;
-                document.head.appendChild(s);
-            }).then(function () {
-                if (!window.ZXing || isStale()) return;
-                var reader = new window.ZXing.BrowserMultiFormatReader();
-                timer = setInterval(function () {
-                    if (!scanning || isStale() || !video.videoWidth) return;
-                    try {
-                        var result = reader.decode(video);
-                        var text = result && (typeof result.getText === 'function' ? result.getText() : result.text);
-                        if (text) consider(text);
-                    } catch (e) {}
-                }, 160);
-                setHint('Buscando el código de barras…');
-            }).catch(function () {
-                setHint('Buscando el código… si no lee, escríbalo abajo.');
-            });
-        });
-    }
-
     overlay.hidden = false;
-    overlay.classList.remove('is-photo');
-    setHint('Abriendo cámara…');
-    if (readEl) { readEl.hidden = true; readEl.textContent = ''; }
+    overlay.classList.remove('is-photo', 'is-confirm');
+    setHint(skipScan ? 'Abriendo cámara…' : 'Abriendo cámara…');
+    if (readEl) {
+        if (skipScan && existingTracking) {
+            readEl.textContent = existingTracking.toUpperCase();
+            readEl.hidden = false;
+        } else {
+            readEl.hidden = true;
+            readEl.textContent = '';
+        }
+    }
     if (btnShutter) { btnShutter.hidden = true; btnShutter.disabled = false; }
-    if (btnManual) btnManual.hidden = false;
+    if (btnManual) btnManual.hidden = skipScan;
     if (manualWrap) manualWrap.hidden = true;
+    if (confirmRow) confirmRow.hidden = true;
     if (manualInput) manualInput.value = '';
     if (video) video.hidden = true;
     readerHost.innerHTML = '';
     document.body.style.overflow = 'hidden';
 
     btnClose.onclick = function () { close(); };
+    if (btnAccept) {
+        btnAccept.onclick = function () {
+            if (!pendingCode) return;
+            applyTracking(pendingCode);
+        };
+    }
+    if (btnReject) {
+        btnReject.onclick = function () { resumeScanner(); };
+    }
     if (btnManual) {
         btnManual.onclick = function () {
             if (manualWrap) manualWrap.hidden = false;
@@ -356,31 +418,53 @@ window.skylinkOpenScanPhotoCamera = function (options) {
                 alert('Escriba el tracking de la etiqueta.');
                 return;
             }
-            onFound(code);
+            applyTracking(code);
         };
     }
     btnShutter.onclick = async function () {
-        if (scanning) return;
+        if (!photoMode) return;
         btnShutter.disabled = true;
         try {
             var file = await captureFrame();
             if (window.skylinkCompressImage) {
                 try { file = await window.skylinkCompressImage(file); } catch (e) {}
             }
-            close();
-            if (typeof options.onPhoto === 'function') options.onPhoto(file);
+            var keepOpen = true;
+            if (typeof options.onPhoto === 'function') {
+                keepOpen = options.onPhoto(file) !== false;
+            }
+            if (!keepOpen) {
+                close();
+                return;
+            }
+            btnShutter.disabled = false;
+            btnShutter.textContent = 'Tomar otra foto';
+            setHint('Foto guardada. Puede tomar otra o cerrar.');
         } catch (err) {
             btnShutter.disabled = false;
             alert(err.message || 'No se pudo tomar la foto');
         }
     };
 
+    if (skipScan) {
+        setHint('Tracking listo. Tome la foto del paquete');
+        return startPhotoCamera();
+    }
+
+    if (window.BarcodeDetector) {
+        setHint('Buscando el código de barras…');
+        return startPhotoCamera().catch(function () {
+            return window.skylinkLoadHtml5Qrcode().then(startHtml5);
+        });
+    }
+
     return window.skylinkLoadHtml5Qrcode().then(startHtml5).catch(function () {
         setHint('Usando lector de respaldo…');
-        return startZxingFallback();
+        return startPhotoCamera();
     }).catch(function () {
         setHint('No se pudo iniciar el lector. Escriba el tracking.');
         if (manualWrap) manualWrap.hidden = false;
+        if (btnManual) btnManual.hidden = true;
     });
 };
 </script>

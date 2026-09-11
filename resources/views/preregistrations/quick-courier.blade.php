@@ -8,7 +8,7 @@
         section="General"
         current="Captura rápida"
         title="Captura rápida – Courier"
-        subtitle="La cámara lee primero el tracking de la etiqueta y, cuando lo encuentra, le pide la foto del paquete."
+        subtitle="La cámara lee el tracking una vez. Después solo toma fotos, salvo que borre el tracking."
         back-href="{{ route('preregistrations.index') }}"
         back-label="Volver a preregistros"
     >
@@ -49,13 +49,13 @@
                             spellcheck="false"
                             placeholder="1Z999AA10123456784"
                         >
-                        <p class="quick-help">Se llena al escanear la etiqueta con la cámara. Puede corregirlo a mano si hace falta.</p>
+                        <p class="quick-help">Se llena al escanear la etiqueta. Si lo borra, la cámara vuelve a buscar el código.</p>
                     </div>
                 </div>
 
                 <div class="preregs-form-section preregs-photo-section">
                     <h3 class="preregs-section-title">Foto del paquete *</h3>
-                    <p class="quick-help">Primero apunte el código de barras. Hasta que lo lea no se habilita la foto. Hasta 3 fotos.</p>
+                    <p class="quick-help">Si el tracking está vacío, primero lee el código. Si ya está lleno, abre directo a la foto. Hasta 3 fotos.</p>
 
                     <div class="quick-field">
                         <label for="photo" class="preregs-label">Cámara del teléfono</label>
@@ -105,20 +105,26 @@ document.addEventListener('DOMContentLoaded', function() {
     var maxPhotos = 3;
     var files = [];
 
+    function trackingReady() {
+        return trackingInput && String(trackingInput.value || '').replace(/\s+/g, '').trim().length >= 6;
+    }
+
     function refreshCounter() {
         if (counter) counter.textContent = 'Fotos: ' + files.length + '/3';
         if (btnTake) {
             btnTake.disabled = files.length >= maxPhotos;
-            btnTake.textContent = files.length >= maxPhotos ? 'Límite alcanzado (3/3)' : 'Abrir cámara';
+            if (files.length >= maxPhotos) btnTake.textContent = 'Límite alcanzado (3/3)';
+            else btnTake.textContent = trackingReady() ? 'Tomar foto' : 'Escanear y fotografiar';
         }
         if (pendingWrap) pendingWrap.classList.toggle('preregs-hidden', files.length === 0);
     }
 
     function addPhoto(file) {
-        if (!file || files.length >= maxPhotos) return;
+        if (!file || files.length >= maxPhotos) return false;
         files.push({ file: file, previewUrl: URL.createObjectURL(file) });
         renderGrid();
         refreshCounter();
+        return files.length < maxPhotos;
     }
 
     function renderGrid() {
@@ -150,6 +156,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    if (trackingInput) {
+        trackingInput.addEventListener('input', refreshCounter);
+        trackingInput.addEventListener('change', refreshCounter);
+    }
+
     function openNativeCamera() {
         if (input) input.click();
     }
@@ -163,6 +174,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             window.skylinkOpenScanPhotoCamera({
                 trackingInput: trackingInput,
+                skipScan: trackingReady(),
                 onPhoto: addPhoto,
             }).catch(function () {
                 var overlay = document.getElementById('cspOverlay');
