@@ -1,5 +1,5 @@
 {{-- Visor: la cámara propia se ve siempre; el lector solo decodifica frames. --}}
-<div id="cspOverlay" class="csp-overlay" hidden data-csp-build="9">
+<div id="cspOverlay" class="csp-overlay" hidden data-csp-build="10">
     <video id="cspVideo" class="csp-video" autoplay muted playsinline webkit-playsinline></video>
     <div id="cspReader" class="csp-reader" aria-hidden="true"></div>
     <div class="csp-frame" aria-hidden="true"></div>
@@ -154,7 +154,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
     var closed = false;
     var scanBusy = false;
     var scanCanvas = document.createElement('canvas');
-    var scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true });
+    var scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true }) || scanCanvas.getContext('2d');
 
     function setHint(text) {
         if (hint) hint.textContent = text;
@@ -213,6 +213,11 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         return new Promise(function (resolve, reject) {
             var tries = 0;
             var id = setInterval(function () {
+                if (isStale()) {
+                    clearInterval(id);
+                    reject(new Error('closed'));
+                    return;
+                }
                 tries += 1;
                 if (video.videoWidth) {
                     clearInterval(id);
@@ -234,6 +239,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
     function resumeScanner() {
         scanning = true;
         photoMode = false;
+        scanBusy = false;
         if (trackingField) {
             trackingField.value = '';
             trackingField.dispatchEvent(new Event('input', { bubbles: true }));
@@ -279,7 +285,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
 
     function consider(raw) {
         var code = typeof raw === 'string' ? normalize(raw) : pickBest(raw);
-        if (!isPlausible(code)) return false;
+        if (scoreCode(code) < 8) return false;
         if (!scanning || isStale() || photoMode) return false;
         applyTracking(code);
         return true;
@@ -352,43 +358,52 @@ window.skylinkOpenScanPhotoCamera = function (options) {
     }
 
     function decodeCanvas() {
-        if (!html5Scanner) return Promise.reject();
-        if (html5Scanner.qrcode && typeof html5Scanner.qrcode.decodeAsync === 'function') {
-            return html5Scanner.qrcode.decodeAsync(scanCanvas).then(textFromDecode);
+        if (!html5Scanner || !html5Scanner.qrcode) return Promise.reject();
+        var decoder = html5Scanner.qrcode;
+        var decodeFn = decoder.decodeRobustlyAsync || decoder.decodeAsync;
+        if (typeof decodeFn !== 'function') return Promise.reject();
+        return decodeFn.call(decoder, scanCanvas).then(textFromDecode);
+    }
+
+    function scheduleTick(delay) {
+        if (scanTimer) return;
+        scanTimer = setTimeout(function () {
+            scanTimer = null;
+            tickScan();
+        }, delay);
+    }
+
+    function tickScan() {
+        if (!scanning || isStale() || photoMode) return;
+        if (scanBusy || !video.videoWidth || !scanCtx) {
+            scheduleTick(160);
+            return;
         }
-        if (typeof html5Scanner.scanFile !== 'function') return Promise.reject();
-        return new Promise(function (resolve, reject) {
-            scanCanvas.toBlob(function (blob) {
-                if (!blob) { reject(new Error('blob')); return; }
-                html5Scanner.scanFile(new File([blob], 'scan.png', { type: blob.type || 'image/png' }), false)
-                    .then(resolve)
-                    .catch(reject);
-            }, 'image/png');
+        scanBusy = true;
+        try {
+            var vw = video.videoWidth;
+            var vh = video.videoHeight;
+            var scale = Math.min(1, 1600 / Math.max(vw, vh));
+            scanCanvas.width = Math.max(1, Math.floor(vw * scale));
+            scanCanvas.height = Math.max(1, Math.floor(vh * scale));
+            scanCtx.imageSmoothingEnabled = false;
+            scanCtx.drawImage(video, 0, 0, scanCanvas.width, scanCanvas.height);
+        } catch (e) {
+            scanBusy = false;
+            scheduleTick(160);
+            return;
+        }
+        decodeCanvas().then(function (text) {
+            consider(text);
+        }).catch(function () {}).finally(function () {
+            scanBusy = false;
+            if (scanning && !isStale() && !photoMode) scheduleTick(120);
         });
     }
 
     function startHtml5Loop() {
-        if (!html5Scanner || scanTimer) return;
-        function tick() {
-            if (!scanning || isStale() || photoMode) return;
-            if (scanBusy || !video.videoWidth) {
-                scanTimer = setTimeout(tick, 160);
-                return;
-            }
-            scanBusy = true;
-            var vw = video.videoWidth;
-            var vh = video.videoHeight;
-            scanCanvas.width = vw;
-            scanCanvas.height = vh;
-            scanCtx.drawImage(video, 0, 0, vw, vh);
-            decodeCanvas().then(function (text) {
-                consider(text);
-            }).catch(function () {}).finally(function () {
-                scanBusy = false;
-                if (scanning && !isStale() && !photoMode) scanTimer = setTimeout(tick, 120);
-            });
-        }
-        scanTimer = setTimeout(tick, 180);
+        if (!html5Scanner) return;
+        scheduleTick(180);
     }
 
     function attachStream(media) {
@@ -427,6 +442,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
                     throw err;
                 });
             }).catch(function () {
+                if (isStale()) return Promise.resolve();
                 if (i + 1 < tries.length) return attempt(i + 1);
                 return Promise.reject(new Error('Sin cámara'));
             });
@@ -474,7 +490,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
             applyTracking(code);
         };
     }
-    btnShutter.onclick = async function () {
+    if (btnShutter) btnShutter.onclick = async function () {
         if (!photoMode) return;
         btnShutter.disabled = true;
         try {
@@ -511,7 +527,10 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         return window.skylinkLoadHtml5Qrcode().then(function () {
             var Ctor = window.skylinkHtml5QrcodeClass();
             if (!Ctor || !readerHost) return;
-            var config = { verbose: false };
+            var config = {
+                verbose: false,
+                experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+            };
             var lib = window.__Html5QrcodeLibrary__ || window;
             if (lib.Html5QrcodeSupportedFormats) {
                 var F = lib.Html5QrcodeSupportedFormats;
@@ -519,10 +538,15 @@ window.skylinkOpenScanPhotoCamera = function (options) {
                     return typeof v !== 'undefined';
                 });
             }
-            html5Scanner = new Ctor('cspReader', config);
-            startHtml5Loop();
+            try {
+                html5Scanner = new Ctor('cspReader', config);
+            } catch (e) {
+                try { html5Scanner = new Ctor('cspReader', { verbose: false }); } catch (e2) { html5Scanner = null; }
+            }
+            if (html5Scanner) startHtml5Loop();
         }).catch(function () {});
     }).catch(function () {
+        if (isStale()) return;
         setHint('No se pudo abrir la cámara. Escriba el tracking.');
         if (manualWrap) manualWrap.hidden = false;
         if (btnManual) btnManual.hidden = true;
