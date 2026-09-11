@@ -1,5 +1,5 @@
 {{-- Visor: la cámara propia se ve siempre; el lector solo decodifica frames. --}}
-<div id="cspOverlay" class="csp-overlay" hidden data-csp-build="8">
+<div id="cspOverlay" class="csp-overlay" hidden data-csp-build="9">
     <video id="cspVideo" class="csp-video" autoplay muted playsinline webkit-playsinline></video>
     <div id="cspReader" class="csp-reader" aria-hidden="true"></div>
     <div class="csp-frame" aria-hidden="true"></div>
@@ -163,15 +163,66 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         return closed || session !== window.__cspSession;
     }
     function normalize(raw) {
-        return String(raw || '').replace(/\s+/g, '').trim().toUpperCase();
+        return String(raw || '')
+            .replace(/[\s\u0000\u001d\u001e]/g, '')
+            .replace(/^\][A-Z0-9]/, '')
+            .trim()
+            .toUpperCase();
     }
     function isUrl(code) {
         return /^HTTPS?:\/\//.test(code) || /^WWW\./.test(code);
     }
     function isPlausible(code) {
-        if (!code || code.length < 6) return false;
+        if (!code || code.length < 6 || code.length > 48) return false;
         if (isUrl(code)) return false;
         return /[A-Z0-9]/.test(code);
+    }
+    function scoreCode(code) {
+        if (!isPlausible(code)) return -1;
+        var score = Math.min(code.length, 28);
+        if (/[A-Z]/.test(code) && /\d/.test(code)) score += 24;
+        if (/^\d+$/.test(code) && code.length < 12) score -= 12;
+        if (code.length >= 10 && code.length <= 34) score += 8;
+        return score;
+    }
+    function pickBest(values) {
+        var best = '';
+        var bestScore = 0;
+        for (var i = 0; i < (values || []).length; i++) {
+            var code = normalize(values[i]);
+            var score = scoreCode(code);
+            if (score > bestScore) {
+                bestScore = score;
+                best = code;
+            }
+        }
+        return best;
+    }
+    function textFromDecode(res) {
+        if (!res) return '';
+        if (typeof res === 'string') return res;
+        return res.text || res.decodedText || '';
+    }
+    function playVideo() {
+        var played = video.play();
+        if (played && typeof played.then === 'function') return played.catch(function () {});
+        return Promise.resolve();
+    }
+    function waitForVideo() {
+        if (video.videoWidth) return Promise.resolve();
+        return new Promise(function (resolve, reject) {
+            var tries = 0;
+            var id = setInterval(function () {
+                tries += 1;
+                if (video.videoWidth) {
+                    clearInterval(id);
+                    resolve();
+                } else if (tries > 40) {
+                    clearInterval(id);
+                    reject(new Error('La cámara no envió imagen'));
+                }
+            }, 80);
+        });
     }
 
     function pauseScanner() {
@@ -227,7 +278,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
     }
 
     function consider(raw) {
-        var code = normalize(raw);
+        var code = typeof raw === 'string' ? normalize(raw) : pickBest(raw);
         if (!isPlausible(code)) return false;
         if (!scanning || isStale() || photoMode) return false;
         applyTracking(code);
@@ -275,21 +326,45 @@ window.skylinkOpenScanPhotoCamera = function (options) {
 
     function startNativeOn(videoEl) {
         if (!window.BarcodeDetector || !videoEl || timer) return;
-        var formats = ['code_128', 'code_39', 'code_93', 'itf'];
-        try {
-            var detector = new BarcodeDetector({ formats: formats });
-            var busy = false;
-            timer = setInterval(function () {
-                if (!scanning || isStale() || busy || !videoEl.videoWidth) return;
-                busy = true;
-                detector.detect(videoEl).then(function (codes) {
-                    if (!codes) return;
-                    for (var i = 0; i < codes.length; i++) {
-                        if (consider(codes[i].rawValue)) return;
-                    }
-                }).catch(function () {}).finally(function () { busy = false; });
-            }, 80);
-        } catch (e) {}
+        var formatSets = [
+            ['code_128', 'code_39', 'code_93', 'itf'],
+            ['code_128', 'code_39'],
+            ['code_128']
+        ];
+        var detector = null;
+        for (var i = 0; i < formatSets.length && !detector; i++) {
+            try { detector = new BarcodeDetector({ formats: formatSets[i] }); } catch (e) {}
+        }
+        if (!detector) {
+            try { detector = new BarcodeDetector(); } catch (e) { return; }
+        }
+        var busy = false;
+        timer = setInterval(function () {
+            if (!scanning || isStale() || busy || !videoEl.videoWidth) return;
+            busy = true;
+            detector.detect(videoEl).then(function (codes) {
+                if (!codes || !codes.length) return;
+                var values = [];
+                for (var i = 0; i < codes.length; i++) values.push(codes[i].rawValue);
+                consider(values);
+            }).catch(function () {}).finally(function () { busy = false; });
+        }, 80);
+    }
+
+    function decodeCanvas() {
+        if (!html5Scanner) return Promise.reject();
+        if (html5Scanner.qrcode && typeof html5Scanner.qrcode.decodeAsync === 'function') {
+            return html5Scanner.qrcode.decodeAsync(scanCanvas).then(textFromDecode);
+        }
+        if (typeof html5Scanner.scanFile !== 'function') return Promise.reject();
+        return new Promise(function (resolve, reject) {
+            scanCanvas.toBlob(function (blob) {
+                if (!blob) { reject(new Error('blob')); return; }
+                html5Scanner.scanFile(new File([blob], 'scan.png', { type: blob.type || 'image/png' }), false)
+                    .then(resolve)
+                    .catch(reject);
+            }, 'image/png');
+        });
     }
 
     function startHtml5Loop() {
@@ -301,27 +376,29 @@ window.skylinkOpenScanPhotoCamera = function (options) {
                 return;
             }
             scanBusy = true;
-            var maxW = 960;
-            var scale = Math.min(1, maxW / video.videoWidth);
-            scanCanvas.width = Math.max(1, Math.floor(video.videoWidth * scale));
-            scanCanvas.height = Math.max(1, Math.floor(video.videoHeight * scale));
-            scanCtx.drawImage(video, 0, 0, scanCanvas.width, scanCanvas.height);
-            scanCanvas.toBlob(function (blob) {
-                if (!blob || !scanning || isStale() || photoMode) {
-                    scanBusy = false;
-                    if (scanning && !isStale() && !photoMode) scanTimer = setTimeout(tick, 160);
-                    return;
-                }
-                html5Scanner.scanFile(new File([blob], 'scan.jpg', { type: 'image/jpeg' }), false)
-                    .then(function (text) { consider(text); })
-                    .catch(function () {})
-                    .finally(function () {
-                        scanBusy = false;
-                        if (scanning && !isStale() && !photoMode) scanTimer = setTimeout(tick, 140);
-                    });
-            }, 'image/jpeg', 0.55);
+            var vw = video.videoWidth;
+            var vh = video.videoHeight;
+            scanCanvas.width = vw;
+            scanCanvas.height = vh;
+            scanCtx.drawImage(video, 0, 0, vw, vh);
+            decodeCanvas().then(function (text) {
+                consider(text);
+            }).catch(function () {}).finally(function () {
+                scanBusy = false;
+                if (scanning && !isStale() && !photoMode) scanTimer = setTimeout(tick, 120);
+            });
         }
-        scanTimer = setTimeout(tick, 220);
+        scanTimer = setTimeout(tick, 180);
+    }
+
+    function attachStream(media) {
+        if (isStale()) {
+            media.getTracks().forEach(function (t) { t.stop(); });
+            return Promise.resolve();
+        }
+        stream = media;
+        video.srcObject = stream;
+        return playVideo().then(waitForVideo);
     }
 
     function startLiveCamera() {
@@ -331,31 +408,30 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         video.removeAttribute('hidden');
         video.setAttribute('playsinline', '');
         video.setAttribute('webkit-playsinline', '');
+        video.setAttribute('autoplay', '');
         video.muted = true;
         video.playsInline = true;
-        var constraints = {
-            audio: false,
-            video: { facingMode: { ideal: 'environment' } },
-        };
-        return navigator.mediaDevices.getUserMedia(constraints).then(function (media) {
-            if (isStale()) {
-                media.getTracks().forEach(function (t) { t.stop(); });
-                return;
-            }
-            stream = media;
-            video.srcObject = stream;
-            return video.play();
-        }).catch(function () {
-            return navigator.mediaDevices.getUserMedia({ audio: false, video: true }).then(function (media) {
-                if (isStale()) {
+        var tries = [
+            { audio: false, video: { facingMode: { exact: 'environment' } } },
+            { audio: false, video: { facingMode: { ideal: 'environment' } } },
+            { audio: false, video: true }
+        ];
+        function attempt(i) {
+            return navigator.mediaDevices.getUserMedia(tries[i]).then(function (media) {
+                return attachStream(media).catch(function (err) {
                     media.getTracks().forEach(function (t) { t.stop(); });
-                    return;
-                }
-                stream = media;
-                video.srcObject = stream;
-                return video.play();
+                    if (stream === media) {
+                        stream = null;
+                        video.srcObject = null;
+                    }
+                    throw err;
+                });
+            }).catch(function () {
+                if (i + 1 < tries.length) return attempt(i + 1);
+                return Promise.reject(new Error('Sin cámara'));
             });
-        });
+        }
+        return attempt(0);
     }
 
     overlay.hidden = false;
@@ -435,7 +511,15 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         return window.skylinkLoadHtml5Qrcode().then(function () {
             var Ctor = window.skylinkHtml5QrcodeClass();
             if (!Ctor || !readerHost) return;
-            html5Scanner = new Ctor('cspReader', { verbose: false });
+            var config = { verbose: false };
+            var lib = window.__Html5QrcodeLibrary__ || window;
+            if (lib.Html5QrcodeSupportedFormats) {
+                var F = lib.Html5QrcodeSupportedFormats;
+                config.formatsToSupport = [F.CODE_128, F.CODE_39, F.CODE_93, F.ITF, F.CODABAR].filter(function (v) {
+                    return typeof v !== 'undefined';
+                });
+            }
+            html5Scanner = new Ctor('cspReader', config);
             startHtml5Loop();
         }).catch(function () {});
     }).catch(function () {

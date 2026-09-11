@@ -19,7 +19,7 @@ class QuickCourierCameraScanTest extends TestCase
             ->get(route('preregistrations.quick-courier'))
             ->assertOk()
             ->assertSee('id="cspOverlay"', false)
-            ->assertSee('data-csp-build="8"', false)
+            ->assertSee('data-csp-build="9"', false)
             ->assertSee('html5-qrcode.min.js')
             ->assertSee('skylinkOpenScanPhotoCamera', false)
             ->assertSee('Aceptar tracking')
