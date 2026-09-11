@@ -1,5 +1,5 @@
 {{-- Visor: la cámara propia se ve siempre; el lector solo decodifica frames. --}}
-<div id="cspOverlay" class="csp-overlay" hidden data-csp-build="10">
+<div id="cspOverlay" class="csp-overlay" hidden data-csp-build="11">
     <video id="cspVideo" class="csp-video" autoplay muted playsinline webkit-playsinline></video>
     <div id="cspReader" class="csp-reader" aria-hidden="true"></div>
     <div class="csp-frame" aria-hidden="true"></div>
@@ -56,8 +56,9 @@
 }
 .csp-read {
     margin: 0; color: #dbeafe; font-family: ui-monospace, monospace;
-    font-weight: 700; font-size: 0.95rem; letter-spacing: 0.04em;
-    text-align: center; word-break: break-all;
+    font-weight: 700; font-size: 0.85rem; letter-spacing: 0.03em;
+    text-align: center; white-space: nowrap; overflow-x: auto;
+    max-width: 92vw; word-break: normal;
 }
 .csp-close {
     position: absolute; right: 12px; top: max(12px, env(safe-area-inset-top));
@@ -153,6 +154,8 @@ window.skylinkOpenScanPhotoCamera = function (options) {
     var photoMode = skipScan;
     var closed = false;
     var scanBusy = false;
+    var pendingMatch = '';
+    var matchHits = 0;
     var scanCanvas = document.createElement('canvas');
     var scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true }) || scanCanvas.getContext('2d');
 
@@ -165,7 +168,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
     function normalize(raw) {
         return String(raw || '')
             .replace(/[\s\u0000\u001d\u001e]/g, '')
-            .replace(/^\][A-Z0-9]/, '')
+            .replace(/^\][A-Z0-9]{1,3}/, '')
             .trim()
             .toUpperCase();
     }
@@ -173,16 +176,23 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         return /^HTTPS?:\/\//.test(code) || /^WWW\./.test(code);
     }
     function isPlausible(code) {
-        if (!code || code.length < 6 || code.length > 48) return false;
+        if (!code || code.length < 8 || code.length > 48) return false;
         if (isUrl(code)) return false;
-        return /[A-Z0-9]/.test(code);
+        return /^[A-Z0-9]+$/.test(code);
+    }
+    function isCompleteTracking(code) {
+        if (!isPlausible(code) || code.length < 12) return false;
+        if (/[A-Z]/.test(code) && /\d/.test(code)) return true;
+        return /^\d{12,22}$/.test(code);
     }
     function scoreCode(code) {
         if (!isPlausible(code)) return -1;
-        var score = Math.min(code.length, 28);
-        if (/[A-Z]/.test(code) && /\d/.test(code)) score += 24;
-        if (/^\d+$/.test(code) && code.length < 12) score -= 12;
-        if (code.length >= 10 && code.length <= 34) score += 8;
+        var score = Math.min(code.length, 30);
+        if (isCompleteTracking(code)) score += 40;
+        if (/^[A-Z]{3,8}\d{8,}$/.test(code)) score += 24;
+        if (/^\d+$/.test(code)) score -= 10;
+        if (/^[A-Z]{3,8}$/.test(code)) score -= 20;
+        if (code.length >= 12 && code.length <= 34) score += 8;
         return score;
     }
     function pickBest(values) {
@@ -197,6 +207,34 @@ window.skylinkOpenScanPhotoCamera = function (options) {
             }
         }
         return best;
+    }
+    function combineParts(values) {
+        var codes = [];
+        for (var i = 0; i < (values || []).length; i++) {
+            var c = normalize(values[i]);
+            if (c && codes.indexOf(c) === -1) codes.push(c);
+        }
+        var complete = [];
+        for (var j = 0; j < codes.length; j++) {
+            if (isCompleteTracking(codes[j])) complete.push(codes[j]);
+        }
+        if (complete.length) return pickBest(complete);
+
+        var prefixes = [];
+        var tails = [];
+        for (var k = 0; k < codes.length; k++) {
+            if (/^[A-Z]{3,8}$/.test(codes[k])) prefixes.push(codes[k]);
+            else if (/\d/.test(codes[k]) && codes[k].length >= 8) tails.push(codes[k]);
+        }
+        var joined = [];
+        for (var p = 0; p < prefixes.length; p++) {
+            for (var t = 0; t < tails.length; t++) {
+                if (tails[t].indexOf(prefixes[p]) === 0) joined.push(tails[t]);
+                else joined.push(prefixes[p] + tails[t]);
+            }
+        }
+        if (joined.length) return pickBest(joined);
+        return pickBest(codes);
     }
     function textFromDecode(res) {
         if (!res) return '';
@@ -240,6 +278,8 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         scanning = true;
         photoMode = false;
         scanBusy = false;
+        pendingMatch = '';
+        matchHits = 0;
         if (trackingField) {
             trackingField.value = '';
             trackingField.dispatchEvent(new Event('input', { bubbles: true }));
@@ -284,9 +324,17 @@ window.skylinkOpenScanPhotoCamera = function (options) {
     }
 
     function consider(raw) {
-        var code = typeof raw === 'string' ? normalize(raw) : pickBest(raw);
-        if (scoreCode(code) < 8) return false;
+        var code = typeof raw === 'string' ? combineParts([raw]) : combineParts(raw);
+        if (!isCompleteTracking(code)) return false;
         if (!scanning || isStale() || photoMode) return false;
+        if (code === pendingMatch) matchHits += 1;
+        else {
+            pendingMatch = code;
+            matchHits = 1;
+        }
+        if (matchHits < 2) return false;
+        pendingMatch = '';
+        matchHits = 0;
         applyTracking(code);
         return true;
     }
