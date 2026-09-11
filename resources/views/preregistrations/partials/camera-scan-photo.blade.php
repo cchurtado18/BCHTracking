@@ -1,5 +1,5 @@
 {{-- Visor: la cámara propia se ve siempre; el lector solo decodifica frames. --}}
-<div id="cspOverlay" class="csp-overlay" hidden data-csp-build="11">
+<div id="cspOverlay" class="csp-overlay" hidden data-csp-build="12">
     <video id="cspVideo" class="csp-video" autoplay muted playsinline webkit-playsinline></video>
     <div id="cspReader" class="csp-reader" aria-hidden="true"></div>
     <div class="csp-frame" aria-hidden="true"></div>
@@ -12,12 +12,13 @@
         <div id="cspConfirmRow" class="csp-confirm-row" hidden>
             <button type="button" id="cspReject" class="csp-manual-btn">No es este — seguir buscando</button>
         </div>
-        <button type="button" id="cspShutter" class="csp-shutter" hidden>Tomar foto del paquete</button>
-        <button type="button" id="cspManualBtn" class="csp-manual-btn">No lee el código — escribir tracking</button>
-        <div id="cspManualWrap" class="csp-manual-wrap" hidden>
-            <input type="text" id="cspManualInput" class="csp-manual-input" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Tracking de la etiqueta">
-            <button type="button" id="cspManualOk" class="csp-shutter">Aceptar tracking</button>
+        <div id="cspManualWrap" class="csp-manual-wrap">
+            <label for="cspManualInput" class="csp-field-label">Tracking (se llena al escanear)</label>
+            <input type="text" id="cspManualInput" class="csp-manual-input" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Apunte el código o escríbalo aquí">
+            <button type="button" id="cspManualOk" class="csp-shutter">Usar este tracking</button>
         </div>
+        <button type="button" id="cspShutter" class="csp-shutter" hidden>Tomar foto del paquete</button>
+        <button type="button" id="cspManualBtn" class="csp-manual-btn" hidden>No lee el código — escribir tracking</button>
     </div>
 </div>
 
@@ -76,8 +77,14 @@
 }
 .csp-confirm-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; }
 .csp-confirm-row[hidden] { display: none !important; }
-.csp-manual-wrap { width: min(22rem, 92vw); display: flex; flex-direction: column; gap: 8px; align-items: center; }
-.csp-manual-wrap[hidden] { display: none !important; }
+.csp-field-label {
+    margin: 0; color: #e2e8f0; font-size: 0.8rem; font-weight: 700;
+    text-align: center; text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+.csp-manual-wrap {
+    width: min(22rem, 92vw); display: flex; flex-direction: column;
+    gap: 8px; align-items: center;
+}
 .csp-manual-input {
     width: 100%; padding: 0.7rem 0.85rem; border-radius: 0.6rem; border: 1px solid #94a3b8;
     font-size: 1rem; font-weight: 700; text-transform: uppercase; text-align: center;
@@ -142,7 +149,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
 
     var trackingField = options.trackingInput || document.getElementById('tracking_external');
     var existingTracking = trackingField ? String(trackingField.value || '').replace(/\s+/g, '').trim() : '';
-    var skipScan = !!options.skipScan || existingTracking.length >= 6;
+    var skipScan = options.skipScan === true;
 
     window.__cspSession = (window.__cspSession || 0) + 1;
     var session = window.__cspSession;
@@ -287,7 +294,12 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         overlay.classList.remove('is-photo');
         if (confirmRow) confirmRow.hidden = true;
         if (btnShutter) btnShutter.hidden = true;
-        if (btnManual) btnManual.hidden = false;
+        if (btnManual) btnManual.hidden = true;
+        if (manualWrap) manualWrap.hidden = false;
+        if (manualInput) {
+            manualInput.value = '';
+            manualInput.hidden = false;
+        }
         if (readEl) { readEl.hidden = true; readEl.textContent = ''; }
         setHint('Apunte el código de barras del tracking');
         startNativeOn(video);
@@ -301,7 +313,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         overlay.classList.add('is-photo');
         if (confirmRow) confirmRow.hidden = skipScan;
         if (btnManual) btnManual.hidden = true;
-        if (manualWrap) manualWrap.hidden = true;
+        if (manualWrap) manualWrap.hidden = false;
         if (btnShutter) {
             btnShutter.hidden = false;
             btnShutter.disabled = false;
@@ -319,6 +331,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
             readEl.textContent = code;
             readEl.hidden = false;
         }
+        if (manualInput) manualInput.value = code;
         try { if (navigator.vibrate) navigator.vibrate(80); } catch (e) {}
         enterPhotoMode();
     }
@@ -511,10 +524,13 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         }
     }
     if (btnShutter) { btnShutter.hidden = true; btnShutter.disabled = false; }
-    if (btnManual) btnManual.hidden = skipScan;
-    if (manualWrap) manualWrap.hidden = true;
+    if (btnManual) btnManual.hidden = true;
+    if (manualWrap) manualWrap.hidden = false;
     if (confirmRow) confirmRow.hidden = true;
-    if (manualInput) manualInput.value = '';
+    if (manualInput) {
+        manualInput.value = existingTracking ? existingTracking.toUpperCase() : '';
+        manualInput.hidden = false;
+    }
     if (readerHost) readerHost.innerHTML = '';
     document.body.style.overflow = 'hidden';
 

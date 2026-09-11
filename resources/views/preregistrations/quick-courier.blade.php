@@ -187,19 +187,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             @if($scanThenPhoto)
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof window.skylinkOpenScanPhotoCamera !== 'function') {
-                openNativeCamera();
-                return;
-            }
             window.skylinkOpenScanPhotoCamera({
                 trackingInput: trackingInput,
-                skipScan: trackingReady(),
+                skipScan: false,
                 onPhoto: addPhoto,
-            }).catch(function () {
-                var overlay = document.getElementById('cspOverlay');
-                if (overlay && !overlay.hidden) return;
-                openNativeCamera();
-            });
+            }).catch(function () {});
             @endif
         });
     }

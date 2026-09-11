@@ -34,14 +34,14 @@ class QuickCourierCameraScanTest extends TestCase
             ->get(route('preregistrations.tracking-photo'))
             ->assertOk()
             ->assertSee('id="cspOverlay"', false)
-            ->assertSee('data-csp-build="11"', false)
+            ->assertSee('data-csp-build="12"', false)
             ->assertSee('html5-qrcode.min.js')
             ->assertSee('skylinkOpenScanPhotoCamera', false)
-            ->assertSee('Aceptar tracking')
+            ->assertSee('Usar este tracking')
             ->assertSee('No es este — seguir buscando')
             ->assertSee('Tomar foto del paquete')
             ->assertSee('Apunte el código de barras del tracking')
-            ->assertSee('No lee el código — escribir tracking')
+            ->assertSee('Tracking (se llena al escanear)')
             ->assertSee('id="quickTakePhoto"', false)
             ->assertSee('Si el tracking está vacío');
     }
