@@ -38,7 +38,7 @@ class PreregistrationUppercaseFieldsTest extends TestCase
         $package = Preregistration::where('agency_id', $agency->id)->first();
         $this->assertNotNull($package);
         $this->assertSame('JOSÉ PÉREZ', $package->label_name);
-        $this->assertSame('TBA 334ABC', $package->tracking_external);
+        $this->assertSame('TBA334ABC', $package->tracking_external);
         $this->assertSame('10 X 8 X 5 IN', $package->dimension);
         $this->assertSame('ROPA Y ELECTRÓNICOS', $package->description);
         $this->assertNotNull($package->cubic_feet);

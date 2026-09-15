@@ -10,6 +10,7 @@ use App\Models\ConsolidationItem;
 use App\Models\Preregistration;
 use App\Services\ConsolidationService;
 use App\Support\ServiceType;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -88,12 +89,18 @@ class ConsolidationController extends Controller
 
     public function createScan()
     {
-        $scanLookup = Preregistration::where('status', 'RECEIVED_MIAMI')
-            ->whereDoesntHave('consolidationItem')
-            ->orderBy('created_at', 'desc')
-            ->get(['id', 'tracking_external', 'warehouse_code', 'label_name', 'service_type', 'intake_weight_lbs', 'verified_weight_lbs']);
+        return view('consolidations.create-scan');
+    }
 
-        return view('consolidations.create-scan', compact('scanLookup'));
+    public function lookupScan(Request $request): JsonResponse
+    {
+        $code = ConsolidationService::normalizeScanCode((string) $request->query('code', ''));
+        $serviceType = strtoupper(trim((string) $request->query('service_type', ServiceType::AIR)));
+        if (! in_array($serviceType, [ServiceType::AIR, ServiceType::SEA], true)) {
+            $serviceType = ServiceType::AIR;
+        }
+
+        return response()->json($this->consolidationService->scanPreview($code, $serviceType));
     }
 
     public function store(StoreConsolidationRequest $request)
@@ -222,25 +229,18 @@ class ConsolidationController extends Controller
         $consolidation = $this->loadResolvedConsolidation($id);
         $report = $this->consolidationService->getReport($consolidation);
 
+        $mode = in_array($request->query('mode'), ['scan', 'select'], true) ? $request->query('mode') : null;
+
         $availablePreregistrations = collect();
-        $scanLookup = collect();
-        if ($consolidation->status === 'OPEN') {
+        if ($consolidation->status === 'OPEN' && $mode === 'select') {
             $availablePreregistrations = Preregistration::where('status', 'RECEIVED_MIAMI')
                 ->whereIn('service_type', ServiceType::servicesForRoute($consolidation->service_type))
                 ->whereDoesntHave('consolidationItem')
                 ->orderBy('created_at', 'desc')
-                ->get();
-
-            // Datos para que el JS pueda validar al instante (mismo formato que create-scan)
-            $scanLookup = Preregistration::where('status', 'RECEIVED_MIAMI')
-                ->whereDoesntHave('consolidationItem')
-                ->orderBy('created_at', 'desc')
-                ->get(['id', 'tracking_external', 'warehouse_code', 'label_name', 'service_type', 'intake_weight_lbs', 'verified_weight_lbs']);
+                ->get(['id', 'warehouse_code', 'tracking_external', 'label_name', 'service_type', 'intake_weight_lbs', 'created_at']);
         }
 
-        $mode = in_array($request->query('mode'), ['scan', 'select'], true) ? $request->query('mode') : null;
-
-        return view('consolidations.show', compact('consolidation', 'report', 'availablePreregistrations', 'scanLookup', 'mode'));
+        return view('consolidations.show', compact('consolidation', 'report', 'availablePreregistrations', 'mode'));
     }
 
     public function edit(string $id)
@@ -355,7 +355,9 @@ class ConsolidationController extends Controller
                 ->with('error', "El código {$code} corresponde a un paquete {$pkgLabel} en preregistro, no {$sackLabel}.");
         }
 
-        $pre = $this->consolidationService->findAvailableForScan($code, $consolidation->service_type);
+        $pre = ($anyMatch && ServiceType::matchesRoute($anyMatch->service_type, $consolidation->service_type))
+            ? $anyMatch
+            : null;
 
         if ($pre) {
             if (! filled($pre->tracking_external)) {

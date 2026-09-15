@@ -18,10 +18,13 @@ class StorePreregistrationRequest extends FormRequest
         $upper = static fn ($value) => is_string($value) ? \App\Models\Preregistration::toUpper($value) : $value;
 
         $merge = [];
-        foreach (['tracking_external', 'label_name', 'dimension', 'description'] as $field) {
+        foreach (['label_name', 'dimension', 'description'] as $field) {
             if ($this->exists($field) && is_string($this->input($field))) {
                 $merge[$field] = $upper($this->input($field));
             }
+        }
+        if ($this->exists('tracking_external') && is_string($this->input('tracking_external'))) {
+            $merge['tracking_external'] = \App\Models\Preregistration::normalizeTrackingExternal($this->input('tracking_external'));
         }
 
         $bultos = $this->input('bultos');

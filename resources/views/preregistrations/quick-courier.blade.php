@@ -54,6 +54,7 @@
                             placeholder="1Z999AA10123456784"
                         >
                         <p class="quick-help">{{ $scanThenPhoto ? 'Se llena al escanear la etiqueta. Si lo borra, la cámara vuelve a buscar el código.' : 'Si el paquete trae tracking de courier, ingrésalo aquí para poder buscarlo luego.' }}</p>
+                        @include('preregistrations.partials.prealert-lookup')
                     </div>
                 </div>
 

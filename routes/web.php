@@ -20,6 +20,7 @@ use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\DeliveryController;
 use App\Http\Controllers\Web\NicConsolidationController;
 use App\Http\Controllers\Web\PackageController;
+use App\Http\Controllers\Web\PrealertController;
 use App\Http\Controllers\Web\PreregistrationController;
 use App\Http\Controllers\Web\ReceiptNoteController;
 use App\Http\Controllers\Web\TimeEntryAdminController;
@@ -169,6 +170,7 @@ Route::middleware(['auth'])->group(function () {
         });
         Route::get('consolidations/create/select', [ConsolidationController::class, 'createSelect'])->name('consolidations.create-select');
         Route::get('consolidations/create/scan', [ConsolidationController::class, 'createScan'])->name('consolidations.create-scan');
+        Route::get('consolidations/scan-lookup', [ConsolidationController::class, 'lookupScan'])->name('consolidations.scan-lookup');
         Route::post('consolidations/store-scan', [ConsolidationController::class, 'storeScan'])->name('consolidations.store-scan');
         Route::resource('consolidations', ConsolidationController::class);
         Route::get('consolidations/{id}/label', [ConsolidationController::class, 'label'])->name('consolidations.label');
@@ -183,6 +185,16 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/{id}', [NicConsolidationController::class, 'show'])->name('show');
             Route::post('/{id}/scan', [NicConsolidationController::class, 'scan'])->name('scan');
         });
+    });
+
+    // Prealerta: cliente (subagencia) y almacén
+    Route::prefix('prealerta')->name('prealerts.')->group(function () {
+        Route::get('/', [PrealertController::class, 'index'])->name('index');
+        Route::get('/nueva', [PrealertController::class, 'create'])->name('create');
+        Route::get('/consultar', [PrealertController::class, 'lookup'])->name('lookup');
+        Route::post('/', [PrealertController::class, 'store'])->name('store');
+        Route::get('/{prealert}', [PrealertController::class, 'show'])->name('show');
+        Route::delete('/{prealert}', [PrealertController::class, 'destroy'])->name('destroy');
     });
 
     // Paquetes y entregas: central y subagencias (con filtro por agencia en controlador)

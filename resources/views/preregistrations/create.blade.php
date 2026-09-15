@@ -204,6 +204,7 @@
                     <label for="tracking_external" class="preregs-field-label">Tracking externo</label>
                     <input type="text" name="tracking_external" id="tracking_external" class="preregs-input preregs-input-upper" autocapitalize="characters" spellcheck="false" placeholder="1Z999AA10123456784">
                     <p class="preregs-hint">Obligatorio en Courier.</p>
+                    @include('preregistrations.partials.prealert-lookup')
                 </div>
 
                 <div id="wrap_bultos_count" class="preregs-field" style="display: none;">

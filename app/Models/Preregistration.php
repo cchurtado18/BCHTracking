@@ -96,14 +96,21 @@ class Preregistration extends Model
         return mb_strtoupper($trimmed, 'UTF-8');
     }
 
+    public static function normalizeTrackingExternal(?string $value): ?string
+    {
+        $normalized = strtoupper(preg_replace('/\s+/', '', trim((string) $value)) ?? '');
+
+        return $normalized === '' ? null : $normalized;
+    }
+
     protected function setTrackingExternalAttribute(?string $value): void
     {
-        $this->attributes['tracking_external'] = self::toUpper($value);
+        $this->attributes['tracking_external'] = self::normalizeTrackingExternal($value);
     }
 
     protected function getTrackingExternalAttribute(?string $value): ?string
     {
-        return self::toUpper($value);
+        return self::normalizeTrackingExternal($value);
     }
 
     protected function setLabelNameAttribute(?string $value): void
@@ -187,5 +194,10 @@ class Preregistration extends Model
     public function delivery(): HasOne
     {
         return $this->hasOne(Delivery::class);
+    }
+
+    public function prealert(): HasOne
+    {
+        return $this->hasOne(Prealert::class);
     }
 }

@@ -394,6 +394,11 @@ class Agency extends Model
         return $this->hasMany(Preregistration::class);
     }
 
+    public function prealerts(): HasMany
+    {
+        return $this->hasMany(Prealert::class);
+    }
+
     /**
      * Siguiente código numérico único para una nueva agencia/subagencia.
      * No usa CAST en SQL (evita fallos o resultados incorrectos con SQLite o códigos no numéricos).

@@ -3,18 +3,6 @@
 @section('title', 'Crear por escaneo')
 
 @section('content')
-@php
-    $lookupJson = $scanLookup->map(fn ($p) => [
-        'id' => $p->id,
-        'tracking' => (string) ($p->tracking_external ?? ''),
-        'warehouse' => (string) ($p->warehouse_code ?? ''),
-        'label' => (string) ($p->label_name ?? ''),
-        'service_type' => $p->service_type,
-        'weight_lbs' => round((float) ($p->verified_weight_lbs ?? $p->intake_weight_lbs ?? 0), 2),
-    ])->values();
-@endphp
-<script type="application/json" id="scan-lookup-json">@json($lookupJson)</script>
-
 <div class="csscan-page">
     <x-module-banner
         section="Operaciones"
@@ -46,7 +34,7 @@
     <p class="csscan-flash csscan-flash-err">{{ session('error') }}</p>
     @endif
 
-    <form action="{{ route('consolidations.store-scan') }}" method="POST" id="csscan-form" class="csscan-layout">
+    <form action="{{ route('consolidations.store-scan') }}" method="POST" id="csscan-form" class="csscan-layout" data-lookup-url="{{ route('consolidations.scan-lookup') }}">
         @csrf
         <div id="csscan-hidden-codes"></div>
 
@@ -677,8 +665,9 @@
 @push('scripts')
 <script>
 (function() {
-    const lookupEl = document.getElementById('scan-lookup-json');
-    const lookup = lookupEl ? JSON.parse(lookupEl.textContent || '[]') : [];
+    const lookupUrl = document.getElementById('csscan-form')?.dataset.lookupUrl || '';
+    const lookupCache = Object.create(null);
+    const inflight = new Set();
     const serviceSelect = document.getElementById('csscan_service_type');
     const input = document.getElementById('csscan_input');
     const list = document.getElementById('csscan_list');
@@ -722,18 +711,23 @@
         }
     }
 
-    function findInLookup(code) {
-        const st = serviceSelect.value;
+    function fetchLookup(code) {
         const n = norm(code);
-        if (!n) return null;
-        for (let i = 0; i < lookup.length; i++) {
-            const row = lookup[i];
-            if (packageRoute(row.service_type) !== packageRoute(st)) continue;
-            const t = norm(row.tracking);
-            const w = norm(row.warehouse);
-            if (n === t || n === w) return row;
+        const st = serviceSelect.value;
+        const cached = lookupCache[n];
+        if (cached && cached._service === st) {
+            return Promise.resolve(cached);
         }
-        return null;
+        const url = lookupUrl + '?code=' + encodeURIComponent(n) + '&service_type=' + encodeURIComponent(st);
+        return fetch(url, {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin'
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            lookupCache[n] = Object.assign({ _service: st }, data || {});
+            return lookupCache[n];
+        }).catch(function() {
+            return { found: false, service_mismatch: false, package: null };
+        });
     }
 
     /** Paquete existe en preregistro pero con otro tipo de servicio (p. ej. marítimo vs saco aéreo). */
@@ -752,26 +746,16 @@
     }
 
     function rematchAllFromLookup() {
+        const st = serviceSelect.value;
         lines.forEach(function(entry) {
-            var hit = findInLookup(entry.display);
+            var cached = lookupCache[entry.display];
+            var hit = cached && cached.package && packageRoute(cached.package.service_type) === packageRoute(st)
+                ? cached.package
+                : null;
             entry.matched = !!hit;
             entry.label = hit ? hit.label : '';
             entry.weightLbs = hit ? weightFromHit(hit) : 0;
         });
-    }
-
-    function findOtherServiceMatch(code) {
-        const st = serviceSelect.value;
-        const n = norm(code);
-        if (!n) return null;
-        for (let i = 0; i < lookup.length; i++) {
-            const row = lookup[i];
-            if (packageRoute(row.service_type) === packageRoute(st)) continue;
-            const t = norm(row.tracking);
-            const w = norm(row.warehouse);
-            if (n === t || n === w) return row;
-        }
-        return null;
     }
 
     function syncHiddens() {
@@ -861,40 +845,58 @@
         }, SCAN_DEBOUNCE_MS);
     }
 
-    /** @returns {boolean} true si se agregó un código */
+    /** @returns {boolean} true si se tomó el código */
     function tryCommitScan() {
         const raw = input.value;
         const display = norm(raw);
         if (!display) {
             return false;
         }
-        const dup = lines.some(function(l) { return norm(l.display) === display; });
+        const dup = inflight.has(display) || lines.some(function(l) { return norm(l.display) === display; });
         if (dup) {
             setFeedback('Ese código ya está en la lista.', 'err');
             input.select();
             return false;
         }
-        const otherSvc = findOtherServiceMatch(display);
-        if (otherSvc) {
-            const routeLabels = { AIR: 'aéreo', SEA: 'marítimo', CFT: 'marítimo' };
-            const sackWord = routeLabels[serviceSelect.value] || serviceSelect.value;
-            const pkgWord = routeLabels[otherSvc.service_type] || otherSvc.service_type;
-            setFeedback('Alerta: este paquete está en preregistro como ' + pkgWord + ', no como ' + sackWord + '. Cambie el tipo de servicio del ' + unitNoun(serviceSelect.value) + ' o use otro código.', 'err');
-            input.select();
-            return false;
-        }
-        const hit = findInLookup(display);
-        lines.push({
-            raw: raw.trim(),
+
+        const entry = {
+            raw: raw.trim() || display,
             display: display,
-            matched: !!hit,
-            label: hit ? hit.label : '',
-            weightLbs: hit ? weightFromHit(hit) : 0,
-        });
+            matched: false,
+            label: '',
+            weightLbs: 0
+        };
+        inflight.add(display);
+        lines.push(entry);
         input.value = '';
-        setFeedback(hit ? 'Agregado (preregistro).' : 'Agregado: sin preregistro — se guardará el código en el ' + unitNoun(serviceSelect.value) + '.', hit ? 'ok' : 'warn');
+        setFeedback('Agregado: sin preregistro — se guardará solo el código si no aparece en el sistema.', 'warn');
         render();
         input.focus();
+
+        fetchLookup(display).then(function(data) {
+            inflight.delete(display);
+            if (lines.indexOf(entry) === -1) {
+                return;
+            }
+            if (data && data.service_mismatch && data.package) {
+                lines.splice(lines.indexOf(entry), 1);
+                const routeLabels = { AIR: 'aéreo', SEA: 'marítimo', CFT: 'marítimo' };
+                const sackWord = routeLabels[serviceSelect.value] || serviceSelect.value;
+                const pkgWord = routeLabels[data.package.service_type] || data.package.service_type;
+                setFeedback('Alerta: este paquete está en preregistro como ' + pkgWord + ', no como ' + sackWord + '. Cambie el tipo de servicio del ' + unitNoun(serviceSelect.value) + ' o use otro código.', 'err');
+                render();
+                return;
+            }
+            const hit = data && data.found ? data.package : null;
+            if (!hit) {
+                return;
+            }
+            entry.matched = true;
+            entry.label = hit.label || '';
+            entry.weightLbs = weightFromHit(hit);
+            setFeedback('Confirmado en preregistro: ' + display, 'ok');
+            render();
+        });
         return true;
     }
 
@@ -915,10 +917,13 @@
 
     serviceSelect.addEventListener('change', function() {
         clearScanDebounce();
-        rematchAllFromLookup();
-        syncUnitLabels();
-        render();
-        setFeedback('Tipo de servicio cambiado. Se recalculó coincidencia y peso por fila.', '');
+        Object.keys(lookupCache).forEach(function(key) { delete lookupCache[key]; });
+        Promise.all(lines.map(function(entry) { return fetchLookup(entry.display); })).then(function() {
+            rematchAllFromLookup();
+            syncUnitLabels();
+            render();
+            setFeedback('Tipo de servicio cambiado. Se recalculó coincidencia y peso por fila.', '');
+        });
     });
 
     syncUnitLabels();

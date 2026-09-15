@@ -6,6 +6,7 @@
     <div class="csp-bar csp-bar-top">
         <p id="cspHint" class="csp-hint">Apunte el código de barras del tracking</p>
         <p id="cspRead" class="csp-read" hidden></p>
+        <div id="cspPrealert" class="csp-prealert" hidden></div>
         <button type="button" id="cspClose" class="csp-close">Cerrar</button>
     </div>
     <div class="csp-bar csp-bar-bottom">
@@ -62,6 +63,12 @@
     text-align: center; white-space: nowrap; overflow-x: auto;
     max-width: 92vw; word-break: normal;
 }
+.csp-prealert {
+    margin: 0; padding: 0.45rem 0.7rem; border-radius: 0.7rem;
+    background: #ecfdf3; color: #14532d; border: 1px solid #86c9a4;
+    font-size: 0.8rem; font-weight: 700; text-align: center; max-width: 22rem;
+}
+.csp-prealert[hidden] { display: none !important; }
 .csp-close {
     position: absolute; right: 12px; top: max(12px, env(safe-area-inset-top));
     background: rgba(15,23,42,0.7); color: #fff; border: 1px solid rgba(255,255,255,0.3);
@@ -145,6 +152,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
     var manualOk = document.getElementById('cspManualOk');
     var confirmRow = document.getElementById('cspConfirmRow');
     var btnReject = document.getElementById('cspReject');
+    var prealertEl = document.getElementById('cspPrealert');
     if (!overlay || !video) return Promise.reject(new Error('Visor no disponible'));
     if (!overlay.hidden) return Promise.resolve();
 
@@ -288,6 +296,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
             manualInput.hidden = false;
         }
         if (readEl) { readEl.hidden = true; readEl.textContent = ''; }
+        showOverlayPrealert(null);
         setHint('Apunte el código de barras del tracking');
         startScanLoop();
     }
@@ -308,6 +317,22 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         setHint('Tome la foto del paquete');
     }
 
+    function showOverlayPrealert(data) {
+        if (!prealertEl) return;
+        if (!data) {
+            prealertEl.hidden = true;
+            prealertEl.textContent = '';
+            return;
+        }
+        var agency = [data.agency_code, data.agency_name].filter(Boolean).join(' · ');
+        prealertEl.textContent = 'Prealertado: ' + (data.name || codeFromData(data))
+            + (data.service_label ? ' · ' + data.service_label : '')
+            + (agency ? ' · ' + agency : '');
+        prealertEl.hidden = false;
+    }
+    function codeFromData(data) {
+        return data && data.tracking ? data.tracking : '';
+    }
     function applyTracking(code) {
         if (trackingField) {
             trackingField.value = code;
@@ -319,6 +344,15 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         }
         if (manualInput) manualInput.value = code;
         try { if (navigator.vibrate) navigator.vibrate(80); } catch (e) {}
+        if (typeof window.skylinkLookupPrealert === 'function') {
+            window.skylinkLookupPrealert(code).then(function (data) {
+                if (isStale()) return;
+                showOverlayPrealert(data);
+                if (data && navigator.vibrate) {
+                    try { navigator.vibrate([80, 40, 80]); } catch (e) {}
+                }
+            });
+        }
         enterPhotoMode();
     }
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePreregistrationRequest;
 use App\Models\Agency;
+use App\Models\Prealert;
 use App\Models\Preregistration;
 use App\Models\PreregistrationPhoto;
 use App\Services\ClientPackageStatusMailer;
@@ -213,6 +214,7 @@ class PreregistrationController extends Controller
         try {
             $data['warehouse_code'] = $this->warehouseService->generateWarehouseCode();
             $preregistration = Preregistration::create($data);
+            $this->attachPrealertMatch($preregistration);
             $this->clientMailer->notifyReceivedInMiami($preregistration);
         } catch (\Throwable $e) {
             \Log::error('Preregistration store failed', ['exception' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'data' => $data]);
@@ -298,6 +300,7 @@ class PreregistrationController extends Controller
                     'bulto_index' => 1,
                     'bultos_total' => $total,
                 ]);
+                $this->attachPrealertMatch($preregistration);
                 $this->clientMailer->notifyReceivedInMiami($preregistration);
                 if ($request->hasFile('photo')) {
                     $this->photoService->uploadPhoto($preregistration, $request->file('photo'));
@@ -364,6 +367,7 @@ class PreregistrationController extends Controller
                 'bulto_index' => $step,
                 'bultos_total' => $sessionTotal,
             ]);
+            $this->attachPrealertMatch($preregistration);
             $this->clientMailer->notifyReceivedInMiami($preregistration);
             if ($request->hasFile('photo')) {
                 $this->photoService->uploadPhoto($preregistration, $request->file('photo'));
@@ -423,6 +427,7 @@ class PreregistrationController extends Controller
                     'bulto_index' => $i + 1,
                     'bultos_total' => $n,
                 ]));
+                $this->attachPrealertMatch($preregistration);
                 $this->clientMailer->notifyReceivedInMiami($preregistration);
                 $ids[] = $preregistration->id;
                 $photoKey = 'photo_bulto_'.$i;
@@ -451,6 +456,20 @@ class PreregistrationController extends Controller
         }
     }
 
+    private function attachPrealertMatch(Preregistration $preregistration): ?Prealert
+    {
+        if (! Schema::hasTable('prealerts')) {
+            return null;
+        }
+
+        $prealert = Prealert::matchOpenByTracking($preregistration->tracking_external, $preregistration);
+        if ($prealert) {
+            session()->flash('prealert_matched', $prealert->warehouseNotice());
+        }
+
+        return $prealert;
+    }
+
     private function wantsStoreJson(Request $request): bool
     {
         return $request->expectsJson() || $request->ajax();
@@ -458,6 +477,12 @@ class PreregistrationController extends Controller
 
     private function storeRedirect(Request $request, string $url, string $message, ?string $warning = null, string $flash = 'success'): JsonResponse|RedirectResponse
     {
+        $matched = session('prealert_matched');
+        if (is_array($matched) && ! empty($matched['name'])) {
+            $who = trim(($matched['name'] ?? '').' · '.($matched['agency_name'] ?? ''), ' ·');
+            $message = 'Paquete prealertado: '.$who.'. '.$message;
+        }
+
         if ($this->wantsStoreJson($request)) {
             $payload = [
                 'message' => $message,
@@ -465,6 +490,9 @@ class PreregistrationController extends Controller
             ];
             if ($warning) {
                 $payload['warning'] = $warning;
+            }
+            if (is_array($matched)) {
+                $payload['prealert'] = $matched;
             }
 
             return response()->json($payload);
@@ -492,12 +520,17 @@ class PreregistrationController extends Controller
 
     public function show(string $id)
     {
-        $preregistration = Preregistration::with([
+        $with = [
             'photos',
             'agency',
             'consolidationItem.consolidation',
             'delivery.deliveryNote',
-        ])->findOrFail($id);
+        ];
+        if (Schema::hasTable('prealerts')) {
+            $with[] = 'prealert.agency';
+        }
+
+        $preregistration = Preregistration::with($with)->findOrFail($id);
         $preregistration->photos->each(function ($photo) {
             $photo->url = asset('storage/'.$photo->path);
         });
@@ -563,10 +596,13 @@ class PreregistrationController extends Controller
         $preregistration = Preregistration::findOrFail($id);
         $wasPhotoPending = $preregistration->status === 'PHOTO_PENDING';
         $upperMerge = [];
-        foreach (['tracking_external', 'label_name', 'dimension', 'description'] as $field) {
+        foreach (['label_name', 'dimension', 'description'] as $field) {
             if ($request->exists($field) && is_string($request->input($field))) {
                 $upperMerge[$field] = Preregistration::toUpper($request->input($field));
             }
+        }
+        if ($request->exists('tracking_external') && is_string($request->input('tracking_external'))) {
+            $upperMerge['tracking_external'] = Preregistration::normalizeTrackingExternal($request->input('tracking_external'));
         }
         if ($upperMerge !== []) {
             $request->merge($upperMerge);
@@ -645,7 +681,7 @@ class PreregistrationController extends Controller
     public function storeQuickCourier(Request $request)
     {
         if ($request->exists('tracking_external') && is_string($request->input('tracking_external'))) {
-            $request->merge(['tracking_external' => Preregistration::toUpper($request->input('tracking_external'))]);
+            $request->merge(['tracking_external' => Preregistration::normalizeTrackingExternal($request->input('tracking_external'))]);
         }
         $data = $request->validate([
             'tracking_external' => [
@@ -680,20 +716,29 @@ class PreregistrationController extends Controller
             'label_name' => '[PENDIENTE]',
             'status' => 'PHOTO_PENDING',
         ]);
+        $prealert = $this->attachPrealertMatch($preregistration);
 
         foreach ($photoFiles as $photoFile) {
             $this->photoService->uploadPhoto($preregistration, $photoFile);
         }
 
+        $message = 'Preregistro rápido creado. Falta completar los datos de etiqueta y agencia.';
+        if ($prealert) {
+            $message = 'Paquete prealertado: '.$prealert->name
+                .($prealert->agency ? ' · '.$prealert->agency->listingAccountLabel() : '')
+                .'. '.$message;
+        }
+
         if ($request->expectsJson()) {
             return response()->json([
-                'message' => 'Preregistro rápido creado.',
+                'message' => $message,
                 'redirect_url' => route('preregistrations.show', $preregistration->id),
+                'prealert' => $prealert?->warehouseNotice(),
             ]);
         }
 
         return redirect()->route('preregistrations.show', $preregistration->id)
-            ->with('success', 'Preregistro rápido creado. Falta completar los datos de etiqueta y agencia.');
+            ->with('success', $message);
     }
 
     public function uploadPhoto(Request $request, string $id)

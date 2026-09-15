@@ -102,6 +102,9 @@
             @if($preregistration->tracking_external)
             <span class="mb-pill">{{ $preregistration->tracking_external }}</span>
             @endif
+            @if($preregistration->relationLoaded('prealert') && $preregistration->prealert)
+            <span class="mb-pill mb-pill--ok">Prealertado</span>
+            @endif
             <span class="mb-pill">{{ \App\Support\ServiceType::label($preregistration->service_type) }}</span>
             <span class="mb-pill">{{ $statusLabel }}</span>
         </x-slot:strip>
@@ -110,6 +113,19 @@
     @error('transport_number')
     <div class="prd-flash-err" role="alert">{{ $message }}</div>
     @enderror
+    @if($preregistration->relationLoaded('prealert') && $preregistration->prealert)
+    <div class="prd-flash-ok" role="status">
+        Este paquete ya fue prealertado:
+        <strong>{{ $preregistration->prealert->name }}</strong>
+        · {{ \App\Support\ServiceType::label($preregistration->prealert->service_type) }}
+        @if($preregistration->prealert->agency)
+        · {{ $preregistration->prealert->agency->listingAccountLabel() }}
+        @endif
+        @if($preregistration->prealert->description)
+        · {{ $preregistration->prealert->description }}
+        @endif
+    </div>
+    @endif
 
     {{-- ===== Franja de datos clave ===== --}}
     <div class="prd-metrics">
@@ -522,6 +538,11 @@
 .prd-flash-err {
     margin: 0 0 1rem; padding: 0.75rem 1rem; border-radius: 0.65rem;
     background: #FEF2F2; color: #B03030; font-size: 0.875rem; font-weight: 600;
+}
+.prd-flash-ok {
+    margin: 0 0 1rem; padding: 0.75rem 1rem; border-radius: 0.65rem;
+    background: #ecfdf3; color: #14532d; border: 1px solid #86c9a4;
+    font-size: 0.875rem; font-weight: 600;
 }
 @media (min-width: 768px) { .preregs-show-page { padding: 1.5rem 1.5rem 2.5rem; } }
 

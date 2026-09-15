@@ -666,14 +666,6 @@
 
             @if($mode === 'scan')
                 @php
-                    $lookupJson = $scanLookup->map(fn ($p) => [
-                        'id' => $p->id,
-                        'tracking' => (string) ($p->tracking_external ?? ''),
-                        'warehouse' => (string) ($p->warehouse_code ?? ''),
-                        'label' => (string) ($p->label_name ?? ''),
-                        'service_type' => $p->service_type,
-                        'weight_lbs' => round((float) ($p->verified_weight_lbs ?? $p->intake_weight_lbs ?? 0), 2),
-                    ])->values();
                     $scanMeta = [
                         'service_type' => $consolidation->service_type,
                         'unit_noun' => $consolidation->unitNoun(),
@@ -686,7 +678,6 @@
                         })->filter()->values(),
                     ];
                 @endphp
-                <script type="application/json" id="cons-show-scan-lookup">@json($lookupJson)</script>
                 <script type="application/json" id="cons-show-scan-meta">@json($scanMeta)</script>
 
                 <div class="cons-show-card">
@@ -758,16 +749,13 @@
 @push('scripts')
 <script>
 (function() {
-    var lookupEl = document.getElementById('cons-show-scan-lookup');
     var metaEl = document.getElementById('cons-show-scan-meta');
     var input = document.getElementById('cons-show-scan-input');
     var form = document.getElementById('cons-show-scan-form');
     var feedback = document.getElementById('cons-show-scan-feedback');
     if (!input || !form) return;
 
-    var lookup = lookupEl ? JSON.parse(lookupEl.textContent || '[]') : [];
     var meta = metaEl ? JSON.parse(metaEl.textContent || '{}') : {};
-    var serviceType = meta.service_type || 'AIR';
     var unitNoun = meta.unit_noun || 'saco';
     var existingCodes = Array.isArray(meta.existing_codes) ? meta.existing_codes : [];
 
@@ -777,32 +765,6 @@
 
     function norm(s) {
         return String(s || '').trim().toUpperCase();
-    }
-
-    function packageRoute(st) {
-        return st === 'CFT' ? 'SEA' : st;
-    }
-
-    function findInLookupSameSvc(code) {
-        var n = norm(code);
-        if (!n) return null;
-        for (var i = 0; i < lookup.length; i++) {
-            var row = lookup[i];
-            if (packageRoute(row.service_type) !== packageRoute(serviceType)) continue;
-            if (n === norm(row.tracking) || n === norm(row.warehouse)) return row;
-        }
-        return null;
-    }
-
-    function findOtherServiceMatch(code) {
-        var n = norm(code);
-        if (!n) return null;
-        for (var i = 0; i < lookup.length; i++) {
-            var row = lookup[i];
-            if (packageRoute(row.service_type) === packageRoute(serviceType)) continue;
-            if (n === norm(row.tracking) || n === norm(row.warehouse)) return row;
-        }
-        return null;
     }
 
     function setFeedback(text, cls) {
@@ -826,17 +788,7 @@
             input.select();
             return;
         }
-        var otherSvc = findOtherServiceMatch(code);
-        if (otherSvc) {
-            var routeLabels = { AIR: 'aéreo', SEA: 'marítimo', CFT: 'marítimo' };
-            var sackWord = routeLabels[serviceType] || serviceType;
-            var pkgWord = routeLabels[otherSvc.service_type] || otherSvc.service_type;
-            setFeedback('Alerta: el paquete está en preregistro como ' + pkgWord + ', no como ' + sackWord + '. Cambie el ' + unitNoun + ' o use otro código.', 'err');
-            input.select();
-            return;
-        }
-        var hit = findInLookupSameSvc(code);
-        setFeedback(hit ? 'Agregando ' + code + ' (' + (hit.label || 'preregistro') + ')…' : 'Agregando ' + code + ' sin preregistro…', hit ? 'ok' : 'warn');
+        setFeedback('Agregando ' + code + '…', 'ok');
         submitting = true;
         form.submit();
     }

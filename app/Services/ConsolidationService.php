@@ -202,11 +202,7 @@ class ConsolidationService
         $item = ConsolidationItem::query()
             ->with('consolidation')
             ->whereNull('preregistration_id')
-            ->where(function ($query) use ($codes) {
-                foreach ($codes as $code) {
-                    $query->orWhereRaw("REPLACE(UPPER(TRIM(COALESCE(unmatched_code, ''))), ' ', '') = ?", [$code]);
-                }
-            })
+            ->whereIn('unmatched_code', $codes->all())
             ->orderBy('id')
             ->first();
 
@@ -225,6 +221,48 @@ class ConsolidationService
     public function findAvailableForScan(string $code, string $serviceType, bool $anyService = false): ?Preregistration
     {
         return $this->findPackageByScanCode($code, $serviceType, false, $anyService, true);
+    }
+
+    /**
+     * Vista previa para pistola: un solo código, sin cargar el inventario de Miami.
+     *
+     * @return array{found: bool, service_mismatch: bool, package: ?array<string, mixed>}
+     */
+    public function scanPreview(string $code, string $serviceType): array
+    {
+        $normalized = self::normalizeScanCode($code);
+        if ($normalized === '') {
+            return ['found' => false, 'service_mismatch' => false, 'package' => null];
+        }
+
+        $any = $this->findAvailableForScan($normalized, $serviceType, true);
+        if (! $any) {
+            return ['found' => false, 'service_mismatch' => false, 'package' => null];
+        }
+
+        $mismatch = $any->service_type
+            && ! ServiceType::matchesRoute($any->service_type, $serviceType);
+
+        return [
+            'found' => ! $mismatch,
+            'service_mismatch' => $mismatch,
+            'package' => $this->packageScanPayload($any),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function packageScanPayload(Preregistration $package): array
+    {
+        return [
+            'id' => $package->id,
+            'tracking' => (string) ($package->tracking_external ?? ''),
+            'warehouse' => (string) ($package->warehouse_code ?? ''),
+            'label' => (string) ($package->label_name ?? ''),
+            'service_type' => $package->service_type,
+            'weight_lbs' => round((float) ($package->verified_weight_lbs ?? $package->intake_weight_lbs ?? 0), 2),
+        ];
     }
 
     private function attachPackageToUnmatchedItem(ConsolidationItem $item, Preregistration $package, ?Consolidation $sack): void
@@ -253,43 +291,59 @@ class ConsolidationService
             return null;
         }
 
-        $query = Preregistration::query()
-            ->with('consolidationItem')
-            ->where(function ($q) use ($normalized) {
-                $q->whereRaw("REPLACE(UPPER(TRIM(COALESCE(tracking_external, ''))), ' ', '') = ?", [$normalized])
-                    ->orWhereRaw("REPLACE(UPPER(TRIM(COALESCE(warehouse_code, ''))), ' ', '') = ?", [$normalized]);
-            })
-            ->orderBy('id');
-
-        if ($miamiOnly) {
-            $query->where('status', 'RECEIVED_MIAMI');
-        } else {
-            $query->whereNotIn('status', ['CANCELLED']);
+        $candidates = $this->candidatesByExactScanCode($normalized);
+        if ($candidates->isEmpty()) {
+            return null;
         }
 
-        if ($alreadyInSack) {
-            $query->whereHas('consolidationItem');
-        } else {
-            $query->whereDoesntHave('consolidationItem');
-        }
+        $candidates->load('consolidationItem');
 
-        if (! $anyService && $sackService && ! $alreadyInSack) {
-            $query->where(function ($q) use ($sackService) {
-                $q->whereIn('service_type', ServiceType::servicesForRoute($sackService))
-                    ->orWhereNull('service_type')
-                    ->orWhere('service_type', '');
-            });
-        }
+        return $candidates->first(function (Preregistration $package) use ($normalized, $sackService, $anyService, $alreadyInSack, $miamiOnly) {
+            if ($miamiOnly && $package->status !== 'RECEIVED_MIAMI') {
+                return false;
+            }
+            if (! $miamiOnly && $package->status === 'CANCELLED') {
+                return false;
+            }
 
-        $candidates = $query->get();
+            $inSack = $package->relationLoaded('consolidationItem')
+                ? $package->consolidationItem !== null
+                : $package->consolidationItem()->exists();
 
-        return $candidates->first(function (Preregistration $package) use ($normalized, $sackService, $anyService) {
+            if ($alreadyInSack !== $inSack) {
+                return false;
+            }
+
             if (! $anyService && $package->service_type && $sackService && ! ServiceType::matchesRoute($package->service_type, $sackService)) {
                 return false;
             }
 
             return $this->packageMatchesCode($package, $normalized);
         });
+    }
+
+    /**
+     * Dos búsquedas por índice (tracking o warehouse). Un código inexistente sale al instante.
+     *
+     * @return \Illuminate\Support\Collection<int, Preregistration>
+     */
+    private function candidatesByExactScanCode(string $normalized)
+    {
+        $byTracking = Preregistration::query()
+            ->where('tracking_external', $normalized)
+            ->orderBy('id')
+            ->get();
+
+        $byWarehouse = Preregistration::query()
+            ->where('warehouse_code', $normalized)
+            ->orderBy('id')
+            ->get();
+
+        return $byTracking
+            ->concat($byWarehouse)
+            ->unique('id')
+            ->sortBy('id')
+            ->values();
     }
 }
 
