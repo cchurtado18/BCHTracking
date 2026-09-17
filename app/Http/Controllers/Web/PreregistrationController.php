@@ -820,6 +820,43 @@ class PreregistrationController extends Controller
             ->with('success', 'Orden de las fotos actualizado.');
     }
 
+    public function updateServiceType(Request $request, string $id)
+    {
+        $preregistration = Preregistration::with(['consolidationItem', 'delivery'])->findOrFail($id);
+        $validated = $request->validate([
+            'service_type' => 'required|'.\App\Support\ServiceType::rule(),
+        ], [
+            'service_type.required' => 'Seleccione un tipo de servicio.',
+            'service_type.in' => 'El servicio debe ser aéreo, marítimo o pie cúbico.',
+        ]);
+
+        $newType = \App\Support\ServiceType::normalize($validated['service_type']);
+        if (! $this->canEditServiceType($preregistration)) {
+            return redirect()->route('preregistrations.show', $preregistration->id)
+                ->with('error', 'No se puede cambiar el servicio de un paquete que ya está en saco, en entrega o más adelante en el proceso.');
+        }
+
+        $oldType = \App\Support\ServiceType::normalize($preregistration->service_type);
+        if ($oldType === $newType) {
+            return redirect()->route('preregistrations.show', $preregistration->id)
+                ->with('success', 'El servicio ya era '.\App\Support\ServiceType::label($newType).'.');
+        }
+
+        $preregistration->update(['service_type' => $newType]);
+
+        return redirect()->route('preregistrations.show', $preregistration->id)
+            ->with('success', 'Servicio actualizado: '.\App\Support\ServiceType::label($oldType).' → '.\App\Support\ServiceType::label($newType).'.');
+    }
+
+    private function canEditServiceType(Preregistration $preregistration): bool
+    {
+        if ($preregistration->consolidationItem || $preregistration->delivery) {
+            return false;
+        }
+
+        return in_array($preregistration->status, ['PHOTO_PENDING', 'RECEIVED_MIAMI', 'CANCELLED'], true);
+    }
+
     public function label(Request $request, string $id)
     {
         $preregistration = Preregistration::with(['agency', 'agency.parent'])->findOrFail($id);

@@ -113,6 +113,12 @@
     @error('transport_number')
     <div class="prd-flash-err" role="alert">{{ $message }}</div>
     @enderror
+    @error('service_type')
+    <div class="prd-flash-err" role="alert">{{ $message }}</div>
+    @enderror
+    @if(session('error'))
+    <div class="prd-flash-err" role="alert">{{ session('error') }}</div>
+    @endif
     @if($preregistration->relationLoaded('prealert') && $preregistration->prealert)
     <div class="prd-flash-ok" role="status">
         Este paquete ya fue prealertado:
@@ -200,6 +206,30 @@
                         <div class="prd-field">
                             <span class="prd-field-label">Tracking externo</span>
                             <span class="prd-field-value prd-mono">{{ $preregistration->tracking_external ?? '—' }}</span>
+                        </div>
+                        @php
+                            $canEditService = in_array($preregistration->status, ['PHOTO_PENDING', 'RECEIVED_MIAMI', 'CANCELLED'], true)
+                                && ! $preregistration->consolidationItem
+                                && ! $preregistration->delivery;
+                            $currentService = old('service_type', $preregistration->service_type);
+                        @endphp
+                        <div class="prd-field prd-field-span">
+                            <span class="prd-field-label">Tipo de servicio</span>
+                            @if($canEditService)
+                            <form method="POST" action="{{ route('preregistrations.service-type', $preregistration->id) }}" class="prd-service-form">
+                                @csrf
+                                @method('PATCH')
+                                <label for="service_type_show" class="sr-only">Tipo de servicio</label>
+                                <select name="service_type" id="service_type_show" class="prd-service-select" required>
+                                    <option value="AIR" @selected($currentService === 'AIR')>Aéreo</option>
+                                    <option value="SEA" @selected($currentService === 'SEA')>Marítimo</option>
+                                    <option value="CFT" @selected($currentService === 'CFT')>Pie cúbico</option>
+                                </select>
+                                <button type="submit" class="prd-service-save">Guardar</button>
+                            </form>
+                            @else
+                            <span class="prd-field-value">{{ \App\Support\ServiceType::label($preregistration->service_type) }}</span>
+                            @endif
                         </div>
                         <div class="prd-field">
                             <span class="prd-field-label">Código</span>
@@ -652,6 +682,22 @@
 .prd-field-value { font-size: 0.92rem; font-weight: 650; color: #0f172a; word-break: break-word; }
 .prd-field-intake { display: inline-flex; align-items: center; gap: 0.45rem; }
 .prd-intake-dot { width: 0.5rem; height: 0.5rem; border-radius: 999px; background: #1E4FA8; flex-shrink: 0; }
+.prd-service-form { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.15rem; }
+.prd-service-select {
+    min-width: 10.5rem; padding: 0.5rem 0.7rem; font-size: 0.9rem; font-weight: 700;
+    border: 1px solid #cbd5e1; border-radius: 0.55rem; background: #fff; color: #0f172a;
+}
+.prd-service-select:focus { outline: none; border-color: #0A2D6F; box-shadow: 0 0 0 3px rgba(10, 45, 111, 0.16); }
+.prd-service-save {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 0.5rem 0.95rem; font-size: 0.84rem; font-weight: 800;
+    color: #fff; background: #0A2D6F; border: 0; border-radius: 0.55rem; cursor: pointer;
+}
+.prd-service-save:hover { background: #1E4FA8; }
+.sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
 
 /* ===== Evidencia ===== */
 .prd-head-actions { display: flex; gap: 0.4rem; }
