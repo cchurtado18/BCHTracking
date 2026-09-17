@@ -67,38 +67,44 @@ class DeliveryNote extends Model
     }
 
     /**
-     * Cliente a facturar: si todos los paquetes son de una cuenta, esa (o su padre comercial
-     * si es subagencia anidada); si no, la agencia de la hoja.
+     * Cuentas comerciales (bill-to) de los paquetes de esta hoja.
+     *
+     * @return \Illuminate\Support\Collection<int, Agency>
+     */
+    public function packageBillToAgencies()
+    {
+        $this->loadMissing(['deliveries.preregistration.agency.parent.parent.parent']);
+
+        return $this->deliveries
+            ->map(fn ($d) => $d->preregistration?->agency)
+            ->filter()
+            ->map(fn (Agency $agency) => $agency->commercialBillTo())
+            ->unique(fn (Agency $agency) => (int) $agency->id)
+            ->values();
+    }
+
+    public function hasMixedBillTos(): bool
+    {
+        return $this->packageBillToAgencies()->count() > 1;
+    }
+
+    /**
+     * Cliente a facturar: si todos los paquetes caen en una cuenta comercial, esa;
+     * si hay varias, la agencia de la hoja (salida de red, p. ej. SkyLink One).
      */
     public function billingAgency(): ?Agency
     {
-        $this->loadMissing(['deliveries.preregistration', 'agency.parent.parent.parent']);
-        $packageIds = $this->deliveries
-            ->map(fn ($d) => $d->preregistration?->agency_id)
-            ->filter()
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values();
+        $billTos = $this->packageBillToAgencies();
+        if ($billTos->count() === 1) {
+            return $billTos->first();
+        }
 
-        $agencyId = $packageIds->count() === 1
-            ? (int) $packageIds->first()
-            : (int) $this->agency_id;
-
-        if (! $agencyId) {
+        $this->loadMissing(['agency.parent.parent.parent']);
+        if (! $this->agency) {
             return null;
         }
 
-        $agency = $this->agency && (int) $this->agency->id === $agencyId
-            ? $this->agency
-            : Agency::query()->with('parent.parent.parent')->find($agencyId);
-
-        if (! $agency) {
-            return null;
-        }
-
-        $agency->loadMissing('parent.parent.parent');
-
-        return $agency->commercialBillTo();
+        return $this->agency->commercialBillTo();
     }
 
     /**
@@ -106,7 +112,12 @@ class DeliveryNote extends Model
      */
     public function invoiceFamilyIds(): array
     {
-        $agency = $this->billingAgency();
+        $billTos = $this->packageBillToAgencies();
+        if ($billTos->count() > 1) {
+            return [-(int) $this->id];
+        }
+
+        $agency = $billTos->first() ?? $this->billingAgency();
         if (! $agency) {
             return [];
         }
@@ -119,6 +130,10 @@ class DeliveryNote extends Model
 
     public function invoiceFamilyKey(): string
     {
+        if ($this->hasMixedBillTos()) {
+            return 'mixed:'.$this->id;
+        }
+
         return implode(',', $this->invoiceFamilyIds());
     }
 

@@ -30,7 +30,7 @@ class InvoiceFromDeliveryNoteService
     /**
      * @param  Collection<int, DeliveryNote>|iterable<DeliveryNote>  $notes
      * @param  array<string, float|null>  $rateOverrides
-     * @return array{agency_id: int, lines: list<array<string, mixed>>, total_lbs: float, total_cft: float, total_usd: float, delivery_fee_usd: float, freight_usd: float}
+     * @return array{agency_id: int, lines: list<array<string, mixed>>, note_summaries: list<array<string, mixed>>, total_lbs: float, total_cft: float, total_usd: float, delivery_fee_usd: float, freight_usd: float}
      */
     public function previewNotes(iterable $notes, array $rateOverrides = [], float $deliveryFee = 0): array
     {
@@ -64,7 +64,7 @@ class InvoiceFromDeliveryNoteService
         }
 
         $agencyId = $this->resolveBillToAgencyId($notes);
-        $familyIds = $this->familyIdsForAgency($agencyId);
+        $allowedAgencyIds = $this->allowedPackageAgencyIds($agencyId);
         $packageAgencyIds = $notes
             ->flatMap(fn (DeliveryNote $note) => $note->deliveries->map(fn ($d) => $d->preregistration?->agency_id))
             ->filter()
@@ -72,7 +72,7 @@ class InvoiceFromDeliveryNoteService
             ->unique()
             ->values();
 
-        $outside = $packageAgencyIds->first(fn (int $id) => ! in_array($id, $familyIds, true));
+        $outside = $packageAgencyIds->first(fn (int $id) => ! in_array($id, $allowedAgencyIds, true));
         if ($outside !== null) {
             throw new InvalidArgumentException('Hay paquetes de otra red de agencia. No se pueden facturar juntos.');
         }
@@ -122,9 +122,49 @@ class InvoiceFromDeliveryNoteService
             ];
         }
 
+        $noteSummaries = [];
+        foreach ($notes as $note) {
+            $perService = [];
+            foreach ($note->deliveries as $delivery) {
+                $p = $delivery->preregistration;
+                if (! $p) {
+                    continue;
+                }
+                $service = ServiceType::normalize($p->service_type);
+                $qty = ServiceType::billedQuantity($p);
+                if (! isset($perService[$service])) {
+                    $perService[$service] = ['qty' => 0.0, 'count' => 0];
+                }
+                $perService[$service]['qty'] += $qty;
+                $perService[$service]['count']++;
+            }
+
+            $summaryLines = [];
+            foreach (ServiceType::ALL as $service) {
+                if (! isset($perService[$service])) {
+                    continue;
+                }
+                $summaryLines[] = [
+                    'service_type' => $service,
+                    'description' => ServiceType::freightDescription($service),
+                    'quantity_lbs' => round($perService[$service]['qty'], 4),
+                    'package_count' => $perService[$service]['count'],
+                    'unit' => ServiceType::unit($service),
+                ];
+            }
+
+            $noteSummaries[] = [
+                'id' => (int) $note->id,
+                'code' => $note->code,
+                'package_count' => $note->deliveries->count(),
+                'lines' => $summaryLines,
+            ];
+        }
+
         return [
             'agency_id' => $agencyId,
             'lines' => $lines,
+            'note_summaries' => $noteSummaries,
             'total_lbs' => round($totalLbs, 3),
             'total_cft' => round($totalCft, 4),
             'freight_usd' => round($freightUsd, 2),
@@ -156,7 +196,10 @@ class InvoiceFromDeliveryNoteService
             $locked = DeliveryNote::query()
                 ->whereIn('id', $ids)
                 ->lockForUpdate()
-                ->with(['deliveries.preregistration', 'agency.parent.parent.parent'])
+                ->with([
+                    'deliveries.preregistration.agency.parent.parent.parent',
+                    'agency.parent.parent.parent',
+                ])
                 ->get()
                 ->sortBy(fn (DeliveryNote $n) => array_search((int) $n->id, $ids, true))
                 ->values();
@@ -255,34 +298,26 @@ class InvoiceFromDeliveryNoteService
      */
     private function assertSameInvoiceFamily(Collection $notes): void
     {
-        $family = null;
         foreach ($notes as $note) {
-            $ids = $this->noteInvoiceFamilyIds($note);
-            if ($family === null) {
-                $family = $ids;
-
-                continue;
-            }
-            if ($family !== $ids) {
-                throw new InvalidArgumentException('Solo se pueden facturar juntas hojas de la misma agencia o de sus subagencias.');
+            if ($note->invoiceFamilyIds() === [] && $note->packageBillToAgencies()->isEmpty() && ! $note->agency_id) {
+                throw new InvalidArgumentException('La hoja '.$note->code.' no tiene agencia asignada.');
             }
         }
-    }
 
-    /**
-     * @return list<int>
-     */
-    /**
-     * @return list<int>
-     */
-    private function noteInvoiceFamilyIds(DeliveryNote $note): array
-    {
-        $ids = $note->invoiceFamilyIds();
-        if ($ids === []) {
-            throw new InvalidArgumentException('La hoja '.$note->code.' no tiene agencia asignada.');
+        if ($notes->count() <= 1) {
+            return;
         }
 
-        return $ids;
+        $keys = $notes
+            ->map(fn (DeliveryNote $note) => $note->invoiceFamilyKey())
+            ->unique()
+            ->values();
+
+        if ($keys->count() === 1 && ! str_starts_with((string) $keys->first(), 'mixed:')) {
+            return;
+        }
+
+        $this->resolveBillToAgencyId($notes);
     }
 
     /**
@@ -290,43 +325,82 @@ class InvoiceFromDeliveryNoteService
      */
     private function resolveBillToAgencyId(Collection $notes): int
     {
-        $packageAgencyIds = $notes
-            ->flatMap(fn (DeliveryNote $note) => $note->deliveries->map(fn ($d) => $d->preregistration?->agency_id))
-            ->filter()
-            ->map(fn ($id) => (int) $id)
-            ->unique()
+        $notes->each(fn (DeliveryNote $note) => $note->loadMissing([
+            'agency.parent.parent.parent',
+            'deliveries.preregistration.agency.parent.parent.parent',
+        ]));
+
+        $packageAgencies = $notes
+            ->flatMap(fn (DeliveryNote $note) => $note->deliveries->map(fn ($d) => $d->preregistration?->agency))
+            ->filter();
+
+        $billTos = $packageAgencies
+            ->map(fn (Agency $agency) => $agency->commercialBillTo())
+            ->unique(fn (Agency $agency) => (int) $agency->id)
             ->values();
 
-        $billToIds = Agency::query()
-            ->with('parent.parent.parent')
-            ->whereIn('id', $packageAgencyIds->all())
-            ->get()
-            ->map(fn (Agency $agency) => (int) $agency->commercialBillTo()->id)
-            ->unique()
-            ->values();
-
-        if ($billToIds->count() === 1) {
-            return (int) $billToIds->first();
+        if ($billTos->count() === 1) {
+            return (int) $billTos->first()->id;
         }
 
-        if ($packageAgencyIds->isEmpty()) {
+        if ($packageAgencies->isEmpty()) {
             $fallback = $notes->first()?->billingAgency();
             if ($fallback) {
                 return (int) $fallback->id;
             }
         }
 
-        throw new InvalidArgumentException('No se pudo determinar el cliente a facturar. Las hojas deben ser de la misma cuenta.');
+        $names = $billTos
+            ->map(function (Agency $agency) {
+                $label = $agency->name;
+                if ($agency->code) {
+                    $label .= ' ('.$agency->code.')';
+                }
+
+                return $label;
+            })
+            ->sort()
+            ->values()
+            ->all();
+
+        $listed = $this->joinAccountNames($names);
+
+        throw new InvalidArgumentException(
+            $listed === ''
+                ? 'No se pudo determinar el cliente a facturar. Las hojas deben ser de la misma cuenta.'
+                : 'No se pudo determinar el cliente a facturar. Los paquetes pertenecen a cuentas distintas: '.$listed.'. Facture cada cliente por separado.'
+        );
+    }
+
+    /**
+     * @param  list<string>  $names
+     */
+    private function joinAccountNames(array $names): string
+    {
+        $names = array_values(array_filter($names));
+        if ($names === []) {
+            return '';
+        }
+        if (count($names) === 1) {
+            return $names[0];
+        }
+        if (count($names) === 2) {
+            return $names[0].' y '.$names[1];
+        }
+
+        $last = array_pop($names);
+
+        return implode(', ', $names).' y '.$last;
     }
 
     /**
      * @return list<int>
      */
-    private function familyIdsForAgency(int $agencyId): array
+    private function allowedPackageAgencyIds(int $agencyId): array
     {
         $agency = Agency::query()->with('parent.parent.parent')->find($agencyId);
 
-        return $agency ? $agency->invoiceFamilyIds() : [$agencyId];
+        return $agency ? $agency->deliveryNetworkIds() : [$agencyId];
     }
 
     /**

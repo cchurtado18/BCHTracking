@@ -20,7 +20,7 @@ class ReceiptNoteController extends Controller
         if ($request->filled('agency_id')) {
             $filterAgency = Agency::find((int) $request->agency_id);
             if ($filterAgency) {
-                $query->whereIn('agency_id', $filterAgency->deliveryNetworkIds());
+                $query->whereIn('agency_id', $filterAgency->operationsNetworkIds());
             } else {
                 $query->where('agency_id', (int) $request->agency_id);
             }

@@ -326,7 +326,7 @@ class DeliveryScanTest extends TestCase
             ->get(route('salidas.create'))
             ->assertOk()
             ->assertSee('Crear hoja de salida')
-            ->assertSee('Seleccione la agencia');
+            ->assertSee('Seleccione la cuenta');
 
         $this->actingAs($user)
             ->get(route('salidas.create', ['agency_id' => $agency->id]))
@@ -433,5 +433,131 @@ class DeliveryScanTest extends TestCase
                 'delivered_to' => 'Hack',
             ])
             ->assertRedirect(route('salidas.index'));
+    }
+
+    public function test_slo_create_does_not_list_other_clients_packages_on_skylink_one(): void
+    {
+        $user = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        [$slo, $magali, $brenda] = $this->seedSloClients();
+        $this->createReadyPackage($magali, [
+            'warehouse_code' => '009881',
+            'tracking_external' => 'TRK-MAGALI-1',
+            'label_name' => 'Magali Zeledon',
+        ]);
+        $this->createReadyPackage($brenda, [
+            'warehouse_code' => '008131',
+            'tracking_external' => 'TRK-BRENDA-1',
+            'label_name' => 'Brenda Zeledon',
+        ]);
+        $this->createReadyPackage($slo, [
+            'warehouse_code' => '000100',
+            'tracking_external' => 'TRK-SLO-OWN',
+            'label_name' => 'Paquete SLO',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('salidas.create', ['agency_id' => $slo->id]))
+            ->assertOk()
+            ->assertSee('No mezcle clientes')
+            ->assertSee('000100')
+            ->assertDontSee('009881')
+            ->assertDontSee('008131');
+
+        $this->actingAs($user)
+            ->get(route('salidas.create', ['agency_id' => $magali->id]))
+            ->assertOk()
+            ->assertSee('009881')
+            ->assertSee('Cliente de SkyLink One')
+            ->assertDontSee('008131')
+            ->assertDontSee('000100');
+    }
+
+    public function test_cannot_scan_another_slo_client_onto_the_same_delivery_note(): void
+    {
+        $user = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        [$slo, $magali, $brenda] = $this->seedSloClients();
+        $magaliPkg = $this->createReadyPackage($magali, [
+            'warehouse_code' => '007302',
+            'tracking_external' => 'TRK-MAGALI-OUT',
+            'label_name' => 'Magali Zeledon',
+        ]);
+        $brendaPkg = $this->createReadyPackage($brenda, [
+            'warehouse_code' => '008133',
+            'tracking_external' => 'TRK-BRENDA-OUT',
+            'label_name' => 'Brenda Zeledon',
+        ]);
+        $note = DeliveryNote::create([
+            'code' => 'SLO-1254',
+            'agency_id' => $magali->id,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('salidas.process-scan'), [
+                'code' => '007302',
+                'delivered_to' => 'Magali Zeledon',
+                'return_to_batch' => '1',
+                'agency_id' => $magali->id,
+                'delivery_note_id' => $note->id,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('deliveries', [
+            'preregistration_id' => $magaliPkg->id,
+            'delivery_note_id' => $note->id,
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('salidas.batch', ['agency_id' => $magali->id, 'delivery_note_id' => $note->id]))
+            ->post(route('salidas.process-scan'), [
+                'code' => '008133',
+                'delivered_to' => 'Magali Zeledon',
+                'return_to_batch' => '1',
+                'agency_id' => $magali->id,
+                'delivery_note_id' => $note->id,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('error', fn ($message) => str_contains((string) $message, 'Brenda Zeledon')
+                && str_contains((string) $message, 'propia hoja'));
+
+        $this->assertDatabaseMissing('deliveries', [
+            'preregistration_id' => $brendaPkg->id,
+        ]);
+
+        $this->assertSame([$slo->id], $slo->deliveryNetworkIds());
+        $this->assertContains($magali->id, $slo->operationsNetworkIds());
+        $this->assertNotContains($magali->id, $slo->deliveryNetworkIds());
+    }
+
+    /**
+     * @return array{0: Agency, 1: Agency, 2: Agency}
+     */
+    private function seedSloClients(): array
+    {
+        $slo = Agency::query()->where('code', '0001')->first()
+            ?? Agency::create([
+                'name' => 'SkyLink One',
+                'code' => '0001',
+                'is_active' => true,
+                'is_main' => true,
+                'account_type' => Agency::TYPE_ROOT,
+            ]);
+        $magali = Agency::create([
+            'name' => 'Magali Zeledon',
+            'code' => 'M001',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_DIRECT_CLIENT,
+            'parent_agency_id' => $slo->id,
+        ]);
+        $brenda = Agency::create([
+            'name' => 'Brenda Zeledon',
+            'code' => 'B001',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_DIRECT_CLIENT,
+            'parent_agency_id' => $slo->id,
+        ]);
+
+        return [$slo, $magali, $brenda];
     }
 }

@@ -243,17 +243,33 @@ class Agency extends Model
 
     /**
      * Paquetes que van juntos en una hoja de salida para este nodo comercial.
-     * Subagencia: ella + todas sus subagencias. Cliente SLO: solo él. Raíz SLO: SLO + clientes propios (no mezcla redes de otras subagencias).
+     * Subagencia: ella + sus subagencias. Cliente SLO o raíz SLO: solo esa cuenta
+     * (cada cliente de SkyLink One tiene su propia hoja para poder facturarlo aparte).
      *
      * @return list<int>
      */
     public function deliveryNetworkIds(): array
     {
+        if ($this->isDirectClient() || $this->isRootAccount()) {
+            return [(int) $this->id];
+        }
+
+        return $this->networkIds();
+    }
+
+    /**
+     * Visibilidad al filtrar listados (salidas, recepciones): la cuenta y, en la raíz SLO,
+     * también sus clientes propios. No define quién comparte hoja de salida.
+     *
+     * @return list<int>
+     */
+    public function operationsNetworkIds(): array
+    {
         if ($this->isDirectClient()) {
             return [(int) $this->id];
         }
 
-        if ($this->is_main || $this->account_type === self::TYPE_ROOT) {
+        if ($this->isRootAccount()) {
             $direct = static::query()
                 ->where('parent_agency_id', $this->id)
                 ->where('account_type', self::TYPE_DIRECT_CLIENT)

@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="inv-page">
-    <x-module-banner section="Operaciones" current="Nueva hoja" title="Crear hoja de salida" subtitle="Seleccione la agencia, revise los paquetes listos y pulse Iniciar salida para registrar quién retira y escanear." back-href="{{ route('salidas.index') }}" back-label="Volver a Salidas">
+    <x-module-banner section="Operaciones" current="Nueva hoja" title="Crear hoja de salida" subtitle="Seleccione la cuenta a entregar. Cada cliente de SkyLink One debe ir en su propia hoja para poder facturarlo aparte." back-href="{{ route('salidas.index') }}" back-label="Volver a Salidas">
         <x-slot:icon>
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
         </x-slot:icon>
@@ -20,9 +20,9 @@
     <div class="inv-card inv-filters-card">
         <form method="GET" action="{{ route('salidas.create') }}" class="inv-filters-form" id="deliveryAgencyForm">
             <div class="inv-field inv-field-wide">
-                <label class="inv-label" for="agency_id">¿Para qué agencia es la salida?</label>
+                <label class="inv-label" for="agency_id">¿Para qué cuenta es la salida?</label>
                 <select name="agency_id" id="agency_id" class="inv-input">
-                    <option value="">Seleccione la agencia…</option>
+                    <option value="">Seleccione la cuenta…</option>
                     @foreach($agenciesForSelect as $opt)
                     <option value="{{ $opt->id }}" @selected((string) $agencyId === (string) $opt->id)>{{ $opt->name }}</option>
                     @endforeach
@@ -38,6 +38,11 @@
     </div>
 
     @if($selectedAgency)
+    @if($selectedAgency->isRootAccount() || $selectedAgency->is_main)
+    <div class="inv-alert inv-alert-danger">
+        No mezcle clientes de {{ $selectedAgency->name }} en una sola hoja. Elija el cliente en la lista (aparece como «Cliente de {{ $selectedAgency->name }}») y hágale su propia salida. Varias hojas del mismo cliente sí se pueden juntar al facturar.
+    </div>
+    @endif
     <div class="inv-card">
         <div class="inv-table-head">
             <span class="inv-table-head-note">Paquetes listos para retiro — {{ $selectedAgency->name }}</span>

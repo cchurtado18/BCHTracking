@@ -239,14 +239,14 @@ class DeliveryController extends Controller
             ->count();
         $statsPackagesMonth = Delivery::query()
             ->when($selectedAgency, function ($q) use ($selectedAgency) {
-                $q->whereHas('preregistration', fn ($q2) => $q2->whereIn('agency_id', $selectedAgency->deliveryNetworkIds()));
+                $q->whereHas('preregistration', fn ($q2) => $q2->whereIn('agency_id', $selectedAgency->operationsNetworkIds()));
             })
             ->where('delivered_at', '>=', $monthStart)
             ->count();
         $statsReady = Preregistration::query()
             ->where('status', 'READY')
             ->whereDoesntHave('delivery')
-            ->when($selectedAgency, fn ($q) => $q->whereIn('agency_id', $selectedAgency->deliveryNetworkIds()))
+            ->when($selectedAgency, fn ($q) => $q->whereIn('agency_id', $selectedAgency->operationsNetworkIds()))
             ->count();
 
         return view('deliveries.index', compact(
@@ -371,11 +371,20 @@ class DeliveryController extends Controller
                 'name' => $a->name.' (Agencia principal)',
                 'is_main' => true,
             ]))
-            ->merge($subAgencies->map(fn ($a) => (object) [
-                'id' => $a->id,
-                'name' => $a->name.($a->parent ? ' — '.$a->parent->name : ''),
-                'is_main' => false,
-            ]))
+            ->merge($subAgencies->map(function ($a) {
+                $name = $a->name;
+                if ($a->isDirectClient()) {
+                    $name .= ' — Cliente de '.($a->parent?->name ?? 'SkyLink One');
+                } elseif ($a->parent) {
+                    $name .= ' — '.$a->parent->name;
+                }
+
+                return (object) [
+                    'id' => $a->id,
+                    'name' => $name,
+                    'is_main' => false,
+                ];
+            }))
             ->sortBy('name')
             ->values();
     }
@@ -384,7 +393,7 @@ class DeliveryController extends Controller
     {
         return function ($q) use ($selectedAgency) {
             if ($selectedAgency) {
-                $ids = $selectedAgency->deliveryNetworkIds();
+                $ids = $selectedAgency->operationsNetworkIds();
                 $q->whereHas('preregistration', fn ($q2) => $q2->whereIn('agency_id', $ids));
             }
         };
@@ -837,6 +846,7 @@ class DeliveryController extends Controller
         try {
             $result = DB::transaction(function () use ($request, $allowedAgencyIds, $code, $isWarehouseCode) {
                 $candidates = Preregistration::query()
+                    ->with('agency')
                     ->when(
                         $isWarehouseCode,
                         fn ($query) => $query->where('warehouse_code', $code),
@@ -884,10 +894,14 @@ class DeliveryController extends Controller
                     $preregistration = $candidates->first();
                 }
 
+                $preregistration->loadMissing('agency');
+
                 // Restricción de agencia (incondicional): el usuario solo puede entregar paquetes
                 // de su agencia (si es de subagencia) y/o de la agencia del batch.
                 if ($allowedAgencyIds !== null && ! in_array((int) $preregistration->agency_id, $allowedAgencyIds, true)) {
-                    return ['error' => 'Este paquete no corresponde a esta salida. Solo se aceptan paquetes de la agencia indicada.'];
+                    $pkgName = $preregistration->agency?->name ?? 'otra cuenta';
+
+                    return ['error' => 'Este paquete es de '.$pkgName.'. Cada cliente debe tener su propia hoja de salida. No se pueden mezclar cuentas en la misma hoja.'];
                 }
 
                 $deliveryData = [
@@ -902,7 +916,6 @@ class DeliveryController extends Controller
                 ];
 
                 // Toda entrega debe quedar vinculada a una nota de salida.
-                $preregistration->loadMissing('agency');
                 $pkgAgencyId = (int) $preregistration->agency_id;
                 $note = null;
 
@@ -914,7 +927,10 @@ class DeliveryController extends Controller
                     $noteAgency = $note->relationLoaded('agency') ? $note->agency : Agency::find($note->agency_id);
                     $allowedOnNote = $noteAgency ? $noteAgency->deliveryNetworkIds() : [(int) $note->agency_id];
                     if (! in_array($pkgAgencyId, $allowedOnNote, true)) {
-                        return ['error' => 'Este paquete no corresponde a la red de la hoja de salida.'];
+                        $pkgName = $preregistration->agency?->name ?? 'otra cuenta';
+                        $noteName = $noteAgency?->name ?? 'esta hoja';
+
+                        return ['error' => 'Este paquete es de '.$pkgName.'. La hoja es de '.$noteName.'. Cada cliente de SkyLink One debe ir en su propia hoja de salida.'];
                     }
                 } else {
                     $note = $this->createDeliveryNoteForAgency($preregistration->agency);

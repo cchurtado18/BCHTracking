@@ -191,7 +191,11 @@ class AccountingInvoiceController extends Controller
     public function create()
     {
         $notes = DeliveryNote::query()
-            ->with(['agency.parent.parent.parent', 'deliveries.preregistration:id,agency_id'])
+            ->with([
+                'agency.parent.parent.parent',
+                'deliveries.preregistration:id,agency_id',
+                'deliveries.preregistration.agency.parent.parent.parent',
+            ])
             ->withCount('deliveries')
             ->whereHas('deliveries')
             ->withoutActiveInvoice()
@@ -208,22 +212,62 @@ class AccountingInvoiceController extends Controller
             $request->merge(['delivery_note_ids' => [(int) $request->input('delivery_note_id')]]);
         }
 
-        $data = $request->validate([
-            'delivery_note_ids' => 'required|array|min:1',
-            'delivery_note_ids.*' => 'integer|exists:delivery_notes,id',
-        ], [
-            'delivery_note_ids.required' => 'Seleccione al menos una hoja de salida.',
-            'delivery_note_ids.min' => 'Seleccione al menos una hoja de salida.',
-        ]);
+        $ids = $this->requestedNoteIds($request);
+        if ($ids->isEmpty()) {
+            return redirect()
+                ->route('accounting.invoices.create')
+                ->withErrors(['delivery_note_ids' => 'Seleccione al menos una hoja de salida.']);
+        }
 
-        $ids = collect($data['delivery_note_ids'])->map(fn ($id) => (int) $id)->unique()->values();
-        $primary = $ids->first();
-        $extra = $ids->slice(1)->values()->all();
+        $notes = DeliveryNote::query()
+            ->whereIn('id', $ids->all())
+            ->with([
+                'deliveries.preregistration.agency.parent.parent.parent',
+                'agency.parent.parent.parent',
+            ])
+            ->get()
+            ->sortBy(fn (DeliveryNote $n) => $ids->search((int) $n->id))
+            ->values();
 
-        return redirect()->route('accounting.invoices.create-from-note', array_filter([
-            'deliveryNote' => $primary,
-            'notes' => $extra ?: null,
-        ]));
+        if ($notes->count() !== $ids->count()) {
+            return redirect()
+                ->route('accounting.invoices.create')
+                ->with('error', 'Una o más hojas de salida no existen.');
+        }
+
+        $mixed = $notes->filter(fn (DeliveryNote $n) => $n->hasMixedBillTos());
+        if ($mixed->isNotEmpty()) {
+            return redirect()
+                ->route('accounting.invoices.create')
+                ->with('error', 'La hoja '.$mixed->pluck('code')->implode(', ').' mezcla clientes. Sepárela en Salidas (una hoja por cliente) y luego facture cada cuenta.');
+        }
+
+        $billToIds = $notes
+            ->map(function (DeliveryNote $note) {
+                $billTos = $note->packageBillToAgencies();
+
+                return $billTos->count() === 1
+                    ? (int) $billTos->first()->id
+                    : (int) ($note->billingAgency()?->id ?? 0);
+            })
+            ->unique()
+            ->values();
+
+        if ($billToIds->count() !== 1 || (int) $billToIds->first() === 0) {
+            return redirect()
+                ->route('accounting.invoices.create')
+                ->with('error', 'Seleccione solo hojas del mismo cliente a facturar. Varias hojas sí se pueden juntar si todas son de esa misma cuenta.');
+        }
+
+        $primary = (int) $ids->first();
+        $params = ['deliveryNote' => $primary];
+        if ($ids->count() > 1) {
+            $params['notes'] = $ids->implode(',');
+        }
+
+        return redirect()
+            ->route('accounting.invoices.create-from-note', $params)
+            ->with('invoice_note_ids', $ids->all());
     }
 
     public function void(Request $request, AccountingInvoice $invoice)
@@ -321,7 +365,10 @@ class AccountingInvoiceController extends Controller
 
     public function createFromNote(Request $request, DeliveryNote $deliveryNote, InvoiceFromDeliveryNoteService $service)
     {
-        $deliveryNote->load(['deliveries.preregistration', 'agency.parent.parent.parent']);
+        $deliveryNote->load([
+            'deliveries.preregistration.agency.parent.parent.parent',
+            'agency.parent.parent.parent',
+        ]);
 
         $active = AccountingInvoice::query()
             ->coveringNote((int) $deliveryNote->id)
@@ -500,22 +547,54 @@ class AccountingInvoiceController extends Controller
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, DeliveryNote>
+     * @return \Illuminate\Support\Collection<int, int>
      */
-    private function selectedNotesForInvoice(Request $request, DeliveryNote $primary): \Illuminate\Support\Collection
+    private function requestedNoteIds(Request $request): \Illuminate\Support\Collection
     {
-        $ids = collect($request->input('delivery_note_ids', $request->query('notes', [])))
+        $raw = $request->input('delivery_note_ids');
+        if ($raw === null || $raw === '') {
+            $raw = $request->query('notes', []);
+        }
+
+        if (is_string($raw)) {
+            $raw = preg_split('/[,\s]+/', $raw, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        }
+
+        if (! is_array($raw) && ! $raw instanceof \Illuminate\Support\Collection) {
+            $raw = [$raw];
+        }
+
+        return collect($raw)
+            ->flatten()
             ->map(fn ($id) => (int) $id)
             ->filter()
             ->unique()
             ->values();
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, DeliveryNote>
+     */
+    private function selectedNotesForInvoice(Request $request, DeliveryNote $primary): \Illuminate\Support\Collection
+    {
+        $ids = $this->requestedNoteIds($request);
+        if ($ids->isEmpty()) {
+            $ids = collect(session('invoice_note_ids', []))
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values();
+        }
 
         $ids->prepend((int) $primary->id);
         $ids = $ids->unique()->values();
 
         $notes = DeliveryNote::query()
             ->whereIn('id', $ids->all())
-            ->with(['deliveries.preregistration', 'agency.parent.parent.parent'])
+            ->with([
+                'deliveries.preregistration.agency.parent.parent.parent',
+                'agency.parent.parent.parent',
+            ])
             ->get()
             ->sortBy(fn (DeliveryNote $n) => $ids->search((int) $n->id))
             ->values();
@@ -533,14 +612,24 @@ class AccountingInvoiceController extends Controller
      */
     private function compatibleUninvoicedNotes(DeliveryNote $primary, $alreadySelected)
     {
+        $primaryBillTos = $primary->packageBillToAgencies();
+        if ($primaryBillTos->count() !== 1) {
+            return collect();
+        }
+
+        $billToId = (int) $primaryBillTos->first()->id;
         $family = $primary->invoiceFamilyIds();
         if ($family === []) {
-            $family = array_filter([(int) $primary->agency_id]);
+            $family = array_filter([(int) $primary->agency_id, $billToId]);
         }
         $selectedIds = $alreadySelected->pluck('id')->map(fn ($id) => (int) $id)->all();
 
         return DeliveryNote::query()
-            ->with(['agency', 'deliveries.preregistration:id,agency_id'])
+            ->with([
+                'agency.parent.parent.parent',
+                'deliveries.preregistration:id,agency_id',
+                'deliveries.preregistration.agency.parent.parent.parent',
+            ])
             ->withCount('deliveries')
             ->whereHas('deliveries')
             ->withoutActiveInvoice()
@@ -551,6 +640,12 @@ class AccountingInvoiceController extends Controller
             ->whereNotIn('id', $selectedIds)
             ->orderByDesc('id')
             ->limit(80)
-            ->get();
+            ->get()
+            ->filter(function (DeliveryNote $note) use ($billToId) {
+                $billTos = $note->packageBillToAgencies();
+
+                return $billTos->count() === 1 && (int) $billTos->first()->id === $billToId;
+            })
+            ->values();
     }
 }

@@ -236,7 +236,7 @@ class AccountingInvoiceFromDeliveryNoteTest extends TestCase
             ->assertSee('Nueva factura PrimeTrack')
             ->assertSee('SLO-9501')
             ->assertSee('invoice-notes-q', false)
-            ->assertSee('Buscar por hoja, agencia o código');
+            ->assertSee('Buscar por hoja, cliente o código');
 
         $this->actingAs($admin)
             ->post(route('accounting.invoices.start-create'), [
@@ -716,11 +716,17 @@ class AccountingInvoiceFromDeliveryNoteTest extends TestCase
         $noteParent = $this->seedSimpleNote($parent, 'SLO-9601', '960101', 10);
         $noteGrand = $this->seedSimpleNote($grand, 'SLO-9602', '960102', 8);
 
-        $this->actingAs($admin)
+        $start = $this->actingAs($admin)
             ->post(route('accounting.invoices.start-create'), [
                 'delivery_note_ids' => [$noteParent->id, $noteGrand->id],
-            ])
-            ->assertRedirect();
+            ]);
+        $start->assertRedirect();
+        $this->assertStringNotContainsString('notes[', (string) $start->headers->get('Location'));
+        $this->actingAs($admin)
+            ->get($start->headers->get('Location'))
+            ->assertOk()
+            ->assertSee('SLO-9601')
+            ->assertSee('SLO-9602');
 
         $this->actingAs($admin)
             ->post(route('accounting.invoices.store-from-note', $noteParent), [
@@ -1005,9 +1011,245 @@ class AccountingInvoiceFromDeliveryNoteTest extends TestCase
                 'delivery_note_ids' => [$noteOne->id, $noteTwo->id],
             ])
             ->assertRedirect()
-            ->assertSessionHas('error');
+            ->assertSessionHas('error')
+            ->assertSessionHas('error', fn ($message) => str_contains((string) $message, 'Agencia Uno') && str_contains((string) $message, 'Agencia Dos'));
 
         $this->assertSame(0, AccountingInvoice::count());
+    }
+
+    public function test_slo_owned_note_does_not_offer_other_slo_client_notes(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        [$slo, $clientA, $clientB] = $this->seedSloWithClients();
+
+        $sloNote = $this->seedSimpleNote($slo, 'SLO-1223', '122301', 4);
+        $clientNote = $this->seedSimpleNoteOnSheet($slo, $clientA, 'SLO-1222', '122201', 5);
+        $otherClientNote = $this->seedSimpleNoteOnSheet($slo, $clientB, 'SLO-1254', '125401', 3);
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.create-from-note', $sloNote))
+            ->assertOk()
+            ->assertSee('SkyLink One')
+            ->assertDontSee('SLO-1222')
+            ->assertDontSee('SLO-1254');
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.create-from-note', $clientNote))
+            ->assertOk()
+            ->assertSee('Cliente A Factura')
+            ->assertDontSee('SLO-1223')
+            ->assertDontSee('SLO-1254');
+    }
+
+    public function test_cannot_combine_slo_note_with_another_slo_client_note(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        [$slo, $clientA] = $this->seedSloWithClients();
+
+        $sloNote = $this->seedSimpleNote($slo, 'SLO-1223', '122301', 4);
+        $clientNote = $this->seedSimpleNoteOnSheet($slo, $clientA, 'SLO-1222', '122201', 5);
+
+        $this->actingAs($admin)
+            ->post(route('accounting.invoices.store-from-note', $sloNote), [
+                'rate_air' => 2,
+                'exchange_rate' => 36.5,
+                'delivery_note_ids' => [$sloNote->id, $clientNote->id],
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('error', fn ($message) => str_contains((string) $message, 'Cliente A Factura')
+                && str_contains((string) $message, 'Facture cada cliente por separado'));
+
+        $this->assertSame(0, AccountingInvoice::count());
+    }
+
+    public function test_mixed_slo_clients_on_one_note_cannot_be_invoiced(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        [$slo, $clientA, $clientB] = $this->seedSloWithClients();
+
+        $note = DeliveryNote::create([
+            'code' => 'SLO-1222',
+            'agency_id' => $slo->id,
+        ]);
+        $this->addPackageToNote($note, $clientA, '122201', 5);
+        $this->addPackageToNote($note, $clientB, '122202', 3);
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.create-from-note', $note))
+            ->assertRedirect(route('accounting.invoices.create'))
+            ->assertSessionHas('error', fn ($message) => str_contains((string) $message, 'Cliente A Factura')
+                && str_contains((string) $message, 'Cliente B Factura'));
+
+        $this->actingAs($admin)
+            ->from(route('accounting.invoices.create'))
+            ->post(route('accounting.invoices.start-create'), [
+                'delivery_note_ids' => [$note->id],
+            ])
+            ->assertRedirect(route('accounting.invoices.create'))
+            ->assertSessionHas('error', fn ($message) => str_contains((string) $message, 'mezcla clientes'));
+
+        $this->assertSame(0, AccountingInvoice::count());
+    }
+
+    public function test_can_invoice_multiple_notes_of_the_same_slo_client(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        [$slo, $clientA] = $this->seedSloWithClients();
+
+        $noteOne = $this->seedSimpleNoteOnSheet($slo, $clientA, 'SLO-1223', '122301', 4);
+        $noteTwo = $this->seedSimpleNoteOnSheet($slo, $clientA, 'SLO-1224', '122401', 6);
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.create'))
+            ->assertOk()
+            ->assertSee('Cliente A Factura')
+            ->assertSee('SLO-1223')
+            ->assertSee('SLO-1224');
+
+        $start = $this->actingAs($admin)
+            ->post(route('accounting.invoices.start-create'), [
+                'delivery_note_ids' => [$noteOne->id, $noteTwo->id],
+            ]);
+        $start->assertRedirect();
+        $location = (string) $start->headers->get('Location');
+        $this->assertStringContainsString((string) $noteOne->id, $location);
+        $this->assertStringContainsString((string) $noteTwo->id, $location);
+        $this->assertStringNotContainsString('notes[', $location);
+
+        $this->actingAs($admin)
+            ->get($location)
+            ->assertOk()
+            ->assertSee('Cliente A Factura')
+            ->assertSee('SLO-1223')
+            ->assertSee('SLO-1224')
+            ->assertSee('2 hojas')
+            ->assertSee('Vista previa por hoja')
+            ->assertSee('10.00');
+
+        $this->actingAs($admin)
+            ->post(route('accounting.invoices.store-from-note', $noteOne), [
+                'rate_air' => 2,
+                'exchange_rate' => 36.5,
+                'delivery_note_ids' => [$noteOne->id, $noteTwo->id],
+            ])
+            ->assertRedirect();
+
+        $invoice = AccountingInvoice::first();
+        $this->assertNotNull($invoice);
+        $this->assertSame($clientA->id, (int) $invoice->agency_id);
+        $this->assertEquals(20.0, (float) $invoice->total_usd);
+        $this->assertEqualsCanonicalizing(
+            [$noteOne->id, $noteTwo->id],
+            $invoice->deliveryNotes()->pluck('delivery_notes.id')->all()
+        );
+    }
+
+    public function test_preview_combines_air_and_sea_notes_and_asks_for_both_rates(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        [$slo, $clientA] = $this->seedSloWithClients();
+
+        $airNote = $this->seedSimpleNoteOnSheet($slo, $clientA, 'SLO-1301', '130101', 4, 'AIR');
+        $seaNote = $this->seedSimpleNoteOnSheet($slo, $clientA, 'SLO-1302', '130201', 9, 'SEA');
+
+        $start = $this->actingAs($admin)
+            ->post(route('accounting.invoices.start-create'), [
+                'delivery_note_ids' => [$airNote->id, $seaNote->id],
+            ]);
+        $start->assertRedirect();
+
+        $this->actingAs($admin)
+            ->get($start->headers->get('Location'))
+            ->assertOk()
+            ->assertSee('SLO-1301')
+            ->assertSee('SLO-1302')
+            ->assertSee('Flete Aereo')
+            ->assertSee('Flete Maritimo')
+            ->assertSee('Tarifa aéreo')
+            ->assertSee('Tarifa marítimo')
+            ->assertSee('name="rate_air"', false)
+            ->assertSee('name="rate_sea"', false)
+            ->assertSee('No hay tarifa aérea vigente')
+            ->assertSee('No hay tarifa marítima vigente')
+            ->assertSee('4.00')
+            ->assertSee('9.00');
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.create-from-note', [
+                'deliveryNote' => $airNote,
+                'notes' => $airNote->id.','.$seaNote->id,
+            ]))
+            ->assertOk()
+            ->assertSee('2 hojas')
+            ->assertSee('Flete Maritimo');
+    }
+
+    /**
+     * @return array{0: Agency, 1: Agency, 2: Agency}
+     */
+    private function seedSloWithClients(): array
+    {
+        $slo = Agency::query()->where('code', '0001')->first()
+            ?? Agency::query()->where('name', 'SkyLink One')->first()
+            ?? Agency::create([
+                'name' => 'SkyLink One',
+                'code' => '0001',
+                'is_active' => true,
+                'is_main' => true,
+                'account_type' => Agency::TYPE_ROOT,
+            ]);
+        $clientA = Agency::create([
+            'name' => 'Cliente A Factura',
+            'code' => '0881',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_DIRECT_CLIENT,
+            'parent_agency_id' => $slo->id,
+        ]);
+        $clientB = Agency::create([
+            'name' => 'Cliente B Factura',
+            'code' => '0882',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_DIRECT_CLIENT,
+            'parent_agency_id' => $slo->id,
+        ]);
+
+        return [$slo, $clientA, $clientB];
+    }
+
+    private function seedSimpleNoteOnSheet(Agency $sheet, Agency $packageAgency, string $code, string $warehouse, float $lbs, string $service = 'AIR'): DeliveryNote
+    {
+        $note = DeliveryNote::create([
+            'code' => $code,
+            'agency_id' => $sheet->id,
+        ]);
+        $this->addPackageToNote($note, $packageAgency, $warehouse, $lbs, $service);
+
+        return $note->fresh(['deliveries.preregistration.agency.parent.parent.parent', 'agency.parent.parent.parent']);
+    }
+
+    private function addPackageToNote(DeliveryNote $note, Agency $agency, string $warehouse, float $lbs, string $service = 'AIR'): void
+    {
+        $pkg = Preregistration::create([
+            'intake_type' => 'COURIER',
+            'tracking_external' => 'TRK-'.$warehouse,
+            'warehouse_code' => $warehouse,
+            'label_name' => 'Cliente '.$warehouse,
+            'service_type' => $service,
+            'intake_weight_lbs' => $lbs,
+            'verified_weight_lbs' => $lbs,
+            'status' => 'DELIVERED',
+            'agency_id' => $agency->id,
+            'ready_at' => now()->subDay(),
+            'delivered_at' => now(),
+        ]);
+        Delivery::create([
+            'delivery_note_id' => $note->id,
+            'preregistration_id' => $pkg->id,
+            'delivered_at' => now(),
+            'delivered_to' => 'Retira',
+        ]);
     }
 
     private function seedSimpleNote(Agency $agency, string $code, string $warehouse, float $lbs): DeliveryNote

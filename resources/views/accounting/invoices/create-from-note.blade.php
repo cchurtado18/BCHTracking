@@ -11,7 +11,11 @@
     $freightLines = collect($preview['lines'])->reject(fn ($l) => $l['service_type'] === 'DELIVERY');
     $selectedNotes = $selectedNotes ?? collect([$deliveryNote]);
     $compatibleNotes = $compatibleNotes ?? collect();
+    $noteSummaries = collect($preview['note_summaries'] ?? []);
     $freightUsd = (float) ($preview['freight_usd'] ?? $preview['total_usd']);
+    $airRate = old('rate_air', $suggestedRates['AIR'] ?? null);
+    $seaRate = old('rate_sea', $suggestedRates['SEA'] ?? null);
+    $cftRate = old('rate_cft', $suggestedRates['CFT'] ?? null);
 @endphp
 <div class="pt-page">
     <x-module-banner
@@ -23,13 +27,9 @@
         back-label="Volver a facturas"
     >
         <x-slot:icon>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125 1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
         </x-slot:icon>
     </x-module-banner>
-
-    @if(session('error'))
-    <div class="pt-alert pt-alert-danger">{{ session('error') }}</div>
-    @endif
 
     <div class="pt-card">
         <div class="pt-card-header pt-table-header">
@@ -43,6 +43,9 @@
 
     <form method="POST" action="{{ route('accounting.invoices.store-from-note', $deliveryNote) }}" id="invoice-issue-form">
         @csrf
+        @foreach($selectedNotes as $note)
+        <input type="hidden" name="delivery_note_ids[]" value="{{ $note->id }}">
+        @endforeach
 
         <div class="pt-card">
             <div class="pt-card-header pt-table-header">
@@ -50,22 +53,28 @@
                 <span class="pt-card-badge">{{ $selectedNotes->count() }} {{ $selectedNotes->count() === 1 ? 'hoja' : 'hojas' }}</span>
             </div>
             <div class="pt-card-body">
+                <p class="pt-muted" style="margin-bottom:0.75rem">Al marcar o desmarcar una hoja se recarga la vista previa con todos los paquetes y servicios.</p>
                 @foreach($selectedNotes as $note)
+                @php $noteBillTo = $note->billingAgency(); @endphp
                 <label class="pt-checkbox-row">
-                    <input type="checkbox" name="delivery_note_ids[]" value="{{ $note->id }}" checked
+                    <input type="checkbox" class="js-invoice-note" value="{{ $note->id }}" checked
                            @if((int) $note->id === (int) $deliveryNote->id) onclick="return false;" @endif>
                     <span class="pt-code">{{ $note->code }}</span>
-                    · {{ $note->agency?->name ?? $agency?->name ?? '—' }}
+                    · {{ $noteBillTo?->name ?? $note->agency?->name ?? $agency?->name ?? '—' }}
+                    @if($note->hasMixedBillTos())
+                    <span class="pt-muted">· cuentas mixtas</span>
+                    @endif
                     · {{ $note->deliveries->count() }} {{ $note->deliveries->count() === 1 ? 'paquete' : 'paquetes' }}
                 </label>
                 @endforeach
                 @if($compatibleNotes->isNotEmpty())
-                <p class="pt-muted" style="margin-top:0.75rem">Otras hojas de la misma red:</p>
+                <p class="pt-muted" style="margin-top:0.75rem">Otras hojas del mismo cliente:</p>
                 @foreach($compatibleNotes as $note)
+                @php $noteBillTo = $note->billingAgency(); @endphp
                 <label class="pt-checkbox-row">
-                    <input type="checkbox" name="delivery_note_ids[]" value="{{ $note->id }}" @checked(collect(old('delivery_note_ids', []))->contains((string) $note->id))>
+                    <input type="checkbox" class="js-invoice-note" value="{{ $note->id }}">
                     <span class="pt-code">{{ $note->code }}</span>
-                    · {{ $note->agency?->name ?? '—' }}
+                    · {{ $noteBillTo?->name ?? $note->agency?->name ?? '—' }}
                     · {{ $note->deliveries_count }} {{ $note->deliveries_count === 1 ? 'paquete' : 'paquetes' }}
                 </label>
                 @endforeach
@@ -75,7 +84,42 @@
 
         <div class="pt-card">
             <div class="pt-card-header pt-table-header">
-                <h2 class="pt-card-title">Vista previa por servicio</h2>
+                <h2 class="pt-card-title">Vista previa por hoja</h2>
+                <span class="pt-card-badge">{{ $selectedNotes->count() }} {{ $selectedNotes->count() === 1 ? 'hoja' : 'hojas' }}</span>
+            </div>
+            <div class="pt-table-wrap">
+                <table class="pt-table">
+                    <thead>
+                        <tr>
+                            <th>Hoja</th>
+                            <th>Servicio</th>
+                            <th>Paquetes</th>
+                            <th>Cantidad</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($noteSummaries as $summary)
+                            @foreach($summary['lines'] as $line)
+                            <tr>
+                                <td><span class="pt-code">{{ $summary['code'] }}</span></td>
+                                <td>{{ $line['description'] }}</td>
+                                <td class="pt-num">{{ $line['package_count'] }}</td>
+                                <td class="pt-num">{{ number_format($line['quantity_lbs'], 2) }} {{ $line['unit'] }}</td>
+                            </tr>
+                            @endforeach
+                        @empty
+                            <tr>
+                                <td colspan="4" class="pt-empty">No hay paquetes en las hojas seleccionadas.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="pt-card">
+            <div class="pt-card-header pt-table-header">
+                <h2 class="pt-card-title">Totales por servicio</h2>
                 <span class="pt-card-badge">{{ $freightLines->count() }} {{ $freightLines->count() === 1 ? 'servicio' : 'servicios' }}</span>
             </div>
             <div class="pt-table-wrap">
@@ -94,7 +138,13 @@
                             <td>{{ $line['description'] }}</td>
                             <td class="pt-num">{{ $line['package_count'] }}</td>
                             <td class="pt-num">{{ number_format($line['quantity_lbs'], 2) }} {{ $line['unit'] ?? \App\Support\ServiceType::unit($line['service_type']) }}</td>
-                            <td class="pt-num">${{ number_format($line['rate_per_lb'], 4) }} / {{ $line['unit'] ?? \App\Support\ServiceType::unit($line['service_type']) }}</td>
+                            <td class="pt-num">
+                                @if(($suggestedRates[$line['service_type']] ?? null) === null)
+                                <span class="pt-muted">Sin tarifa vigente</span>
+                                @else
+                                ${{ number_format($line['rate_per_lb'], 4) }} / {{ $line['unit'] ?? \App\Support\ServiceType::unit($line['service_type']) }}
+                                @endif
+                            </td>
                         </tr>
                         @endforeach
                     </tbody>
@@ -110,23 +160,35 @@
                 <div class="pt-fields-grid">
                     @if($hasAir)
                     <div class="pt-field">
-                        <label class="pt-label" for="rate_air">Tarifa AIR (USD/lb) *</label>
+                        <label class="pt-label" for="rate_air">Tarifa aéreo (USD/lb) *</label>
                         <input type="number" step="0.0001" min="0" name="rate_air" id="rate_air" required
-                               value="{{ old('rate_air', $suggestedRates['AIR'] ?? 0) }}" class="pt-input">
+                               value="{{ $airRate === null || $airRate === '' ? '' : $airRate }}" class="pt-input"
+                               placeholder="Indique la tarifa aérea">
+                        @if(($suggestedRates['AIR'] ?? null) === null)
+                        <p class="pt-muted">No hay tarifa aérea vigente. Indique el precio para las hojas con ese servicio.</p>
+                        @endif
                     </div>
                     @endif
                     @if($hasSea)
                     <div class="pt-field">
-                        <label class="pt-label" for="rate_sea">Tarifa SEA (USD/lb) *</label>
+                        <label class="pt-label" for="rate_sea">Tarifa marítimo (USD/lb) *</label>
                         <input type="number" step="0.0001" min="0" name="rate_sea" id="rate_sea" required
-                               value="{{ old('rate_sea', $suggestedRates['SEA'] ?? 0) }}" class="pt-input">
+                               value="{{ $seaRate === null || $seaRate === '' ? '' : $seaRate }}" class="pt-input"
+                               placeholder="Indique la tarifa marítima">
+                        @if(($suggestedRates['SEA'] ?? null) === null)
+                        <p class="pt-muted">No hay tarifa marítima vigente. Indique el precio para las hojas con ese servicio.</p>
+                        @endif
                     </div>
                     @endif
                     @if($hasCft)
                     <div class="pt-field">
                         <label class="pt-label" for="rate_cft">Tarifa pie cúbico (USD/pie³) *</label>
                         <input type="number" step="0.0001" min="0" name="rate_cft" id="rate_cft" required
-                               value="{{ old('rate_cft', $suggestedRates['CFT'] ?? 0) }}" class="pt-input">
+                               value="{{ $cftRate === null || $cftRate === '' ? '' : $cftRate }}" class="pt-input"
+                               placeholder="Indique la tarifa de pie cúbico">
+                        @if(($suggestedRates['CFT'] ?? null) === null)
+                        <p class="pt-muted">No hay tarifa de pie cúbico vigente. Indique el precio para las hojas con ese servicio.</p>
+                        @endif
                     </div>
                     @endif
                     <div class="pt-field">
@@ -141,7 +203,7 @@
                     </div>
                 </div>
                 <p class="pt-summary-line" id="invoice-total-preview">
-                    Flete ${{ number_format($freightUsd, 2) }}
+                    Flete $<span id="invoice-freight-preview">{{ number_format($freightUsd, 2) }}</span>
                     + Delivery $<span id="invoice-delivery-preview">{{ number_format((float) old('delivery_fee', $deliveryFee ?? 0), 2) }}</span>
                     = <strong>Total $<span id="invoice-grand-preview">{{ number_format($freightUsd + (float) old('delivery_fee', $deliveryFee ?? 0), 2) }}</span></strong>
                 </p>
@@ -172,20 +234,61 @@
 @include('partials.primetrack-module-styles')
 <script>
 (function () {
+    var primaryId = {{ json_encode((string) $deliveryNote->id) }};
+    var previewUrl = {{ json_encode(route('accounting.invoices.create-from-note', $deliveryNote)) }};
+    var freightLines = {!! json_encode($freightLines->map(fn ($l) => [
+        'service' => $l['service_type'],
+        'qty' => (float) $l['quantity_lbs'],
+    ])->values()) !!};
     var fee = document.getElementById('delivery_fee');
-    var freight = {{ json_encode($freightUsd) }};
+    var freightEl = document.getElementById('invoice-freight-preview');
     var deliveryEl = document.getElementById('invoice-delivery-preview');
     var grandEl = document.getElementById('invoice-grand-preview');
-    if (!fee || !deliveryEl || !grandEl) return;
+    var rateInputs = {
+        AIR: document.getElementById('rate_air'),
+        SEA: document.getElementById('rate_sea'),
+        CFT: document.getElementById('rate_cft')
+    };
+
     function fmt(n) { return (Math.round(n * 100) / 100).toFixed(2); }
-    function refresh() {
-        var d = parseFloat(fee.value);
-        if (isNaN(d) || d < 0) d = 0;
-        deliveryEl.textContent = fmt(d);
-        grandEl.textContent = fmt(freight + d);
+    function rateFor(service) {
+        var el = rateInputs[service];
+        if (!el) return 0;
+        var n = parseFloat(el.value);
+        return isNaN(n) || n < 0 ? 0 : n;
     }
-    fee.addEventListener('input', refresh);
-    refresh();
+    function freightTotal() {
+        return freightLines.reduce(function (sum, line) {
+            return sum + (line.qty * rateFor(line.service));
+        }, 0);
+    }
+    function refreshTotal() {
+        if (!deliveryEl || !grandEl || !freightEl) return;
+        var d = fee ? parseFloat(fee.value) : 0;
+        if (isNaN(d) || d < 0) d = 0;
+        var f = freightTotal();
+        freightEl.textContent = fmt(f);
+        deliveryEl.textContent = fmt(d);
+        grandEl.textContent = fmt(f + d);
+    }
+
+    document.querySelectorAll('.js-invoice-note').forEach(function (box) {
+        box.addEventListener('change', function () {
+            var ids = [primaryId];
+            document.querySelectorAll('.js-invoice-note:checked').forEach(function (c) {
+                if (ids.indexOf(c.value) === -1) {
+                    ids.push(c.value);
+                }
+            });
+            window.location = previewUrl + (ids.length ? ('?notes=' + encodeURIComponent(ids.join(','))) : '');
+        });
+    });
+
+    if (fee) fee.addEventListener('input', refreshTotal);
+    Object.keys(rateInputs).forEach(function (key) {
+        if (rateInputs[key]) rateInputs[key].addEventListener('input', refreshTotal);
+    });
+    refreshTotal();
 })();
 </script>
 @endsection

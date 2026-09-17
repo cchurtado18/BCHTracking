@@ -8,7 +8,7 @@
         section="Contabilidad"
         current="Nueva factura"
         title="Nueva factura PrimeTrack"
-        subtitle="Elija una o más hojas de la misma red de agencia. Solo aparecen hojas con paquetes y sin factura activa."
+        subtitle="Elija una o más hojas del mismo cliente a facturar. Solo aparecen hojas con paquetes y sin factura activa."
         back-href="{{ route('accounting.invoices.index') }}"
         back-label="Volver a facturas"
     >
@@ -17,9 +17,6 @@
         </x-slot:icon>
     </x-module-banner>
 
-    @if(session('error'))
-    <div class="pt-alert pt-alert-danger">{{ session('error') }}</div>
-    @endif
     @if($errors->any())
     <div class="pt-alert pt-alert-danger">{{ $errors->first() }}</div>
     @endif
@@ -43,31 +40,36 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>
                     </span>
                     <input type="search" id="invoice-notes-q" class="pt-input" autocomplete="off" autofocus
-                           placeholder="Buscar por hoja, agencia o código (ej. SLO-1071, 1071 o Caballo)">
+                           placeholder="Buscar por hoja, cliente o código (ej. SLO-1071, 1071 o Caballo)">
                 </label>
-                <p class="pt-muted" style="margin-top:0.75rem">Puede marcar varias hojas si son de la misma agencia o de sus subagencias.</p>
+                <p class="pt-muted" style="margin-top:0.75rem">Puede marcar varias hojas del mismo cliente. Las que dicen «cuentas mixtas» hay que separarlas en Salidas antes de facturar.</p>
                 <div class="pt-table-wrap">
                     <table class="pt-table" id="invoice-notes-table">
                         <thead>
                             <tr>
                                 <th style="width:2.5rem"></th>
                                 <th>Hoja</th>
-                                <th>Agencia</th>
+                                <th>Cliente a facturar</th>
                                 <th class="pt-num">Paquetes</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($notes as $note)
                             @php
-                                $family = $note->invoiceFamilyKey();
+                                $billTo = $note->billingAgency();
+                                $mixed = $note->hasMixedBillTos();
+                                $family = $mixed ? 'mixed:'.$note->id : 'billto:'.((int) ($billTo?->id ?? 0));
                                 $oldIds = collect(old('delivery_note_ids', old('delivery_note_id') ? [old('delivery_note_id')] : []))->map(fn ($id) => (string) $id);
                                 $codeDigits = preg_replace('/^(SLO|BCH)-?/i', '', (string) $note->code);
                                 $searchBits = strtolower(trim(implode(' ', array_filter([
                                     $note->code,
                                     $codeDigits,
                                     ltrim((string) $codeDigits, '0'),
+                                    $billTo?->name,
+                                    $billTo?->code,
                                     $note->agency?->name,
                                     $note->agency?->code,
+                                    $mixed ? 'mixtas' : null,
                                 ]))));
                             @endphp
                             <tr data-search="{{ $searchBits }}">
@@ -75,10 +77,17 @@
                                     <input type="checkbox" name="delivery_note_ids[]" value="{{ $note->id }}"
                                            class="invoice-note-check"
                                            data-family="{{ $family }}"
-                                           @checked($oldIds->contains((string) $note->id))>
+                                           @disabled($mixed)
+                                           title="{{ $mixed ? 'Esta hoja mezcla clientes. Sepárela en Salidas antes de facturar.' : '' }}"
+                                           @checked($oldIds->contains((string) $note->id) && ! $mixed)>
                                 </td>
                                 <td><span class="pt-code">{{ $note->code }}</span></td>
-                                <td>{{ $note->agency?->name ?? 'Sin agencia' }}@if($note->agency?->code) <span class="pt-muted">· {{ $note->agency->code }}</span>@endif</td>
+                                <td>
+                                    {{ $billTo?->name ?? 'Sin agencia' }}@if($billTo?->code) <span class="pt-muted">· {{ $billTo->code }}</span>@endif
+                                    @if($mixed)
+                                    <span class="pt-muted"> · cuentas mixtas</span>
+                                    @endif
+                                </td>
                                 <td class="pt-num">{{ $note->deliveries_count }}</td>
                             </tr>
                             @endforeach
@@ -171,11 +180,12 @@
         var visible = 0;
 
         checks.forEach(function (c) {
+            var mixed = (c.getAttribute('data-family') || '').indexOf('mixed:') === 0;
             var same = !family || c.getAttribute('data-family') === family;
             if (!same && c.checked) {
                 c.checked = false;
             }
-            c.disabled = !!family && !same;
+            c.disabled = mixed || (!!family && !same);
             var row = c.closest('tr');
             if (!row) {
                 return;
