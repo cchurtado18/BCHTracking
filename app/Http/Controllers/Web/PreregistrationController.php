@@ -821,6 +821,28 @@ class PreregistrationController extends Controller
             ->with('success', 'Orden de las fotos actualizado.');
     }
 
+    public function destroyPhoto(string $id, PreregistrationPhoto $photo)
+    {
+        $preregistration = Preregistration::findOrFail($id);
+        if ((int) $photo->preregistration_id !== (int) $preregistration->id) {
+            abort(404);
+        }
+
+        if ($preregistration->status !== 'PHOTO_PENDING') {
+            return redirect()->route('preregistrations.show', $preregistration->id)
+                ->with('error', 'Solo se pueden eliminar fotos de preregistros pendientes por completar.');
+        }
+
+        $this->photoService->deletePhoto($photo);
+
+        $redirect = url()->previous();
+        if (! is_string($redirect) || $redirect === '' || $redirect === url()->current()) {
+            $redirect = route('preregistrations.show', $preregistration->id);
+        }
+
+        return redirect()->to($redirect)->with('success', 'Foto eliminada.');
+    }
+
     public function label(Request $request, string $id)
     {
         $preregistration = Preregistration::with(['agency', 'agency.parent'])->findOrFail($id);

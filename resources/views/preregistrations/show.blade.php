@@ -276,6 +276,13 @@
                             <a href="{{ $photo->url }}" target="_blank" rel="noopener">
                                 <img src="{{ $photo->url }}" alt="Foto del paquete" class="prd-photo-img">
                             </a>
+                            @if($preregistration->status === 'PHOTO_PENDING')
+                            <form method="POST" action="{{ route('preregistrations.photos.destroy', ['id' => $preregistration->id, 'photo' => $photo->id]) }}" class="prd-photo-delete-form" onsubmit="return confirm('¿Eliminar esta foto?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="prd-photo-delete-btn" title="Eliminar foto">Eliminar</button>
+                            </form>
+                            @endif
                         </div>
                         @endforeach
                     </div>
@@ -668,10 +675,18 @@
 .prd-help { margin: 0 0 0.65rem; color: #64748b; font-size: 0.8125rem; line-height: 1.4; }
 .prd-photo-counter { margin: 0.75rem 0 0; text-align: center; color: #94a3b8; font-size: 0.75rem; }
 .prd-photo-grid { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
-.prd-photo-item { border: 1px solid #e2e8f0; border-radius: 0.7rem; overflow: hidden; background: #fff; }
+.prd-photo-item { position: relative; border: 1px solid #e2e8f0; border-radius: 0.7rem; overflow: hidden; background: #fff; }
 .prd-photo-item a { display: block; line-height: 0; }
 .prd-photo-img { width: 100%; height: 170px; object-fit: cover; display: block; }
 .prd-photo-item-actions { padding: 0.45rem; display: flex; justify-content: center; }
+.prd-photo-delete-form { position: absolute; top: 0.45rem; right: 0.45rem; margin: 0; }
+.prd-photo-delete-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 0.28rem 0.55rem; border-radius: 0.4rem; border: 1px solid #fecaca;
+    background: rgba(255,255,255,0.94); color: #991b1b; font-size: 0.68rem; font-weight: 800;
+    letter-spacing: 0.03em; text-transform: uppercase; cursor: pointer;
+}
+.prd-photo-delete-btn:hover { background: #fef2f2; }
 .prd-photo-empty {
     border: 1.5px dashed #cbd5e1; border-radius: 0.7rem; padding: 1.5rem 1rem;
     text-align: center; color: #94a3b8; font-size: 0.875rem; font-weight: 600;

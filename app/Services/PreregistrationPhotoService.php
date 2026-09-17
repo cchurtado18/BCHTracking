@@ -43,6 +43,19 @@ class PreregistrationPhotoService
 
         [$path, $mime, $sizeBytes] = $this->storeOptimized($file, $directory);
 
+        $newHash = $this->storedFileHash($path);
+        if ($newHash) {
+            foreach ($preregistration->photos()->orderBy('id')->get() as $existing) {
+                if ($this->storedFileHash($existing->path) === $newHash) {
+                    if (Storage::disk('public')->exists($path)) {
+                        Storage::disk('public')->delete($path);
+                    }
+
+                    return $existing;
+                }
+            }
+        }
+
         $attrs = [
             'preregistration_id' => $preregistration->id,
             'path' => $path,
@@ -55,6 +68,96 @@ class PreregistrationPhotoService
         }
 
         return PreregistrationPhoto::create($attrs);
+    }
+
+    public function deletePhoto(PreregistrationPhoto $photo): void
+    {
+        $path = (string) $photo->path;
+        $photo->delete();
+
+        if ($path === '') {
+            return;
+        }
+
+        $stillUsed = PreregistrationPhoto::query()->where('path', $path)->exists();
+        if (! $stillUsed && Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
+    }
+
+    /**
+     * Deja una sola foto por contenido idéntico en cada preregistro.
+     *
+     * @return array{packages: int, deleted: int}
+     */
+    public function removeDuplicatePhotos(?int $preregistrationId = null, bool $dryRun = false): array
+    {
+        $query = PreregistrationPhoto::query()
+            ->select('preregistration_photos.preregistration_id')
+            ->join('preregistrations', 'preregistrations.id', '=', 'preregistration_photos.preregistration_id')
+            ->where('preregistrations.status', 'PHOTO_PENDING')
+            ->groupBy('preregistration_photos.preregistration_id')
+            ->havingRaw('COUNT(*) > 1');
+        if ($preregistrationId) {
+            $query->where('preregistration_photos.preregistration_id', $preregistrationId);
+        }
+
+        $packageIds = $query->pluck('preregistration_photos.preregistration_id');
+        $deleted = 0;
+        $packages = 0;
+
+        foreach ($packageIds as $id) {
+            $removed = $this->removeDuplicatesForPreregistration((int) $id, $dryRun);
+            if ($removed > 0) {
+                $packages++;
+                $deleted += $removed;
+            }
+        }
+
+        return ['packages' => $packages, 'deleted' => $deleted];
+    }
+
+    public function removeDuplicatesForPreregistration(int $preregistrationId, bool $dryRun = false): int
+    {
+        $photos = PreregistrationPhoto::query()
+            ->where('preregistration_id', $preregistrationId)
+            ->orderBy('id')
+            ->get();
+        if ($photos->count() < 2) {
+            return 0;
+        }
+
+        $seen = [];
+        $deleted = 0;
+        foreach ($photos as $photo) {
+            $hash = $this->storedFileHash($photo->path);
+            if ($hash === null) {
+                continue;
+            }
+            if (isset($seen[$hash])) {
+                if (! $dryRun) {
+                    $this->deletePhoto($photo);
+                }
+                $deleted++;
+
+                continue;
+            }
+            $seen[$hash] = true;
+        }
+
+        return $deleted;
+    }
+
+    private function storedFileHash(?string $path): ?string
+    {
+        if (! is_string($path) || $path === '' || ! Storage::disk('public')->exists($path)) {
+            return null;
+        }
+
+        $absolute = Storage::disk('public')->path($path);
+        $hash = @md5_file($absolute);
+
+        return is_string($hash) && $hash !== '' ? $hash : null;
     }
 
     /**

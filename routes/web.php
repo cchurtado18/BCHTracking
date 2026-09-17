@@ -155,6 +155,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('preregistrations-dropoff-labels', [PreregistrationController::class, 'dropoffLabels'])->name('preregistrations.dropoff-labels');
         Route::post('preregistrations/{id}/photos', [PreregistrationController::class, 'uploadPhoto'])->name('preregistrations.upload-photo');
         Route::post('preregistrations/{id}/photos/{photo}/move', [PreregistrationController::class, 'movePhoto'])->name('preregistrations.photos.move');
+        Route::delete('preregistrations/{id}/photos/{photo}', [PreregistrationController::class, 'destroyPhoto'])->name('preregistrations.photos.destroy');
 
         Route::post('preregistrations/{preregistration}/create-single-consolidation', [ConsolidationController::class, 'createSingleFromPreregistration'])->name('preregistrations.create-single-consolidation');
         Route::post('preregistrations/{preregistration}/quick-receipt', [ReceiptNoteController::class, 'quickFromPreregistration'])->name('preregistrations.quick-receipt');
