@@ -17,6 +17,13 @@
         </x-slot:icon>
         <x-slot:actions>
             <a href="{{ route('preregistrations.index') }}" class="mb-btn mb-btn-secondary">Lista de preregistros</a>
+            @if($preregistration->status === 'PHOTO_PENDING')
+            <form action="{{ route('preregistrations.destroy', $preregistration->id) }}" method="POST" onsubmit="return confirm('¿Eliminar este preregistro y todas sus fotos? Esta acción no se puede deshacer.');">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="mb-btn mb-btn-danger">Eliminar preregistro</button>
+            </form>
+            @endif
         </x-slot:actions>
     </x-module-banner>
 
@@ -233,6 +240,16 @@
                     <p class="preregs-photo-empty-text">Puedes agregar fotos desde la vista de detalle del preregistro.</p>
                     <a href="{{ route('preregistrations.show', $preregistration->id) }}" class="preregs-btn preregs-btn-secondary preregs-photo-empty-btn">Ir al detalle</a>
                 </div>
+                @if($preregistration->status === 'PHOTO_PENDING')
+                <form method="POST" action="{{ route('preregistrations.destroy', $preregistration->id) }}" class="preregs-photo-delete-form" onsubmit="return confirm('¿Eliminar este preregistro y todas sus fotos? Esta acción no se puede deshacer.');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="preregs-photo-delete-action">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                        Eliminar este preregistro
+                    </button>
+                </form>
+                @endif
                 @else
                 @if($preregistration->photos->count() > 1)
                 <p class="preregs-edit-photo-order-hint">Usa las flechas para cambiar el orden de las fotos.</p>
@@ -241,48 +258,10 @@
                     @php $photoTotal = $preregistration->photos->count(); @endphp
                     @foreach($preregistration->photos as $idx => $photo)
                     <div class="preregs-photo-wrap">
-                        <div class="preregs-photo-frame">
-                            <a href="{{ $photo->url }}" target="_blank" class="preregs-photo-link-block" title="Abrir foto {{ $idx + 1 }} en tamaño completo">
-                                <img src="{{ $photo->url }}" alt="Foto del paquete {{ $idx + 1 }}" class="preregs-photo-img">
-                            </a>
-                            @if($preregistration->status === 'PHOTO_PENDING')
-                            <form method="POST" action="{{ route('preregistrations.photos.destroy', ['id' => $preregistration->id, 'photo' => $photo->id]) }}" class="preregs-photo-overlay-delete" onsubmit="return confirm('¿Eliminar esta foto?');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="preregs-photo-overlay-delete-btn" title="Eliminar foto" aria-label="Eliminar foto {{ $idx + 1 }}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
-                                </button>
-                            </form>
-                            @endif
-                        </div>
-                        @if($preregistration->status === 'PHOTO_PENDING')
+                        <a href="{{ $photo->url }}" target="_blank" class="preregs-photo-link-block" title="Abrir foto {{ $idx + 1 }} en tamaño completo">
+                            <img src="{{ $photo->url }}" alt="Foto del paquete {{ $idx + 1 }}" class="preregs-photo-img">
+                        </a>
                         @if($photoTotal > 1)
-                        <div class="preregs-photo-order-row" role="group" aria-label="Orden de la foto {{ $idx + 1 }}">
-                            <form method="POST" action="{{ route('preregistrations.photos.move', ['id' => $preregistration->id, 'photo' => $photo->id]) }}" class="preregs-photo-order-form">
-                                @csrf
-                                <input type="hidden" name="direction" value="up">
-                                <button type="submit" class="preregs-photo-order-btn" title="Mover arriba" aria-label="Mover foto {{ $idx + 1 }} hacia arriba" @if($idx === 0) disabled @endif>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m18 15-6-6-6 6"/></svg>
-                                </button>
-                            </form>
-                            <form method="POST" action="{{ route('preregistrations.photos.move', ['id' => $preregistration->id, 'photo' => $photo->id]) }}" class="preregs-photo-order-form">
-                                @csrf
-                                <input type="hidden" name="direction" value="down">
-                                <button type="submit" class="preregs-photo-order-btn" title="Mover abajo" aria-label="Mover foto {{ $idx + 1 }} hacia abajo" @if($idx === $photoTotal - 1) disabled @endif>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>
-                                </button>
-                            </form>
-                        </div>
-                        @endif
-                        <form method="POST" action="{{ route('preregistrations.photos.destroy', ['id' => $preregistration->id, 'photo' => $photo->id]) }}" class="preregs-photo-delete-form" onsubmit="return confirm('¿Eliminar esta foto?');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="preregs-photo-delete-action">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
-                                Eliminar foto
-                            </button>
-                        </form>
-                        @elseif($photoTotal > 1)
                         <div class="preregs-photo-order-row" role="group" aria-label="Orden de la foto {{ $idx + 1 }}">
                             <form method="POST" action="{{ route('preregistrations.photos.move', ['id' => $preregistration->id, 'photo' => $photo->id]) }}" class="preregs-photo-order-form">
                                 @csrf
@@ -307,7 +286,15 @@
                     @endforeach
                 </div>
                 @if($preregistration->status === 'PHOTO_PENDING')
-                <p class="preregs-edit-photo-hint">Captura rápida: completa los datos usando la foto como referencia.</p>
+                <form method="POST" action="{{ route('preregistrations.destroy', $preregistration->id) }}" class="preregs-photo-delete-form" onsubmit="return confirm('¿Eliminar este preregistro y todas sus fotos? Esta acción no se puede deshacer.');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="preregs-photo-delete-action">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                        Eliminar este preregistro
+                    </button>
+                </form>
+                <p class="preregs-edit-photo-hint">Captura rápida: completa los datos usando la foto como referencia. Si esta captura fue un error, puedes eliminar el preregistro completo.</p>
                 @endif
                 @endif
             </div>
@@ -744,35 +731,6 @@
     border-radius: 0.75rem;
     padding: 0.4rem;
     background: var(--pt-soft);
-}
-.preregs-photo-frame {
-    position: relative;
-    overflow: hidden;
-    border-radius: 0.55rem;
-}
-.preregs-photo-overlay-delete {
-    position: absolute;
-    top: 0.7rem;
-    right: 0.7rem;
-    margin: 0;
-    z-index: 2;
-}
-.preregs-photo-overlay-delete-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.6rem;
-    height: 2.6rem;
-    padding: 0;
-    border: 2px solid #fff;
-    border-radius: 999px;
-    background: #dc2626;
-    color: #fff;
-    box-shadow: 0 8px 18px rgba(185, 28, 28, 0.42);
-    cursor: pointer;
-}
-.preregs-photo-overlay-delete-btn:hover {
-    background: #b91c1c;
 }
 .preregs-photo-delete-form {
     margin: 0.65rem 0.15rem 0;

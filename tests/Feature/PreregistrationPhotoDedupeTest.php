@@ -35,37 +35,42 @@ class PreregistrationPhotoDedupeTest extends TestCase
         $this->assertSame(1, $package->photos()->count());
     }
 
-    public function test_admin_can_delete_photo_on_pending_package(): void
+    public function test_pending_preregistration_can_be_deleted_with_its_photos(): void
     {
         Storage::fake('public');
         $user = User::factory()->create(['agency_id' => null]);
         $package = $this->createPackage('PHOTO_PENDING');
         $service = app(PreregistrationPhotoService::class);
-        $photo = $service->uploadPhoto($package, UploadedFile::fake()->image('caja.jpg', 240, 240));
+        $first = $service->uploadPhoto($package, UploadedFile::fake()->image('caja-1.jpg', 240, 240));
+        $second = $service->uploadPhoto($package, UploadedFile::fake()->image('caja-2.jpg', 240, 240));
 
         $this->actingAs($user)
-            ->delete(route('preregistrations.photos.destroy', ['id' => $package->id, 'photo' => $photo->id]))
-            ->assertRedirect();
+            ->delete(route('preregistrations.destroy', $package->id))
+            ->assertRedirect(route('preregistrations.index'));
 
-        $this->assertSame(0, $package->photos()->count());
-        Storage::disk('public')->assertMissing($photo->path);
+        $this->assertSoftDeleted('preregistrations', ['id' => $package->id]);
+        $this->assertDatabaseMissing('preregistration_photos', ['preregistration_id' => $package->id]);
+        Storage::disk('public')->assertMissing($first->path);
+        Storage::disk('public')->assertMissing($second->path);
     }
 
-    public function test_cannot_delete_photo_unless_pending_completion(): void
+    public function test_in_process_preregistration_cannot_be_deleted(): void
     {
         Storage::fake('public');
         $user = User::factory()->create(['agency_id' => null]);
-        $package = $this->createPackage('RECEIVED_MIAMI');
+        $package = $this->createPackage('IN_TRANSIT');
         $service = app(PreregistrationPhotoService::class);
         $photo = $service->uploadPhoto($package, UploadedFile::fake()->image('caja.jpg', 240, 240));
 
         $this->actingAs($user)
-            ->from(route('preregistrations.show', $package->id))
-            ->delete(route('preregistrations.photos.destroy', ['id' => $package->id, 'photo' => $photo->id]))
-            ->assertRedirect(route('preregistrations.show', $package->id))
+            ->from(route('preregistrations.index'))
+            ->delete(route('preregistrations.destroy', $package->id))
+            ->assertRedirect(route('preregistrations.index'))
             ->assertSessionHas('error');
 
+        $this->assertDatabaseHas('preregistrations', ['id' => $package->id]);
         $this->assertSame(1, $package->photos()->count());
+        Storage::disk('public')->assertExists($photo->path);
     }
 
     public function test_dedupe_command_only_cleans_pending_packages(): void

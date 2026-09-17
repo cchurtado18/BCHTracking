@@ -88,8 +88,8 @@
                 <a href="{{ route('preregistrations.label', $preregistration->id) }}" target="_blank" class="mb-btn mb-btn-secondary">Etiqueta 4×6</a>
                 @endif
             @endif
-            @if(in_array($preregistration->status, ['RECEIVED_MIAMI', 'CANCELLED']))
-            <form action="{{ route('preregistrations.destroy', $preregistration->id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este preregistro? Esta acción no se puede deshacer.');">
+            @if(in_array($preregistration->status, ['PHOTO_PENDING', 'RECEIVED_MIAMI', 'CANCELLED']))
+            <form action="{{ route('preregistrations.destroy', $preregistration->id) }}" method="POST" onsubmit="return confirm('¿Eliminar este preregistro y todas sus fotos? Esta acción no se puede deshacer.');">
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="mb-btn mb-btn-danger">Eliminar</button>
@@ -276,16 +276,6 @@
                             <a href="{{ $photo->url }}" target="_blank" rel="noopener">
                                 <img src="{{ $photo->url }}" alt="Foto del paquete" class="prd-photo-img">
                             </a>
-                            @if($preregistration->status === 'PHOTO_PENDING')
-                            <form method="POST" action="{{ route('preregistrations.photos.destroy', ['id' => $preregistration->id, 'photo' => $photo->id]) }}" class="prd-photo-delete-form" onsubmit="return confirm('¿Eliminar esta foto?');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="prd-photo-delete-btn" title="Eliminar foto" aria-label="Eliminar foto">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
-                                    Eliminar
-                                </button>
-                            </form>
-                            @endif
                         </div>
                         @endforeach
                     </div>
@@ -682,14 +672,6 @@
 .prd-photo-item a { display: block; line-height: 0; }
 .prd-photo-img { width: 100%; height: 170px; object-fit: cover; display: block; }
 .prd-photo-item-actions { padding: 0.45rem; display: flex; justify-content: center; }
-.prd-photo-delete-form { position: absolute; top: 0.55rem; right: 0.55rem; margin: 0; z-index: 2; }
-.prd-photo-delete-btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;
-    padding: 0.45rem 0.8rem; border-radius: 999px; border: 2px solid #fff;
-    background: #dc2626; color: #fff; font-size: 0.78rem; font-weight: 800;
-    letter-spacing: 0.02em; cursor: pointer; box-shadow: 0 8px 16px rgba(185, 28, 28, 0.4);
-}
-.prd-photo-delete-btn:hover { background: #b91c1c; }
 .prd-photo-empty {
     border: 1.5px dashed #cbd5e1; border-radius: 0.7rem; padding: 1.5rem 1rem;
     text-align: center; color: #94a3b8; font-size: 0.875rem; font-weight: 600;

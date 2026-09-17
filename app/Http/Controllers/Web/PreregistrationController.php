@@ -15,7 +15,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -821,28 +820,6 @@ class PreregistrationController extends Controller
             ->with('success', 'Orden de las fotos actualizado.');
     }
 
-    public function destroyPhoto(string $id, PreregistrationPhoto $photo)
-    {
-        $preregistration = Preregistration::findOrFail($id);
-        if ((int) $photo->preregistration_id !== (int) $preregistration->id) {
-            abort(404);
-        }
-
-        if ($preregistration->status !== 'PHOTO_PENDING') {
-            return redirect()->route('preregistrations.show', $preregistration->id)
-                ->with('error', 'Solo se pueden eliminar fotos de preregistros pendientes por completar.');
-        }
-
-        $this->photoService->deletePhoto($photo);
-
-        $redirect = url()->previous();
-        if (! is_string($redirect) || $redirect === '' || $redirect === url()->current()) {
-            $redirect = route('preregistrations.show', $preregistration->id);
-        }
-
-        return redirect()->to($redirect)->with('success', 'Foto eliminada.');
-    }
-
     public function label(Request $request, string $id)
     {
         $preregistration = Preregistration::with(['agency', 'agency.parent'])->findOrFail($id);
@@ -906,9 +883,9 @@ class PreregistrationController extends Controller
     {
         $preregistration = Preregistration::with('photos')->findOrFail($id);
 
-        if (! in_array($preregistration->status, ['RECEIVED_MIAMI', 'CANCELLED'])) {
+        if (! in_array($preregistration->status, ['PHOTO_PENDING', 'RECEIVED_MIAMI', 'CANCELLED'], true)) {
             return redirect()->route('preregistrations.index', session('preregistrations_index_filters', []))
-                ->with('error', 'No se puede eliminar un preregistro en proceso (solo se permite en estado Recibido Miami o Cancelado).');
+                ->with('error', 'No se puede eliminar un preregistro en proceso (solo se permite pendiente por completar, Recibido Miami o Cancelado).');
         }
 
         if ($preregistration->consolidationItem()->exists()) {
@@ -924,10 +901,7 @@ class PreregistrationController extends Controller
         }
 
         foreach ($preregistration->photos as $photo) {
-            if (Storage::disk('public')->exists($photo->path)) {
-                Storage::disk('public')->delete($photo->path);
-            }
-            $photo->delete();
+            $this->photoService->deletePhoto($photo);
         }
 
         $preregistration->delete();
