@@ -220,6 +220,7 @@ Route::middleware(['auth'])->group(function () {
         Route::middleware('admin')->prefix('hojas')->name('hojas.')->group(function () {
             Route::get('/{deliveryNote}', [DeliveryController::class, 'editNote'])->name('edit');
             Route::put('/{deliveryNote}', [DeliveryController::class, 'updateNote'])->name('update');
+            Route::post('/{deliveryNote}/separar-clientes', [DeliveryController::class, 'splitMixedBillTos'])->name('split-clients');
             Route::delete('/{deliveryNote}/paquetes/{delivery}', [DeliveryController::class, 'removeFromNote'])->name('remove-package');
         });
         Route::get('/{id}', [DeliveryController::class, 'show'])->name('show');

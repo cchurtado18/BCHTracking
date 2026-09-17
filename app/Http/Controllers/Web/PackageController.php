@@ -60,7 +60,7 @@ class PackageController extends Controller
             )]);
         }
 
-        $query = Preregistration::with('agency');
+        $query = Preregistration::with('agency.parent');
         $this->scopePackagesForCurrentUser($query);
 
         if ($request->filled('status')) {
@@ -93,7 +93,7 @@ class PackageController extends Controller
         }
 
         $packages = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
-        $agenciesForFilter = Agency::where('is_active', true)->orderBy('name')->get();
+        $agenciesForFilter = Agency::where('is_active', true)->with('parent')->orderBy('name')->get();
 
         // Estadísticas con los mismos filtros (para la vista principal)
         $statsQuery = Preregistration::query();
@@ -155,7 +155,7 @@ class PackageController extends Controller
             return $redirect;
         }
 
-        $package = Preregistration::with('agency')->findOrFail($id);
+        $package = Preregistration::with('agency.parent')->findOrFail($id);
         $this->ensureUserCanAccessPreregistration($package);
         if ($package->status !== 'IN_WAREHOUSE_NIC') {
             return redirect()->route('packages.show', $package->id)

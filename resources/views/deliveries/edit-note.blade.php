@@ -22,7 +22,7 @@
             <span class="mb-strip-label">Hoja</span>
             <span class="mb-pill"><strong>{{ $deliveryNote->code }}</strong></span>
             @if($deliveryNote->agency)
-            <span class="mb-pill">{{ $deliveryNote->agency->name }}</span>
+            <span class="mb-pill">{{ $deliveryNote->agency->listingAccountLabel() }}</span>
             @endif
         </x-slot:strip>
     </x-module-banner>
@@ -32,6 +32,17 @@
     @endif
     @if(session('error'))
     <div class="delivery-alert delivery-alert-danger">{{ session('error') }}</div>
+    @endif
+
+    @if($deliveryNote->hasMixedBillTos() && ! $deliveryNote->currentInvoice())
+    <div class="delivery-alert delivery-alert-danger">
+        Esta hoja mezcla clientes, por eso no se puede facturar junta.
+        Pulse <strong>Separar por cliente</strong> para dejar a cada cuenta en su propia hoja (los paquetes no se re-escanean).
+        <form action="{{ route('salidas.hojas.split-clients', $deliveryNote) }}" method="POST" style="margin-top:0.75rem" onsubmit="return confirm('¿Separar esta hoja? Se creará una hoja nueva por cada cliente distinto.');">
+            @csrf
+            <button type="submit" class="delivery-btn delivery-btn-primary">Separar por cliente</button>
+        </form>
+    </div>
     @endif
 
     <div class="delivery-card">
@@ -73,7 +84,7 @@
                 @if($deliveryNote->currentInvoice())
                     <a href="{{ route('accounting.invoices.show', $deliveryNote->currentInvoice()) }}" class="delivery-btn delivery-btn-sm delivery-btn-outline-light">Factura {{ $deliveryNote->currentInvoice()->folio }}</a>
                     <a href="{{ route('accounting.invoices.voucher', $deliveryNote->currentInvoice()) }}" target="_blank" class="delivery-btn delivery-btn-sm delivery-btn-outline-light">Voucher</a>
-                @elseif(auth()->user()?->is_admin)
+                @elseif(auth()->user()?->is_admin && ! $deliveryNote->hasMixedBillTos())
                     <a href="{{ route('accounting.invoices.create-from-note', $deliveryNote) }}" class="delivery-btn delivery-btn-sm delivery-btn-outline-light">Generar Factura PrimeTrack</a>
                 @endif
             </div>
@@ -84,6 +95,7 @@
                     <tr>
                         <th>Código</th>
                         <th>Cliente (etiqueta)</th>
+                        <th>Cuenta a facturar</th>
                         <th>Bulto</th>
                         <th>Servicio</th>
                         <th>Peso (lbs)</th>
@@ -93,10 +105,14 @@
                 </thead>
                 <tbody>
                     @forelse($deliveryNote->deliveries as $delivery)
-                    @php $p = $delivery->preregistration; @endphp
+                    @php
+                        $p = $delivery->preregistration;
+                        $billTo = $p?->agency?->commercialBillTo();
+                    @endphp
                     <tr>
                         <td><span class="delivery-code">{{ $p?->warehouse_code ?? '—' }}</span></td>
                         <td class="delivery-name-cell" title="{{ $p?->label_name }}">{{ Str::limit($p?->label_name ?? '—', 28) }}</td>
+                        <td>{{ $billTo?->listingAccountLabel() ?? $p?->agency?->listingAccountLabel() ?? '—' }}</td>
                         <td class="delivery-code">{{ ($p?->bultos_total && $p->bultos_total > 1 && $p->bulto_index) ? $p->bulto_index . '/' . $p->bultos_total : '—' }}</td>
                         <td>
                             @if($p?->service_type)
@@ -121,7 +137,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="delivery-empty">
+                        <td colspan="8" class="delivery-empty">
                             <p class="delivery-empty-text">Esta hoja no tiene paquetes.</p>
                         </td>
                     </tr>

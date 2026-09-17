@@ -543,6 +543,10 @@ class ClientsModuleTest extends TestCase
         $this->assertSame($slo->id, $client->labelBrandAgency()->id);
         $this->assertSame($slo->name, $client->commercialAccountName());
         $this->assertSame($slo->name.' · '.$client->name, $client->listingAccountLabel());
+        $this->assertSame(
+            ($slo->code ? $slo->code.' - ' : '').$slo->name,
+            $client->agencyColumnLabel()
+        );
 
         $this->actingAs($admin)
             ->get(route('agencies.show', $client))
@@ -606,6 +610,69 @@ class ClientsModuleTest extends TestCase
             ->get(route('agencies.show', $slo))
             ->assertOk()
             ->assertSee('Destinatarios (');
+    }
+
+    public function test_slo_client_is_not_shown_as_agency_in_lists_or_print(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        ['slo' => $slo] = $this->sloTree();
+        $client = Agency::create([
+            'name' => 'EZEQUIEL MEDAL',
+            'code' => '0066',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_DIRECT_CLIENT,
+            'parent_agency_id' => $slo->id,
+        ]);
+        $package = Preregistration::create([
+            'intake_type' => 'COURIER',
+            'tracking_external' => 'TRK-EZEQUIEL-1',
+            'warehouse_code' => '007120',
+            'label_name' => 'EZEQUIEL MEDAL',
+            'service_type' => 'SEA',
+            'intake_weight_lbs' => 30.37,
+            'status' => 'DELIVERED',
+            'agency_id' => $client->id,
+            'ready_at' => now(),
+        ]);
+        $note = DeliveryNote::create([
+            'code' => 'SLO-1274',
+            'agency_id' => $client->id,
+        ]);
+        Delivery::create([
+            'delivery_note_id' => $note->id,
+            'preregistration_id' => $package->id,
+            'delivered_at' => now(),
+            'delivered_to' => 'EZEQUIEL MEDAL',
+            'delivery_type' => 'PICKUP',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('preregistrations.index'))
+            ->assertOk()
+            ->assertSee('007120')
+            ->assertSee($slo->agencyColumnLabel())
+            ->assertSee('Cliente: EZEQUIEL MEDAL')
+            ->assertDontSee('0066 - EZEQUIEL MEDAL')
+            ->assertSee($slo->name.' · EZEQUIEL MEDAL');
+
+        $this->actingAs($admin)
+            ->get(route('packages.index'))
+            ->assertOk()
+            ->assertSee('007120')
+            ->assertSee($slo->agencyColumnLabel())
+            ->assertSee('Cliente: EZEQUIEL MEDAL')
+            ->assertDontSee('0066 - EZEQUIEL MEDAL');
+
+        $print = $this->actingAs($admin)
+            ->get(route('salidas.print-report', ['delivery_note_id' => $note->id]))
+            ->assertOk();
+        $print->assertSee('SKYLINK ONE', false);
+        $print->assertSee('EZEQUIEL MEDAL', false);
+        $html = $print->getContent();
+        $this->assertMatchesRegularExpression('/doc-client">\s*SKYLINK ONE/i', $html);
+        $this->assertMatchesRegularExpression('/doc-client-sub">\s*EZEQUIEL MEDAL/i', $html);
+        $this->assertStringNotContainsString('class="doc-client">EZEQUIEL MEDAL', $html);
     }
 
     public function test_direct_client_edit_form_does_not_ask_for_logo(): void

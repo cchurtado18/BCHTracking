@@ -91,7 +91,7 @@
                     <div class="delivery-dl-row">
                         <dt class="delivery-dt">Agencia</dt>
                         <dd class="delivery-dd">
-                            <a href="{{ route('agencies.show', $delivery->preregistration->agency_id) }}" class="delivery-link">{{ $delivery->preregistration->agency->name }} ({{ $delivery->preregistration->agency->code }})</a>
+                            <a href="{{ route('agencies.show', $delivery->preregistration->agency_id) }}" class="delivery-link">{{ $delivery->preregistration->agency->listingAccountLabel() }}</a>
                         </dd>
                     </div>
                     @endif

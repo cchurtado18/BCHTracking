@@ -48,7 +48,7 @@
         section="General"
         current="Detalle"
         title="Paquete #{{ $package->id }}"
-        subtitle="{{ $package->label_name }}{{ $package->agency ? ' · '.$package->agency->name : '' }} · {{ $statusLabel }}"
+        subtitle="{{ $package->label_name }}{{ $package->agency ? ' · '.$package->agency->listingAccountLabel() : '' }} · {{ $statusLabel }}"
         back-href="{{ route('packages.index', session('packages_index_filters', [])) }}"
         back-label="Volver a paquetes"
         :hide-back="$isAgencyUser"
@@ -95,7 +95,7 @@
             <span class="prd-metric-label">Servicio</span>
             <span class="prd-metric-value prd-metric-service">
                 <span class="prd-chip prd-chip-{{ strtolower($package->service_type ?? '') }}">{{ \App\Support\ServiceType::label($package->service_type) }}</span>
-                {{ $package->agency?->name ?: '—' }}
+                {{ $package->agency?->listingAccountLabel() ?: '—' }}
             </span>
         </div>
         <div class="prd-metric">

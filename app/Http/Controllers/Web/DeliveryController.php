@@ -221,7 +221,7 @@ class DeliveryController extends Controller
 
         $notesQuery = DeliveryNote::query()
             ->withCount(['deliveries' => $deliveryFilter])
-            ->with(['agency', 'firstDelivery.preregistration.agency'])
+            ->with(['agency.parent', 'firstDelivery.preregistration.agency.parent'])
             ->whereHas('deliveries', $deliveryFilter)
             ->orderByDesc(DB::raw('(SELECT MAX(delivered_at) FROM deliveries WHERE deliveries.delivery_note_id = delivery_notes.id)'));
 
@@ -305,11 +305,65 @@ class DeliveryController extends Controller
             return redirect()->route('salidas.create', $params);
         }
 
-        $agenciesForSelect = $this->agenciesForSelect($user);
+        $accountOptions = $this->sloDeliveryAccountOptions();
+        $slo = $accountOptions['slo'];
+        $sloClients = $accountOptions['sloClients'];
+        $partnerAgencies = $accountOptions['partnerAgencies'];
         $selectedAgency = $agencyId > 0 ? Agency::find($agencyId) : null;
         if ($selectedAgency) {
             $this->ensureUserCanAccessAgency($selectedAgency);
         }
+
+        $consignee = trim((string) $request->input('consignee', ''));
+        $selectedSloClient = null;
+        $accountAgency = $selectedAgency;
+        if ($selectedAgency && $slo && $selectedAgency->isDirectClient() && (int) $selectedAgency->parent_agency_id === (int) $slo->id) {
+            $selectedSloClient = $selectedAgency;
+            $accountAgency = $slo;
+        }
+
+        $isSloAccount = $accountAgency && $slo && (int) $accountAgency->id === (int) $slo->id;
+        $needsClientPick = (bool) ($isSloAccount && ! $selectedSloClient && $consignee === '');
+
+        $sloConsignees = collect();
+        if ($needsClientPick && $slo) {
+            $readyCounts = Preregistration::query()
+                ->where('status', 'READY')
+                ->whereDoesntHave('delivery')
+                ->whereIn('agency_id', $sloClients->pluck('id')->all())
+                ->selectRaw('agency_id, COUNT(*) as ready_count')
+                ->groupBy('agency_id')
+                ->pluck('ready_count', 'agency_id');
+
+            $sloClients = $sloClients->map(function (Agency $client) use ($readyCounts) {
+                $client->ready_count = (int) ($readyCounts[$client->id] ?? 0);
+
+                return $client;
+            })->sortByDesc(fn (Agency $client) => $client->ready_count)->values();
+
+            $sloConsignees = Preregistration::query()
+                ->where('status', 'READY')
+                ->whereDoesntHave('delivery')
+                ->where('agency_id', $slo->id)
+                ->selectRaw('label_name, COUNT(*) as ready_count')
+                ->groupBy('label_name')
+                ->orderByDesc('ready_count')
+                ->orderBy('label_name')
+                ->get();
+        }
+
+        $partnerAgenciesJson = $partnerAgencies->map(fn (Agency $a) => [
+            'id' => $a->id,
+            'code' => $a->code,
+            'name' => $a->name,
+            'is_slo' => $slo && (int) $a->id === (int) $slo->id,
+        ])->values();
+        $sloClientsJson = $sloClients->map(fn (Agency $a) => [
+            'id' => $a->id,
+            'code' => $a->code,
+            'name' => $a->name,
+            'ready_count' => (int) ($a->ready_count ?? 0),
+        ])->values();
 
         $availablePackages = collect();
         $availableTotal = 0;
@@ -317,11 +371,12 @@ class DeliveryController extends Controller
         $availableSea = 0;
         $availableCft = 0;
 
-        if ($selectedAgency) {
-            $availableQuery = Preregistration::with('agency')
+        if ($selectedAgency && ! $needsClientPick) {
+            $availableQuery = Preregistration::with('agency.parent')
                 ->where('status', 'READY')
                 ->whereDoesntHave('delivery')
                 ->whereIn('agency_id', $selectedAgency->deliveryNetworkIds());
+            $this->applyConsigneeFilter($availableQuery, $consignee);
 
             $allPackages = $availableQuery->orderBy('agency_id')->orderBy('warehouse_code')->get();
             $availableAir = $allPackages->where('service_type', 'AIR')->count();
@@ -334,10 +389,20 @@ class DeliveryController extends Controller
         }
 
         return view('deliveries.create', compact(
-            'agenciesForSelect',
             'selectedAgency',
+            'accountAgency',
+            'selectedSloClient',
             'agencyId',
             'serviceType',
+            'consignee',
+            'slo',
+            'sloClients',
+            'sloConsignees',
+            'partnerAgencies',
+            'partnerAgenciesJson',
+            'sloClientsJson',
+            'isSloAccount',
+            'needsClientPick',
             'availablePackages',
             'availableTotal',
             'availableAir',
@@ -387,6 +452,35 @@ class DeliveryController extends Controller
             }))
             ->sortBy('name')
             ->values();
+    }
+
+    /**
+     * @return array{slo: ?Agency, sloClients: \Illuminate\Support\Collection<int, Agency>, partnerAgencies: \Illuminate\Support\Collection<int, Agency>}
+     */
+    private function sloDeliveryAccountOptions(): array
+    {
+        $agencies = Agency::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'parent_agency_id', 'account_type', 'is_main']);
+
+        $slo = $agencies->first(fn (Agency $a) => $a->account_type === Agency::TYPE_ROOT)
+            ?? $agencies->first(fn (Agency $a) => $a->isRootAccount());
+        $sloClients = $slo
+            ? $agencies->filter(fn (Agency $a) => $a->isDirectClient() && (int) $a->parent_agency_id === (int) $slo->id)->values()
+            : collect();
+        $partnerAgencies = $agencies->filter(fn (Agency $a) => ! $a->isDirectClient())->values();
+
+        return compact('slo', 'sloClients', 'partnerAgencies');
+    }
+
+    private function applyConsigneeFilter($query, string $consignee): void
+    {
+        $consignee = trim($consignee);
+        if ($consignee === '') {
+            return;
+        }
+
+        $query->whereRaw('UPPER(TRIM(label_name)) = ?', [mb_strtoupper($consignee)]);
     }
 
     private function deliveryScopeFilter(?Agency $selectedAgency): \Closure
@@ -491,7 +585,7 @@ class DeliveryController extends Controller
             return redirect()->route('salidas.create')->with('error', 'Seleccione una agencia para generar el salida de producto.');
         }
 
-        $availableQuery = Preregistration::with('agency')
+        $availableQuery = Preregistration::with('agency.parent')
             ->where('status', 'READY')
             ->whereDoesntHave('delivery');
 
@@ -502,11 +596,24 @@ class DeliveryController extends Controller
             $availableQuery->whereIn('service_type', \App\Support\ServiceType::operationalFilter($serviceType));
         }
 
+        $consignee = trim((string) $request->input('consignee', ''));
+        $sloRoot = $this->sloDeliveryAccountOptions()['slo'];
+        $isSloRoot = $sloRoot && (int) $agency->id === (int) $sloRoot->id;
+        if ($isSloRoot && $consignee === '' && ! $request->filled('delivery_note_id')) {
+            return redirect()->route('salidas.create', ['agency_id' => $agency->id])
+                ->with('error', 'Elija el cliente de SkyLink One para cargar sus paquetes e iniciar la salida.');
+        }
+        $this->applyConsigneeFilter($availableQuery, $consignee);
+
         $availablePackages = $availableQuery->orderBy('warehouse_code')
             ->orderByRaw('COALESCE(bulto_index, 999) ASC')
             ->get();
-        $agencyName = $agency->name;
-        $filterParams = array_filter(['agency_id' => $agency->id, 'service_type' => $serviceType]);
+        $agencyName = $agency->listingAccountLabel();
+        $filterParams = array_filter([
+            'agency_id' => $agency->id,
+            'service_type' => $serviceType,
+            'consignee' => $consignee !== '' ? $consignee : null,
+        ]);
 
         // LAZY CREATE: solo cargar la nota si llega delivery_note_id en la URL.
         // Si no llega, mostramos la vista en "paso 1" (sin nota); la nota se crea
@@ -564,6 +671,7 @@ class DeliveryController extends Controller
             'retirer_id_number' => 'nullable|string|max:50',
             'retirer_phone' => 'nullable|string|max:50',
             'invoice_number' => 'nullable|string|max:50',
+            'consignee' => 'nullable|string|max:255',
         ], [
             'delivered_to.required' => 'El nombre de quien retira es obligatorio.',
         ]);
@@ -598,6 +706,7 @@ class DeliveryController extends Controller
             'agency_id' => (int) $validated['agency_id'],
             'service_type' => $serviceType,
             'delivery_note_id' => (int) $deliveryNote->id,
+            'consignee' => ! empty($validated['consignee']) ? trim((string) $validated['consignee']) : null,
         ]);
 
         return redirect()->route('salidas.batch', $redirectParams)
@@ -614,6 +723,7 @@ class DeliveryController extends Controller
             'delivery_note_id' => 'required|exists:delivery_notes,id',
             'agency_id' => 'required|exists:agencies,id',
             'service_type' => 'nullable|'.\App\Support\ServiceType::rule(),
+            'consignee' => 'nullable|string|max:255',
         ]);
 
         $deliveryNote = DeliveryNote::find((int) $validated['delivery_note_id']);
@@ -629,6 +739,7 @@ class DeliveryController extends Controller
             'agency_id' => (int) $validated['agency_id'],
             'service_type' => $request->filled('service_type') ? $request->service_type : null,
             'delivery_note_id' => (int) $validated['delivery_note_id'],
+            'consignee' => ! empty($validated['consignee']) ? trim((string) $validated['consignee']) : null,
         ]);
 
         return redirect()->route('salidas.batch', $redirectParams)
@@ -660,7 +771,7 @@ class DeliveryController extends Controller
                 ->orderBy('delivered_at')
                 ->get();
             $agency = $deliveryNote->agency;
-            $agencyName = $agency ? $agency->name : 'Agencia';
+            $agencyName = $agency ? $agency->commercialAccountName() : 'Agencia';
             $date = $deliveries->first()?->delivered_at?->toDateString()
                 ?? $deliveryNote->created_at?->toDateString()
                 ?? $date;
@@ -680,7 +791,7 @@ class DeliveryController extends Controller
             $query->whereHas('preregistration', fn ($q) => $q->whereIn('agency_id', $agency->deliveryNetworkIds()));
 
             $deliveries = $query->orderBy('delivered_at')->get();
-            $agencyName = $agency ? $agency->name : 'Agencia';
+            $agencyName = $agency ? $agency->commercialAccountName() : 'Agencia';
             $noteIds = $deliveries->pluck('delivery_note_id')->filter()->unique()->values();
             if ($noteIds->isNotEmpty()) {
                 $deliveryNotesInReport = DeliveryNote::whereIn('id', $noteIds)->orderBy('code')->get();
@@ -980,6 +1091,7 @@ class DeliveryController extends Controller
                 'service_type' => $request->filled('service_type') && \App\Support\ServiceType::isValid($request->service_type)
                     ? $request->service_type
                     : null,
+                'consignee' => $request->filled('consignee') ? trim((string) $request->consignee) : null,
             ]);
 
             return redirect()->route('salidas.batch', $params)
@@ -992,7 +1104,7 @@ class DeliveryController extends Controller
 
     public function show(string $id)
     {
-        $delivery = Delivery::with(['preregistration.agency', 'preregistration.agencyClient', 'deliveryNote'])->findOrFail($id);
+        $delivery = Delivery::with(['preregistration.agency.parent', 'preregistration.agencyClient', 'deliveryNote'])->findOrFail($id);
         $this->ensureUserCanAccessAgency($delivery->preregistration?->agency);
 
         return view('deliveries.show', compact('delivery'));
@@ -1006,10 +1118,10 @@ class DeliveryController extends Controller
         $this->ensureAdmin();
 
         $deliveryNote->load([
-            'agency',
+            'agency.parent.parent.parent',
             'accountingInvoice',
             'linkedInvoices',
-            'deliveries' => fn ($q) => $q->with('preregistration.agency')->orderBy('delivered_at'),
+            'deliveries' => fn ($q) => $q->with('preregistration.agency.parent.parent.parent')->orderBy('delivered_at'),
         ]);
 
         $firstDelivery = $deliveryNote->deliveries->first();
@@ -1076,5 +1188,81 @@ class DeliveryController extends Controller
 
         return redirect()->route('salidas.hojas.edit', $deliveryNote)
             ->with('success', "Paquete {$label} quitado de la nota. El paquete volvió a estado «Listo para retiro».");
+    }
+
+    /**
+     * Parte una hoja con paquetes de varias cuentas: deja un cliente en la original
+     * y crea una hoja nueva por cada cuenta restante (sin re-escanear).
+     */
+    public function splitMixedBillTos(DeliveryNote $deliveryNote)
+    {
+        $this->ensureAdmin();
+
+        $activeInvoice = $deliveryNote->currentInvoice();
+        if ($activeInvoice) {
+            return back()->with('error', 'No se puede separar: esta hoja ya tiene la factura '.$activeInvoice->folio.'. Anúlela primero.');
+        }
+
+        try {
+            $created = DB::transaction(function () use ($deliveryNote) {
+                $locked = DeliveryNote::query()
+                    ->whereKey($deliveryNote->id)
+                    ->lockForUpdate()
+                    ->with(['agency.parent.parent.parent', 'deliveries.preregistration.agency.parent.parent.parent'])
+                    ->firstOrFail();
+
+                if ($locked->currentInvoice()) {
+                    throw new \InvalidArgumentException('Esta hoja ya tiene una factura activa.');
+                }
+
+                $groups = $locked->deliveries
+                    ->filter(fn ($d) => $d->preregistration?->agency)
+                    ->groupBy(fn ($d) => (int) $d->preregistration->agency->commercialBillTo()->id)
+                    ->mapWithKeys(fn ($items, $key) => [(int) $key => $items]);
+
+                if ($groups->count() < 2) {
+                    throw new \InvalidArgumentException('Esta hoja no mezcla clientes. No hay nada que separar.');
+                }
+
+                $keepKey = null;
+                $sheetBillToId = $locked->agency ? (int) $locked->agency->commercialBillTo()->id : 0;
+                if ($sheetBillToId && $groups->has($sheetBillToId)) {
+                    $keepKey = $sheetBillToId;
+                } else {
+                    $keepKey = (int) $groups->sortByDesc(fn ($items) => $items->count())->keys()->first();
+                }
+
+                $createdNotes = collect();
+                foreach ($groups as $billToId => $deliveries) {
+                    if ((int) $billToId === (int) $keepKey) {
+                        continue;
+                    }
+
+                    $billTo = $deliveries->first()->preregistration->agency->commercialBillTo();
+                    $newNote = $this->createDeliveryNoteForAgency($billTo);
+                    Delivery::query()
+                        ->whereIn('id', $deliveries->pluck('id')->all())
+                        ->update(['delivery_note_id' => $newNote->id]);
+
+                    $createdNotes->push($newNote->fresh('agency'));
+                }
+
+                $keepGroup = $groups->get($keepKey);
+                $keepAgency = $keepGroup?->first()?->preregistration?->agency?->commercialBillTo();
+                if ($keepAgency && (int) $locked->agency_id !== (int) $keepAgency->id) {
+                    $locked->update(['agency_id' => $keepAgency->id]);
+                }
+
+                return $createdNotes;
+            });
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        $codes = $created->map(fn (DeliveryNote $n) => $n->code.($n->agency?->name ? ' ('.$n->agency->name.')' : ''))->implode(', ');
+
+        return redirect()
+            ->route('salidas.hojas.edit', $deliveryNote)
+            ->with('success', 'Hoja separada. Se creó '.($created->count() === 1 ? 'la hoja ' : 'las hojas ').$codes.'. Cada cliente ya puede facturarse aparte.');
     }
 }

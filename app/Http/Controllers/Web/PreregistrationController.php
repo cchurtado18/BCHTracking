@@ -62,7 +62,7 @@ class PreregistrationController extends Controller
             session(['preregistrations_index_filters' => $state]);
         }
 
-        $query = Preregistration::with(['photos', 'agency']);
+        $query = Preregistration::with(['photos', 'agency.parent']);
 
         if ($request->filled('service_type')) {
             $query->where('service_type', $request->service_type);
@@ -127,7 +127,10 @@ class PreregistrationController extends Controller
         $statsReceived = (clone $statsQuery)->where('status', 'RECEIVED_MIAMI')->count();
         $statsReady = (clone $statsQuery)->where('status', 'READY')->count();
 
-        $agenciesForFilter = Agency::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $agenciesForFilter = Agency::where('is_active', true)
+            ->with('parent')
+            ->orderBy('name')
+            ->get(['id', 'name', 'code', 'account_type', 'is_main', 'parent_agency_id']);
 
         return view('preregistrations.index', compact('preregistrations', 'statsTotal', 'statsAir', 'statsSea', 'statsReceived', 'statsReady', 'agenciesForFilter'));
     }

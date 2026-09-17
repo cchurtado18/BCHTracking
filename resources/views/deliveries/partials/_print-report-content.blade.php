@@ -83,9 +83,9 @@
     $printDateFooter = \Carbon\Carbon::now()->format('d/m/Y H:i');
     $documentDate = \Carbon\Carbon::parse($date)->format('d/m/Y');
 
-    // En el encabezado mostramos la AGENCIA destino (a quién se entrega).
-    // El nombre de la persona que retira aparece más abajo, en el bloque de datos del retirante.
-    $clientName = strtoupper($agencyName ?? '—');
+    // En el encabezado: la cuenta (SkyLink One / subagencia). Si es cliente SLO, el nombre va debajo.
+    $accountName = strtoupper($agency?->commercialAccountName() ?? $agencyName ?? '—');
+    $sloClientName = $agency?->isDirectClient() ? strtoupper($agency->name) : null;
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -149,6 +149,7 @@
         .doc-meta-label { font-weight: 400; }
         .doc-meta-value { font-weight: 600; }
         .doc-client { font-size: 11pt; font-weight: 700; letter-spacing: 0.03em; margin-top: 2px; }
+        .doc-client-sub { font-size: 10pt; font-weight: 600; margin-top: 1px; }
 
         /* Tabla limpia: sin bordes en filas, sólo en encabezado y totales */
         table.products { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 9pt; }
@@ -233,7 +234,10 @@
                 <div class="doc-meta-cell"><span class="doc-meta-label">Bodega:</span><span class="doc-meta-value">BODEGA PRINCIPAL</span></div>
                 <div class="doc-meta-cell"><span class="doc-meta-label">Fecha:</span><span class="doc-meta-value">{{ $documentDate }}</span></div>
             </div>
-            <div class="doc-client">{{ $clientName }}</div>
+            <div class="doc-client">{{ $accountName }}</div>
+            @if($sloClientName && $sloClientName !== $accountName)
+            <div class="doc-client-sub">{{ $sloClientName }}</div>
+            @endif
         </div>
 
         <table class="products">

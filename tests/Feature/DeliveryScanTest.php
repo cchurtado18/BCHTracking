@@ -326,7 +326,7 @@ class DeliveryScanTest extends TestCase
             ->get(route('salidas.create'))
             ->assertOk()
             ->assertSee('Crear hoja de salida')
-            ->assertSee('Seleccione la cuenta');
+            ->assertSee('Seleccione una cuenta');
 
         $this->actingAs($user)
             ->get(route('salidas.create', ['agency_id' => $agency->id]))
@@ -458,18 +458,42 @@ class DeliveryScanTest extends TestCase
         $this->actingAs($user)
             ->get(route('salidas.create', ['agency_id' => $slo->id]))
             ->assertOk()
-            ->assertSee('No mezcle clientes')
-            ->assertSee('000100')
+            ->assertSee('Cliente de SkyLink One')
+            ->assertSee('Clientes con paquetes listos')
+            ->assertSee('Magali Zeledon')
+            ->assertSee('Brenda Zeledon')
+            ->assertSee('PAQUETE SLO')
             ->assertDontSee('009881')
-            ->assertDontSee('008131');
+            ->assertDontSee('008131')
+            ->assertDontSee('000100')
+            ->assertDontSee('Iniciar salida');
 
         $this->actingAs($user)
             ->get(route('salidas.create', ['agency_id' => $magali->id]))
             ->assertOk()
             ->assertSee('009881')
             ->assertSee('Cliente de SkyLink One')
+            ->assertSee('Iniciar salida')
             ->assertDontSee('008131')
             ->assertDontSee('000100');
+
+        $this->actingAs($user)
+            ->get(route('salidas.create', ['agency_id' => $slo->id, 'consignee' => 'Paquete SLO']))
+            ->assertOk()
+            ->assertSee('000100')
+            ->assertSee('Iniciar salida')
+            ->assertDontSee('009881')
+            ->assertDontSee('008131');
+    }
+
+    public function test_slo_batch_requires_a_client_or_consignee(): void
+    {
+        $user = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        [$slo] = $this->seedSloClients();
+
+        $this->actingAs($user)
+            ->get(route('salidas.batch', ['agency_id' => $slo->id]))
+            ->assertRedirect(route('salidas.create', ['agency_id' => $slo->id]));
     }
 
     public function test_cannot_scan_another_slo_client_onto_the_same_delivery_note(): void
@@ -526,6 +550,72 @@ class DeliveryScanTest extends TestCase
         $this->assertSame([$slo->id], $slo->deliveryNetworkIds());
         $this->assertContains($magali->id, $slo->operationsNetworkIds());
         $this->assertNotContains($magali->id, $slo->deliveryNetworkIds());
+    }
+
+    public function test_admin_can_split_mixed_slo_note_into_one_sheet_per_client(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        [$slo, $magali, $brenda] = $this->seedSloClients();
+
+        $note = DeliveryNote::create([
+            'code' => 'SLO-1254',
+            'agency_id' => $slo->id,
+        ]);
+
+        $magaliPkg = $this->createReadyPackage($magali, [
+            'warehouse_code' => '007302',
+            'tracking_external' => 'TRK-MAGALI-MIX',
+            'label_name' => 'Magali Zeledon',
+            'status' => 'DELIVERED',
+        ]);
+        $brendaPkg = $this->createReadyPackage($brenda, [
+            'warehouse_code' => '008133',
+            'tracking_external' => 'TRK-BRENDA-MIX',
+            'label_name' => 'Brenda Zeledon',
+            'status' => 'DELIVERED',
+        ]);
+        Delivery::create([
+            'delivery_note_id' => $note->id,
+            'preregistration_id' => $magaliPkg->id,
+            'delivered_at' => now(),
+            'delivered_to' => 'Magali Zeledon',
+            'delivery_type' => 'PICKUP',
+        ]);
+        Delivery::create([
+            'delivery_note_id' => $note->id,
+            'preregistration_id' => $brendaPkg->id,
+            'delivered_at' => now(),
+            'delivered_to' => 'Magali Zeledon',
+            'delivery_type' => 'PICKUP',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('salidas.hojas.edit', $note))
+            ->assertOk()
+            ->assertSee('mezcla clientes')
+            ->assertSee('Separar por cliente')
+            ->assertSee('Magali Zeledon')
+            ->assertSee('Brenda Zeledon');
+
+        $this->actingAs($admin)
+            ->post(route('salidas.hojas.split-clients', $note))
+            ->assertRedirect(route('salidas.hojas.edit', $note))
+            ->assertSessionHas('success');
+
+        $note->refresh();
+        $this->assertFalse($note->hasMixedBillTos());
+        $this->assertSame(1, $note->deliveries()->count());
+
+        $otherNote = DeliveryNote::query()->where('id', '!=', $note->id)->orderByDesc('id')->first();
+        $this->assertNotNull($otherNote);
+        $this->assertSame(1, $otherNote->deliveries()->count());
+        $this->assertNotSame((int) $note->agency_id, (int) $otherNote->agency_id);
+        $this->assertEqualsCanonicalizing(
+            [$magali->id, $brenda->id],
+            [(int) $note->agency_id, (int) $otherNote->agency_id]
+        );
+        $this->assertSame('DELIVERED', $magaliPkg->fresh()->status);
+        $this->assertSame('DELIVERED', $brendaPkg->fresh()->status);
     }
 
     /**

@@ -254,7 +254,8 @@
 
 .preregs-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; color: #0f172a; }
 .preregs-name { display: block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: #111827; }
-.preregs-agency { display: block; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #6b7280; font-size: 0.8125rem; }
+.preregs-agency { display: block; max-width: 200px; color: #6b7280; font-size: 0.8125rem; line-height: 1.3; white-space: normal; }
+.preregs-agency .account-client-line { display: block; margin-top: 0.12rem; font-size: 0.72rem; font-weight: 700; color: #334155; }
 .preregs-tracking {
     display: inline-block;
     max-width: 12rem;
@@ -527,7 +528,7 @@
                 <select name="agency_id" class="preregs-select">
                     <option value="">Todas</option>
                     @foreach($agenciesForFilter ?? [] as $agencyOption)
-                    <option value="{{ $agencyOption->id }}" {{ (int) request('agency_id') === (int) $agencyOption->id ? 'selected' : '' }}>{{ $agencyOption->name }}</option>
+                    <option value="{{ $agencyOption->id }}" {{ (int) request('agency_id') === (int) $agencyOption->id ? 'selected' : '' }}>{{ $agencyOption->listingAccountLabel() }}</option>
                     @endforeach
                 </select>
             </div>
@@ -592,7 +593,7 @@
                         </td>
                         <td>
                             @if($preregistration->agency)
-                            <span class="preregs-agency" title="{{ $preregistration->agency->name }}">{{ $preregistration->agency->code ? $preregistration->agency->code . ' - ' : '' }}{{ Str::limit($preregistration->agency->name, 22) }}</span>
+                            <x-account-label :agency="$preregistration->agency" class="preregs-agency" />
                             @else
                             <span class="preregs-agency">—</span>
                             @endif

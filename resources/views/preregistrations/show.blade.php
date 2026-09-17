@@ -48,7 +48,7 @@
         section="General"
         current="Detalle"
         title="Envío #{{ $preregistration->id }}"
-        subtitle="{{ $preregistration->label_name }}{{ $preregistration->agency ? ' · '.$preregistration->agency->name : '' }} · {{ $statusLabel }}"
+        subtitle="{{ $preregistration->label_name }}{{ $preregistration->agency ? ' · '.$preregistration->agency->listingAccountLabel() : '' }} · {{ $statusLabel }}"
         back-href="{{ route('preregistrations.index', session('preregistrations_index_filters', [])) }}"
         back-label="Volver a preregistros"
     >
@@ -145,7 +145,7 @@
             <span class="prd-metric-label">Servicio</span>
             <span class="prd-metric-value prd-metric-service">
                 <span class="prd-chip prd-chip-{{ strtolower($preregistration->service_type ?? '') }}">{{ \App\Support\ServiceType::label($preregistration->service_type) }}</span>
-                {{ $preregistration->agency?->name ?: '—' }}
+                {{ $preregistration->agency?->listingAccountLabel() ?: '—' }}
             </span>
         </div>
         <div class="prd-metric">

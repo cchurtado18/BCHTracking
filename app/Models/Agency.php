@@ -97,6 +97,19 @@ class Agency extends Model
         return $this->name;
     }
 
+    /**
+     * Columna «Agencia»: la cuenta comercial. Un cliente SLO muestra SkyLink One, no su propio código.
+     */
+    public function agencyColumnLabel(bool $withCode = true): string
+    {
+        $brand = $this->labelBrandAgency();
+        if ($withCode && filled($brand->code)) {
+            return $brand->code.' - '.$brand->name;
+        }
+
+        return $brand->name;
+    }
+
     public function canHaveChildren(): bool
     {
         return $this->is_main || $this->account_type === self::TYPE_SUBAGENCY || $this->account_type === self::TYPE_ROOT;

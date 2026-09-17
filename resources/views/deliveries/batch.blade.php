@@ -38,6 +38,9 @@
                 @if(!empty($filterParams['service_type']))
                 <input type="hidden" name="service_type" value="{{ $filterParams['service_type'] }}">
                 @endif
+                @if(!empty($filterParams['consignee']))
+                <input type="hidden" name="consignee" value="{{ $filterParams['consignee'] }}">
+                @endif
                 <button type="submit" class="mb-btn mb-btn-secondary">Cambiar quien retira</button>
             </form>
             <a href="{{ route('salidas.print-report', $printReportParams) }}" target="_blank" class="mb-btn {{ $deliveredCount > 0 ? 'mb-btn-primary' : 'mb-btn-secondary' }}">
@@ -51,6 +54,9 @@
             <span class="mb-pill"><strong>{{ $deliveryNote->code }}</strong></span>
             @endif
             <span class="mb-pill">{{ $agency->code }} · {{ $agencyName }}</span>
+            @if(!empty($filterParams['consignee']))
+            <span class="mb-pill">Cliente: {{ $filterParams['consignee'] }}</span>
+            @endif
             @if($serviceLabel)
             <span class="mb-pill">{{ $serviceLabel }}</span>
             @endif
@@ -114,6 +120,9 @@
                 <input type="hidden" name="agency_id" value="{{ $agency->id }}">
                 @if(!empty($filterParams['service_type']))
                 <input type="hidden" name="service_type" value="{{ $filterParams['service_type'] }}">
+                @endif
+                @if(!empty($filterParams['consignee']))
+                <input type="hidden" name="consignee" value="{{ $filterParams['consignee'] }}">
                 @endif
                 <div class="hs-retirer-grid">
                     <div class="inv-field hs-field-name">
@@ -215,6 +224,9 @@
                     <input type="hidden" name="agency_id" value="{{ $filterParams['agency_id'] ?? $agency->id }}">
                     @if(!empty($filterParams['service_type']))
                     <input type="hidden" name="service_type" value="{{ $filterParams['service_type'] }}">
+                    @endif
+                    @if(!empty($filterParams['consignee']))
+                    <input type="hidden" name="consignee" value="{{ $filterParams['consignee'] }}">
                     @endif
                     <input type="hidden" name="delivered_to" value="{{ $batchRetirerSession['delivered_to'] ?? '' }}">
                     <input type="hidden" name="retirer_id_number" value="{{ $batchRetirerSession['retirer_id_number'] ?? '' }}">

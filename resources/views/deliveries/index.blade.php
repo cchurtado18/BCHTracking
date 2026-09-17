@@ -103,16 +103,14 @@
                     @forelse($deliveryNotes as $note)
                     @php
                         $firstDelivery = $note->firstDelivery;
-                        $agencyName = $note->agency?->name ?? $firstDelivery?->preregistration?->agency?->name ?? '—';
-                        $agencyCode = $note->agency?->code ?? $firstDelivery?->preregistration?->agency?->code;
+                        $agencyName = $note->agency?->listingAccountLabel()
+                            ?? $firstDelivery?->preregistration?->agency?->listingAccountLabel()
+                            ?? '—';
                     @endphp
                     <tr>
                         <td><span class="inv-folio">{{ $note->code }}</span></td>
                         <td>
                             <div class="inv-client">{{ $agencyName }}</div>
-                            @if($agencyCode)
-                            <div class="inv-muted">{{ $agencyCode }}</div>
-                            @endif
                         </td>
                         <td class="inv-nowrap">{{ $firstDelivery?->delivered_at?->timezone(config('app.display_timezone'))->format('d/m/Y H:i') ?? ($note->created_at ? $note->created_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') : '—') }}</td>
                         <td class="inv-num"><span class="inv-paq">{{ $note->deliveries_count }}</span></td>
