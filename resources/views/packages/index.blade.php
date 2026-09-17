@@ -207,8 +207,7 @@
 .packages-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; color: #0f172a; }
 .packages-name { display: block; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: #111827; }
 .packages-description { display: block; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #6b7280; font-size: 0.8125rem; }
-.packages-agency { display: block; max-width: 200px; color: #6b7280; font-size: 0.8125rem; line-height: 1.3; white-space: normal; }
-.packages-agency .account-client-line { display: block; margin-top: 0.12rem; font-size: 0.72rem; font-weight: 700; color: #334155; }
+.packages-agency { display: block; max-width: 200px; color: #6b7280; font-size: 0.8125rem; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .packages-tracking {
     display: inline-block;
     max-width: 12rem;

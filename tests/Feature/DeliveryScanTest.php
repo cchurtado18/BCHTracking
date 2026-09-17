@@ -454,6 +454,11 @@ class DeliveryScanTest extends TestCase
             'tracking_external' => 'TRK-SLO-OWN',
             'label_name' => 'Paquete SLO',
         ]);
+        $this->createReadyPackage($slo, [
+            'warehouse_code' => '000200',
+            'tracking_external' => 'TRK-MAGALI-SLO',
+            'label_name' => 'Magali Zeledon',
+        ]);
 
         $this->actingAs($user)
             ->get(route('salidas.create', ['agency_id' => $slo->id]))
@@ -463,19 +468,25 @@ class DeliveryScanTest extends TestCase
             ->assertSee('Magali Zeledon')
             ->assertSee('Brenda Zeledon')
             ->assertSee('PAQUETE SLO')
+            ->assertDontSee('Destinatario en cuenta')
+            ->assertDontSee('>Tipo</th>', false)
             ->assertDontSee('009881')
             ->assertDontSee('008131')
             ->assertDontSee('000100')
+            ->assertDontSee('000200')
             ->assertDontSee('Iniciar salida');
 
         $this->actingAs($user)
             ->get(route('salidas.create', ['agency_id' => $magali->id]))
             ->assertOk()
             ->assertSee('009881')
+            ->assertSee('000200')
             ->assertSee('Cliente de SkyLink One')
             ->assertSee('Iniciar salida')
             ->assertDontSee('008131')
             ->assertDontSee('000100');
+
+        $this->assertSame($magali->id, (int) Preregistration::query()->where('warehouse_code', '000200')->value('agency_id'));
 
         $this->actingAs($user)
             ->get(route('salidas.create', ['agency_id' => $slo->id, 'consignee' => 'Paquete SLO']))

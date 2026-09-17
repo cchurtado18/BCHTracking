@@ -65,7 +65,7 @@
 
     @if($needsClientPick)
     <div class="inv-alert inv-alert-info">
-        SkyLink One tiene varios clientes. Busque o elija uno para cargar <strong>solo sus paquetes</strong> y armarle su propia hoja. Varias hojas del mismo cliente sí se pueden juntar al facturar.
+        SkyLink One es la agencia. Elija el <strong>cliente</strong> para ver solo sus paquetes y armarle su hoja.
     </div>
     <div class="inv-card">
         <div class="inv-table-head">
@@ -76,7 +76,7 @@
             @if($sloReadyClients->isEmpty() && $sloConsignees->isEmpty())
             <div class="inv-empty">
                 <p class="inv-empty-title">No hay paquetes listos en SkyLink One</p>
-                <p>Ningún cliente propio ni destinatario de la cuenta SkyLink One tiene paquetes en «Listo para retiro».</p>
+                <p>Ningún cliente tiene paquetes en «Listo para retiro».</p>
             </div>
             @else
             <div class="inv-table-scroll">
@@ -84,7 +84,6 @@
                     <thead>
                         <tr>
                             <th>Cliente</th>
-                            <th>Tipo</th>
                             <th class="inv-num">Listos</th>
                             <th></th>
                         </tr>
@@ -93,7 +92,6 @@
                         @foreach($sloReadyClients as $client)
                         <tr data-search="{{ Str::lower($client->name.' '.$client->code) }}">
                             <td><span class="inv-client">{{ $client->name }}</span>@if($client->code) <span class="inv-muted">{{ $client->code }}</span>@endif</td>
-                            <td class="inv-muted">Cliente de SkyLink One</td>
                             <td class="inv-num">{{ $client->ready_count }}</td>
                             <td><a href="{{ route('salidas.create', ['agency_id' => $client->id]) }}" class="inv-btn inv-btn-primary inv-btn-sm">Ver paquetes</a></td>
                         </tr>
@@ -101,7 +99,6 @@
                         @foreach($sloConsignees as $row)
                         <tr data-search="{{ Str::lower($row->label_name) }}">
                             <td><span class="inv-client">{{ $row->label_name ?: 'Sin nombre' }}</span></td>
-                            <td class="inv-muted">Destinatario en cuenta SkyLink One</td>
                             <td class="inv-num">{{ $row->ready_count }}</td>
                             <td><a href="{{ route('salidas.create', ['agency_id' => $slo->id, 'consignee' => $row->label_name]) }}" class="inv-btn inv-btn-primary inv-btn-sm">Ver paquetes</a></td>
                         </tr>
@@ -329,9 +326,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var items = clientItems(filter);
         renderList(sloDropdown, items.length
             ? items.map(function(row) {
-                var meta = row.type === 'consignee' ? 'Destinatario' : 'Cliente SLO';
-                if (row.ready_count) meta += ' · ' + row.ready_count + ' listos';
-                return '<div class="inv-combo-item" data-type="' + row.type + '" data-id="' + (row.id || '') + '" data-name="' + String(row.name || '').replace(/"/g, '&quot;') + '">' + row.label + '<span class="inv-combo-meta">' + meta + '</span></div>';
+                var meta = row.ready_count ? (row.ready_count + ' listos') : '';
+                return '<div class="inv-combo-item" data-type="' + row.type + '" data-id="' + (row.id || '') + '" data-name="' + String(row.name || '').replace(/"/g, '&quot;') + '">' + row.label + (meta ? '<span class="inv-combo-meta">' + meta + '</span>' : '') + '</div>';
             }).join('')
             : '<div class="inv-combo-empty">No hay coincidencias</div>');
     }

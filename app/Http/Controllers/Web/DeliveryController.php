@@ -315,11 +315,24 @@ class DeliveryController extends Controller
         }
 
         $consignee = trim((string) $request->input('consignee', ''));
+        if ($selectedAgency && $slo && (int) $selectedAgency->id === (int) $slo->id && $consignee !== '') {
+            $matchedClient = $sloClients->first(
+                fn (Agency $client) => Agency::normalizePersonName($client->name) === Agency::normalizePersonName($consignee)
+            );
+            if ($matchedClient) {
+                return redirect()->route('salidas.create', array_filter([
+                    'agency_id' => $matchedClient->id,
+                    'service_type' => $serviceType,
+                ]));
+            }
+        }
+
         $selectedSloClient = null;
         $accountAgency = $selectedAgency;
         if ($selectedAgency && $slo && $selectedAgency->isDirectClient() && (int) $selectedAgency->parent_agency_id === (int) $slo->id) {
             $selectedSloClient = $selectedAgency;
             $accountAgency = $slo;
+            $this->claimSloPackagesForClient($slo, $selectedAgency);
         }
 
         $isSloAccount = $accountAgency && $slo && (int) $accountAgency->id === (int) $slo->id;
@@ -335,21 +348,33 @@ class DeliveryController extends Controller
                 ->groupBy('agency_id')
                 ->pluck('ready_count', 'agency_id');
 
-            $sloClients = $sloClients->map(function (Agency $client) use ($readyCounts) {
-                $client->ready_count = (int) ($readyCounts[$client->id] ?? 0);
+            $orphanCounts = Preregistration::query()
+                ->where('status', 'READY')
+                ->whereDoesntHave('delivery')
+                ->where('agency_id', $slo->id)
+                ->selectRaw('UPPER(TRIM(label_name)) as name_key, COUNT(*) as ready_count')
+                ->groupByRaw('UPPER(TRIM(label_name))')
+                ->pluck('ready_count', 'name_key');
+
+            $clientsByName = [];
+            $sloClients = $sloClients->map(function (Agency $client) use ($readyCounts, $orphanCounts, &$clientsByName) {
+                $key = Agency::normalizePersonName($client->name);
+                $client->ready_count = (int) ($readyCounts[$client->id] ?? 0) + (int) ($orphanCounts[$key] ?? 0);
+                if ($key !== '') {
+                    $clientsByName[$key] = $client;
+                }
 
                 return $client;
             })->sortByDesc(fn (Agency $client) => $client->ready_count)->values();
 
-            $sloConsignees = Preregistration::query()
-                ->where('status', 'READY')
-                ->whereDoesntHave('delivery')
-                ->where('agency_id', $slo->id)
-                ->selectRaw('label_name, COUNT(*) as ready_count')
-                ->groupBy('label_name')
-                ->orderByDesc('ready_count')
-                ->orderBy('label_name')
-                ->get();
+            $sloConsignees = $orphanCounts
+                ->filter(fn ($count, $key) => $key !== '' && ! isset($clientsByName[$key]))
+                ->map(fn ($count, $key) => (object) [
+                    'label_name' => $key,
+                    'ready_count' => (int) $count,
+                ])
+                ->sortByDesc('ready_count')
+                ->values();
         }
 
         $partnerAgenciesJson = $partnerAgencies->map(fn (Agency $a) => [
@@ -480,7 +505,29 @@ class DeliveryController extends Controller
             return;
         }
 
-        $query->whereRaw('UPPER(TRIM(label_name)) = ?', [mb_strtoupper($consignee)]);
+        $query->whereRaw('UPPER(TRIM(label_name)) = ?', [Agency::normalizePersonName($consignee)]);
+    }
+
+    /**
+     * Paquetes viejos colgados en SkyLink One con el nombre del cliente
+     * pasan a la ficha del cliente (la agencia sigue siendo SLO).
+     */
+    private function claimSloPackagesForClient(?Agency $slo, Agency $client): int
+    {
+        if (! $slo || ! $client->isDirectClient() || (int) $client->parent_agency_id !== (int) $slo->id) {
+            return 0;
+        }
+
+        $name = Agency::normalizePersonName($client->name);
+        if ($name === '') {
+            return 0;
+        }
+
+        return Preregistration::query()
+            ->where('agency_id', $slo->id)
+            ->whereIn('status', ['RECEIVED_MIAMI', 'IN_TRANSIT', 'IN_WAREHOUSE_NIC', 'READY'])
+            ->whereRaw('UPPER(TRIM(label_name)) = ?', [$name])
+            ->update(['agency_id' => $client->id]);
     }
 
     private function deliveryScopeFilter(?Agency $selectedAgency): \Closure
@@ -598,6 +645,7 @@ class DeliveryController extends Controller
 
         $consignee = trim((string) $request->input('consignee', ''));
         $sloRoot = $this->sloDeliveryAccountOptions()['slo'];
+        $this->claimSloPackagesForClient($sloRoot, $agency);
         $isSloRoot = $sloRoot && (int) $agency->id === (int) $sloRoot->id;
         if ($isSloRoot && $consignee === '' && ! $request->filled('delivery_note_id')) {
             return redirect()->route('salidas.create', ['agency_id' => $agency->id])

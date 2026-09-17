@@ -110,6 +110,13 @@ class Agency extends Model
         return $brand->name;
     }
 
+    public static function normalizePersonName(?string $name): string
+    {
+        $name = strtoupper(trim((string) preg_replace('/\s+/', ' ', (string) $name)));
+
+        return $name;
+    }
+
     public function canHaveChildren(): bool
     {
         return $this->is_main || $this->account_type === self::TYPE_SUBAGENCY || $this->account_type === self::TYPE_ROOT;

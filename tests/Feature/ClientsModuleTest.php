@@ -652,16 +652,17 @@ class ClientsModuleTest extends TestCase
             ->assertOk()
             ->assertSee('007120')
             ->assertSee($slo->agencyColumnLabel())
-            ->assertSee('Cliente: EZEQUIEL MEDAL')
-            ->assertDontSee('0066 - EZEQUIEL MEDAL')
-            ->assertSee($slo->name.' · EZEQUIEL MEDAL');
+            ->assertSee('EZEQUIEL MEDAL')
+            ->assertDontSee('Cliente: EZEQUIEL MEDAL')
+            ->assertDontSee('0066 - EZEQUIEL MEDAL');
 
         $this->actingAs($admin)
             ->get(route('packages.index'))
             ->assertOk()
             ->assertSee('007120')
             ->assertSee($slo->agencyColumnLabel())
-            ->assertSee('Cliente: EZEQUIEL MEDAL')
+            ->assertSee('EZEQUIEL MEDAL')
+            ->assertDontSee('Cliente: EZEQUIEL MEDAL')
             ->assertDontSee('0066 - EZEQUIEL MEDAL');
 
         $print = $this->actingAs($admin)
