@@ -25,6 +25,28 @@
     <div class="inv-alert inv-alert-danger">{{ session('error') }}</div>
     @endif
 
+    @php $mixedNotesToSplit = $mixedNotesToSplit ?? collect(); @endphp
+    @if($mixedNotesToSplit->isNotEmpty())
+    <div class="inv-alert inv-alert-danger">
+        <p style="margin:0 0 0.65rem"><strong>Hay {{ $mixedNotesToSplit->count() }} {{ $mixedNotesToSplit->count() === 1 ? 'hoja que mezcla' : 'hojas que mezclan' }} clientes</strong> y no se pueden facturar juntas. Sepárelas: cada cliente queda en su propia hoja, sin re-escanear.</p>
+        <div class="inv-mixed-list">
+            @foreach($mixedNotesToSplit as $mixedNote)
+            @php $mixedNames = $mixedNote->packageBillToAgencies()->pluck('name')->implode(', '); @endphp
+            <div class="inv-mixed-row">
+                <div>
+                    <strong>{{ $mixedNote->code }}</strong>
+                    <span class="inv-muted"> · {{ $mixedNames ?: ($mixedNote->agency?->listingAccountLabel() ?? 'Varios clientes') }}</span>
+                </div>
+                <form action="{{ route('salidas.hojas.split-clients', $mixedNote) }}" method="POST" onsubmit="return confirm('¿Separar {{ $mixedNote->code }}? Se creará una hoja nueva por cada cliente distinto.');">
+                    @csrf
+                    <button type="submit" class="inv-btn inv-btn-primary inv-btn-sm">Separar por cliente</button>
+                </form>
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
     <div class="inv-kpis">
         <div class="inv-kpi-card">
             <span class="inv-kpi-label">Hojas</span>
@@ -103,12 +125,20 @@
                     @forelse($deliveryNotes as $note)
                     @php
                         $firstDelivery = $note->firstDelivery;
-                        $agencyName = $note->agency?->listingAccountLabel()
-                            ?? $firstDelivery?->preregistration?->agency?->listingAccountLabel()
-                            ?? '—';
+                        $isMixed = $note->hasMixedBillTos();
+                        $agencyName = $isMixed
+                            ? $note->packageBillToAgencies()->pluck('name')->implode(' · ')
+                            : ($note->agency?->listingAccountLabel()
+                                ?? $firstDelivery?->preregistration?->agency?->listingAccountLabel()
+                                ?? '—');
                     @endphp
                     <tr>
-                        <td><span class="inv-folio">{{ $note->code }}</span></td>
+                        <td>
+                            <span class="inv-folio">{{ $note->code }}</span>
+                            @if($isMixed)
+                            <span class="inv-mixed-badge">Mixta</span>
+                            @endif
+                        </td>
                         <td>
                             <div class="inv-client">{{ $agencyName }}</div>
                         </td>
@@ -173,6 +203,9 @@
 .inv-alert { padding: 0.85rem 1.05rem; border-radius: 0.7rem; margin-bottom: 1rem; font-size: 0.875rem; }
 .inv-alert-success { background: #EFFAF4; border: 1px solid #A7DFC3; color: #116039; font-weight: 600; }
 .inv-alert-danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+.inv-mixed-list { display: flex; flex-direction: column; gap: 0.45rem; }
+.inv-mixed-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; background: #fff; border: 1px solid #fecaca; border-radius: 0.55rem; padding: 0.45rem 0.65rem; color: #0f172a; }
+.inv-mixed-badge { display: inline-flex; margin-left: 0.4rem; padding: 0.1rem 0.4rem; border-radius: 999px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; vertical-align: middle; }
 .inv-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1.15rem; }
 .inv-kpi-card {
     background: #fff; border: 1px solid var(--inv-line); border-radius: 0.85rem;

@@ -629,6 +629,60 @@ class DeliveryScanTest extends TestCase
         $this->assertSame('DELIVERED', $brendaPkg->fresh()->status);
     }
 
+    public function test_salidas_index_pins_mixed_notes_with_client_names_and_split_action(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        [$slo, $magali, $brenda] = $this->seedSloClients();
+
+        $note = DeliveryNote::create([
+            'code' => 'SLO-1254',
+            'agency_id' => $slo->id,
+        ]);
+        $magaliPkg = $this->createReadyPackage($magali, [
+            'warehouse_code' => '007302',
+            'tracking_external' => 'TRK-MAGALI-LIST',
+            'label_name' => 'Magali Zeledon',
+            'status' => 'DELIVERED',
+        ]);
+        $brendaPkg = $this->createReadyPackage($brenda, [
+            'warehouse_code' => '008133',
+            'tracking_external' => 'TRK-BRENDA-LIST',
+            'label_name' => 'Brenda Zeledon',
+            'status' => 'DELIVERED',
+        ]);
+        Delivery::create([
+            'delivery_note_id' => $note->id,
+            'preregistration_id' => $magaliPkg->id,
+            'delivered_at' => now(),
+            'delivered_to' => 'Magali Zeledon',
+            'delivery_type' => 'PICKUP',
+        ]);
+        Delivery::create([
+            'delivery_note_id' => $note->id,
+            'preregistration_id' => $brendaPkg->id,
+            'delivered_at' => now(),
+            'delivered_to' => 'Magali Zeledon',
+            'delivery_type' => 'PICKUP',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('salidas.index'))
+            ->assertOk()
+            ->assertSee('SLO-1254')
+            ->assertSee('hoja que mezcla')
+            ->assertSee('Magali Zeledon')
+            ->assertSee('Brenda Zeledon')
+            ->assertSee('Separar por cliente')
+            ->assertSee('Mixta');
+
+        $this->actingAs($admin)
+            ->get(route('salidas.index', ['agency_id' => $magali->id]))
+            ->assertOk()
+            ->assertSee('SLO-1254')
+            ->assertSee('hoja que mezcla')
+            ->assertSee('Separar por cliente');
+    }
+
     /**
      * @return array{0: Agency, 1: Agency, 2: Agency}
      */

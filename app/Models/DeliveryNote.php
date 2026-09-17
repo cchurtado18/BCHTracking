@@ -89,6 +89,19 @@ class DeliveryNote extends Model
     }
 
     /**
+     * Hojas con paquetes de más de una cuenta (Magali + Brenda en la misma SLO, etc.).
+     */
+    public function scopeWithMultiplePackageAgencies(Builder $query): Builder
+    {
+        return $query->whereRaw('(
+            SELECT COUNT(DISTINCT preregistrations.agency_id)
+            FROM deliveries
+            INNER JOIN preregistrations ON preregistrations.id = deliveries.preregistration_id
+            WHERE deliveries.delivery_note_id = delivery_notes.id
+        ) > 1');
+    }
+
+    /**
      * Cliente a facturar: si todos los paquetes caen en una cuenta comercial, esa;
      * si hay varias, la agencia de la hoja (salida de red, p. ej. SkyLink One).
      */

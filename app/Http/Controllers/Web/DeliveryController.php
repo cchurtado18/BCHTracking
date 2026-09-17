@@ -221,7 +221,7 @@ class DeliveryController extends Controller
 
         $notesQuery = DeliveryNote::query()
             ->withCount(['deliveries' => $deliveryFilter])
-            ->with(['agency.parent', 'firstDelivery.preregistration.agency.parent'])
+            ->with(['agency.parent', 'firstDelivery.preregistration.agency.parent', 'deliveries.preregistration.agency.parent'])
             ->whereHas('deliveries', $deliveryFilter)
             ->orderByDesc(DB::raw('(SELECT MAX(delivered_at) FROM deliveries WHERE deliveries.delivery_note_id = delivery_notes.id)'));
 
@@ -230,6 +230,19 @@ class DeliveryController extends Controller
         $deliveryNotes = $notesQuery->paginate(15)->withQueryString();
         $searchQuery = $request->input('q');
         $agenciesForSelect = $this->agenciesForSelect($user);
+
+        $mixedNotesToSplit = collect();
+        if (! ($user && $user->isAgencyUser())) {
+            $mixedNotesToSplit = DeliveryNote::query()
+                ->with(['agency.parent', 'deliveries.preregistration.agency.parent'])
+                ->withMultiplePackageAgencies()
+                ->withoutActiveInvoice()
+                ->orderByDesc('id')
+                ->limit(40)
+                ->get()
+                ->filter(fn (DeliveryNote $note) => $note->hasMixedBillTos())
+                ->values();
+        }
 
         $kpiBase = DeliveryNote::query()->whereHas('deliveries', $deliveryFilter);
         $monthStart = now()->startOfMonth();
@@ -255,6 +268,7 @@ class DeliveryController extends Controller
             'selectedAgency',
             'agencyId',
             'searchQuery',
+            'mixedNotesToSplit',
             'statsTotal',
             'statsMonth',
             'statsPackagesMonth',
