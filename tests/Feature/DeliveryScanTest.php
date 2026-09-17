@@ -468,6 +468,7 @@ class DeliveryScanTest extends TestCase
             ->assertSee('Magali Zeledon')
             ->assertSee('Brenda Zeledon')
             ->assertSee('PAQUETE SLO')
+            ->assertDontSee('Filtrar por nombre o código')
             ->assertDontSee('Destinatario en cuenta')
             ->assertDontSee('>Tipo</th>', false)
             ->assertDontSee('009881')
@@ -676,11 +677,77 @@ class DeliveryScanTest extends TestCase
             ->assertSee('Mixta');
 
         $this->actingAs($admin)
+            ->get(route('salidas.create', ['agency_id' => $slo->id]))
+            ->assertOk()
+            ->assertSee('SLO-1254')
+            ->assertSee('hoja que mezcla')
+            ->assertSee('Separar por cliente')
+            ->assertSee('Cliente de SkyLink One')
+            ->assertDontSee('Filtrar por nombre o código')
+            ->assertDontSee('Buscar warehouse');
+
+        $this->actingAs($admin)
             ->get(route('salidas.index', ['agency_id' => $magali->id]))
             ->assertOk()
             ->assertSee('SLO-1254')
             ->assertSee('hoja que mezcla')
             ->assertSee('Separar por cliente');
+    }
+
+    public function test_same_slo_client_on_ficha_and_root_is_not_mixed(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        [$slo, $magali] = $this->seedSloClients();
+
+        $note = DeliveryNote::create([
+            'code' => 'SLO-1062',
+            'agency_id' => $slo->id,
+        ]);
+        $onFicha = $this->createReadyPackage($magali, [
+            'warehouse_code' => '008429',
+            'tracking_external' => 'TRK-MAGALI-FICHA',
+            'label_name' => 'Magali Zeledon',
+            'status' => 'DELIVERED',
+        ]);
+        $onSlo = $this->createReadyPackage($slo, [
+            'warehouse_code' => '008508',
+            'tracking_external' => 'TRK-MAGALI-SLO',
+            'label_name' => 'Magali Zeledon',
+            'status' => 'DELIVERED',
+        ]);
+        Delivery::create([
+            'delivery_note_id' => $note->id,
+            'preregistration_id' => $onFicha->id,
+            'delivered_at' => now(),
+            'delivered_to' => 'Magali Zeledon',
+            'delivery_type' => 'PICKUP',
+        ]);
+        Delivery::create([
+            'delivery_note_id' => $note->id,
+            'preregistration_id' => $onSlo->id,
+            'delivered_at' => now(),
+            'delivered_to' => 'Magali Zeledon',
+            'delivery_type' => 'PICKUP',
+        ]);
+
+        $this->assertFalse($note->fresh()->hasMixedBillTos());
+        $this->assertSame(
+            [$magali->id],
+            $note->fresh()->packageBillToAgencies()->pluck('id')->map(fn ($id) => (int) $id)->all()
+        );
+
+        $this->actingAs($admin)
+            ->get(route('salidas.index'))
+            ->assertOk()
+            ->assertSee('SLO-1062')
+            ->assertDontSee('hoja que mezcla')
+            ->assertDontSee('>Mixta</span>', false);
+
+        $this->actingAs($admin)
+            ->from(route('salidas.hojas.edit', $note))
+            ->post(route('salidas.hojas.split-clients', $note))
+            ->assertRedirect()
+            ->assertSessionHas('error', fn ($message) => str_contains((string) $message, 'no mezcla clientes'));
     }
 
     /**

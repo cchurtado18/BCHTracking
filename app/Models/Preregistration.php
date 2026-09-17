@@ -176,6 +176,32 @@ class Preregistration extends Model
         return $this->belongsTo(Agency::class);
     }
 
+    /**
+     * Cuenta a facturar del paquete. Un paquete colgado en SkyLink One
+     * con el nombre de un cliente propio se cobra a ese cliente, no a SLO.
+     *
+     * @param  array<string, Agency>|null  $sloClientsByName
+     */
+    public function billToAgency(?array $sloClientsByName = null): ?Agency
+    {
+        $this->loadMissing(['agency.parent.parent.parent']);
+        $agency = $this->agency;
+        if (! $agency) {
+            return null;
+        }
+
+        $billTo = $agency->commercialBillTo();
+        if ($billTo->isRootAccount()) {
+            $sloClientsByName ??= Agency::sloDirectClientsKeyedByName();
+            $match = $sloClientsByName[Agency::normalizePersonName($this->label_name)] ?? null;
+            if ($match instanceof Agency) {
+                return $match;
+            }
+        }
+
+        return $billTo;
+    }
+
     public function agencyClient(): BelongsTo
     {
         return $this->belongsTo(AgencyClient::class);

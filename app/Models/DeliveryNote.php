@@ -74,11 +74,11 @@ class DeliveryNote extends Model
     public function packageBillToAgencies()
     {
         $this->loadMissing(['deliveries.preregistration.agency.parent.parent.parent']);
+        $sloClientsByName = Agency::sloDirectClientsKeyedByName();
 
         return $this->deliveries
-            ->map(fn ($d) => $d->preregistration?->agency)
+            ->map(fn ($d) => $d->preregistration?->billToAgency($sloClientsByName))
             ->filter()
-            ->map(fn (Agency $agency) => $agency->commercialBillTo())
             ->unique(fn (Agency $agency) => (int) $agency->id)
             ->values();
     }

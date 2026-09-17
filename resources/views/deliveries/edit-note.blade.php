@@ -107,7 +107,7 @@
                     @forelse($deliveryNote->deliveries as $delivery)
                     @php
                         $p = $delivery->preregistration;
-                        $billTo = $p?->agency?->commercialBillTo();
+                        $billTo = $p?->billToAgency();
                     @endphp
                     <tr>
                         <td><span class="delivery-code">{{ $p?->warehouse_code ?? '—' }}</span></td>

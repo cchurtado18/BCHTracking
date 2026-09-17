@@ -117,6 +117,33 @@ class Agency extends Model
         return $name;
     }
 
+    /**
+     * Clientes propios de SkyLink One indexados por nombre normalizado.
+     *
+     * @return array<string, self>
+     */
+    public static function sloDirectClientsKeyedByName(): array
+    {
+        $slo = static::query()->where('code', '0001')->first()
+            ?? static::query()->whereRaw('UPPER(TRIM(name)) = ?', ['SKYLINK ONE'])->first();
+        if (! $slo) {
+            return [];
+        }
+
+        $map = [];
+        foreach (static::query()
+            ->where('parent_agency_id', $slo->id)
+            ->where('account_type', self::TYPE_DIRECT_CLIENT)
+            ->get() as $client) {
+            $key = static::normalizePersonName($client->name);
+            if ($key !== '') {
+                $map[$key] = $client;
+            }
+        }
+
+        return $map;
+    }
+
     public function canHaveChildren(): bool
     {
         return $this->is_main || $this->account_type === self::TYPE_SUBAGENCY || $this->account_type === self::TYPE_ROOT;

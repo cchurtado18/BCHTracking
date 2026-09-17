@@ -330,12 +330,8 @@ class InvoiceFromDeliveryNoteService
             'deliveries.preregistration.agency.parent.parent.parent',
         ]));
 
-        $packageAgencies = $notes
-            ->flatMap(fn (DeliveryNote $note) => $note->deliveries->map(fn ($d) => $d->preregistration?->agency))
-            ->filter();
-
-        $billTos = $packageAgencies
-            ->map(fn (Agency $agency) => $agency->commercialBillTo())
+        $billTos = $notes
+            ->flatMap(fn (DeliveryNote $note) => $note->packageBillToAgencies())
             ->unique(fn (Agency $agency) => (int) $agency->id)
             ->values();
 
@@ -343,7 +339,7 @@ class InvoiceFromDeliveryNoteService
             return (int) $billTos->first()->id;
         }
 
-        if ($packageAgencies->isEmpty()) {
+        if ($billTos->isEmpty()) {
             $fallback = $notes->first()?->billingAgency();
             if ($fallback) {
                 return (int) $fallback->id;

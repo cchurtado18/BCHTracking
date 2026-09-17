@@ -231,18 +231,7 @@ class DeliveryController extends Controller
         $searchQuery = $request->input('q');
         $agenciesForSelect = $this->agenciesForSelect($user);
 
-        $mixedNotesToSplit = collect();
-        if (! ($user && $user->isAgencyUser())) {
-            $mixedNotesToSplit = DeliveryNote::query()
-                ->with(['agency.parent', 'deliveries.preregistration.agency.parent'])
-                ->withMultiplePackageAgencies()
-                ->withoutActiveInvoice()
-                ->orderByDesc('id')
-                ->limit(40)
-                ->get()
-                ->filter(fn (DeliveryNote $note) => $note->hasMixedBillTos())
-                ->values();
-        }
+        $mixedNotesToSplit = $this->mixedNotesPendingSplit();
 
         $kpiBase = DeliveryNote::query()->whereHas('deliveries', $deliveryFilter);
         $monthStart = now()->startOfMonth();
@@ -427,6 +416,8 @@ class DeliveryController extends Controller
             $availableTotal = $availablePackages->count();
         }
 
+        $mixedNotesToSplit = $this->mixedNotesPendingSplit();
+
         return view('deliveries.create', compact(
             'selectedAgency',
             'accountAgency',
@@ -446,8 +437,31 @@ class DeliveryController extends Controller
             'availableTotal',
             'availableAir',
             'availableSea',
-            'availableCft'
+            'availableCft',
+            'mixedNotesToSplit'
         ));
+    }
+
+    /**
+     * Hojas mixtas sin factura, para separarlas desde Salidas o al crear una nueva.
+     *
+     * @return \Illuminate\Support\Collection<int, DeliveryNote>
+     */
+    private function mixedNotesPendingSplit()
+    {
+        if (auth()->user()?->isAgencyUser()) {
+            return collect();
+        }
+
+        return DeliveryNote::query()
+            ->with(['agency.parent', 'deliveries.preregistration.agency.parent'])
+            ->withMultiplePackageAgencies()
+            ->withoutActiveInvoice()
+            ->orderByDesc('id')
+            ->get()
+            ->filter(fn (DeliveryNote $note) => $note->hasMixedBillTos())
+            ->take(40)
+            ->values();
     }
 
     private function agenciesForSelect(?\App\Models\User $user)
@@ -1277,9 +1291,10 @@ class DeliveryController extends Controller
                     throw new \InvalidArgumentException('Esta hoja ya tiene una factura activa.');
                 }
 
+                $sloClientsByName = Agency::sloDirectClientsKeyedByName();
                 $groups = $locked->deliveries
-                    ->filter(fn ($d) => $d->preregistration?->agency)
-                    ->groupBy(fn ($d) => (int) $d->preregistration->agency->commercialBillTo()->id)
+                    ->filter(fn ($d) => $d->preregistration?->billToAgency($sloClientsByName))
+                    ->groupBy(fn ($d) => (int) $d->preregistration->billToAgency($sloClientsByName)->id)
                     ->mapWithKeys(fn ($items, $key) => [(int) $key => $items]);
 
                 if ($groups->count() < 2) {
@@ -1300,7 +1315,10 @@ class DeliveryController extends Controller
                         continue;
                     }
 
-                    $billTo = $deliveries->first()->preregistration->agency->commercialBillTo();
+                    $billTo = $deliveries->first()->preregistration->billToAgency($sloClientsByName);
+                    if (! $billTo) {
+                        continue;
+                    }
                     $newNote = $this->createDeliveryNoteForAgency($billTo);
                     Delivery::query()
                         ->whereIn('id', $deliveries->pluck('id')->all())
@@ -1310,7 +1328,7 @@ class DeliveryController extends Controller
                 }
 
                 $keepGroup = $groups->get($keepKey);
-                $keepAgency = $keepGroup?->first()?->preregistration?->agency?->commercialBillTo();
+                $keepAgency = $keepGroup?->first()?->preregistration?->billToAgency($sloClientsByName);
                 if ($keepAgency && (int) $locked->agency_id !== (int) $keepAgency->id) {
                     $locked->update(['agency_id' => $keepAgency->id]);
                 }

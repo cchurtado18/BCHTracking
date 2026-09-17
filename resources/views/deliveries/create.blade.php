@@ -33,16 +33,18 @@
     <div class="inv-alert inv-alert-danger">{{ session('error') }}</div>
     @endif
 
+    @include('deliveries.partials._mixed-notes-banner')
+
     <div class="inv-card inv-filters-card">
         <form method="GET" action="{{ route('salidas.create') }}" class="inv-filters-form" id="deliveryAgencyForm">
-            <div class="inv-field inv-field-wide">
+            <div class="inv-field">
                 <label class="inv-label" for="account_combobox">¿Para qué cuenta es la salida?</label>
                 <div id="account_combobox_wrap" class="inv-combo-wrap">
                     <input type="text" id="account_combobox" class="inv-input" placeholder="Escriba para buscar la cuenta…" autocomplete="off" value="{{ $accountAgency?->name ?? '' }}">
                     <div id="account_dropdown" class="inv-combo-dropdown" role="listbox"></div>
                 </div>
             </div>
-            <div class="inv-field inv-field-wide" id="slo_client_wrap" @if(! $isSloAccount) hidden @endif>
+            <div class="inv-field" id="slo_client_wrap" @if(! $isSloAccount) hidden @endif>
                 <label class="inv-label" for="slo_client_combobox">Cliente de SkyLink One</label>
                 <div id="slo_combobox_wrap" class="inv-combo-wrap">
                     <input type="text" id="slo_client_combobox" class="inv-input" placeholder="Escriba el nombre del cliente…" autocomplete="off" value="{{ $selectedSloClient?->name ?? ($consignee !== '' ? $consignee : '') }}">
@@ -65,49 +67,53 @@
 
     @if($needsClientPick)
     <div class="inv-alert inv-alert-info">
-        SkyLink One es la agencia. Elija el <strong>cliente</strong> para ver solo sus paquetes y armarle su hoja.
+        SkyLink One es la agencia. Elija el <strong>cliente</strong> arriba para ver solo sus paquetes y armarle su hoja.
     </div>
     <div class="inv-card">
         <div class="inv-table-head">
             <span class="inv-table-head-note">Clientes con paquetes listos</span>
-            <input type="search" id="slo_client_table_filter" class="inv-input inv-input-search" placeholder="Filtrar por nombre o código…" autocomplete="off">
         </div>
-        <div class="inv-card-body">
-            @if($sloReadyClients->isEmpty() && $sloConsignees->isEmpty())
-            <div class="inv-empty">
-                <p class="inv-empty-title">No hay paquetes listos en SkyLink One</p>
-                <p>Ningún cliente tiene paquetes en «Listo para retiro».</p>
-            </div>
-            @else
-            <div class="inv-table-scroll">
-                <table class="inv-table" id="slo_client_table">
-                    <thead>
-                        <tr>
-                            <th>Cliente</th>
-                            <th class="inv-num">Listos</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($sloReadyClients as $client)
-                        <tr data-search="{{ Str::lower($client->name.' '.$client->code) }}">
-                            <td><span class="inv-client">{{ $client->name }}</span>@if($client->code) <span class="inv-muted">{{ $client->code }}</span>@endif</td>
-                            <td class="inv-num">{{ $client->ready_count }}</td>
-                            <td><a href="{{ route('salidas.create', ['agency_id' => $client->id]) }}" class="inv-btn inv-btn-primary inv-btn-sm">Ver paquetes</a></td>
-                        </tr>
-                        @endforeach
-                        @foreach($sloConsignees as $row)
-                        <tr data-search="{{ Str::lower($row->label_name) }}">
-                            <td><span class="inv-client">{{ $row->label_name ?: 'Sin nombre' }}</span></td>
-                            <td class="inv-num">{{ $row->ready_count }}</td>
-                            <td><a href="{{ route('salidas.create', ['agency_id' => $slo->id, 'consignee' => $row->label_name]) }}" class="inv-btn inv-btn-primary inv-btn-sm">Ver paquetes</a></td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            @endif
+        @if($sloReadyClients->isEmpty() && $sloConsignees->isEmpty())
+        <div class="inv-empty">
+            <p class="inv-empty-title">No hay paquetes listos en SkyLink One</p>
+            <p>Ningún cliente tiene paquetes en «Listo para retiro».</p>
         </div>
+        @else
+        <div class="inv-table-scroll">
+            <table class="inv-table">
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th class="inv-num">Listos</th>
+                        <th class="inv-th-actions">Opciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($sloReadyClients as $client)
+                    <tr>
+                        <td>
+                            <span class="inv-client">{{ $client->name }}</span>
+                            @if($client->code) <span class="inv-muted">{{ $client->code }}</span>@endif
+                        </td>
+                        <td class="inv-num"><span class="inv-paq">{{ $client->ready_count }}</span></td>
+                        <td class="inv-actions">
+                            <a href="{{ route('salidas.create', ['agency_id' => $client->id]) }}" class="inv-btn inv-btn-primary inv-btn-sm">Ver paquetes</a>
+                        </td>
+                    </tr>
+                    @endforeach
+                    @foreach($sloConsignees as $row)
+                    <tr>
+                        <td><span class="inv-client">{{ $row->label_name ?: 'Sin nombre' }}</span></td>
+                        <td class="inv-num"><span class="inv-paq">{{ $row->ready_count }}</span></td>
+                        <td class="inv-actions">
+                            <a href="{{ route('salidas.create', ['agency_id' => $slo->id, 'consignee' => $row->label_name]) }}" class="inv-btn inv-btn-primary inv-btn-sm">Ver paquetes</a>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        @endif
     </div>
     @elseif($selectedAgency)
     <div class="inv-card">
@@ -117,13 +123,13 @@
             <a href="{{ route('salidas.batch', array_filter(['agency_id' => $selectedAgency->id, 'service_type' => $serviceType, 'consignee' => $consignee !== '' ? $consignee : null])) }}" class="inv-btn inv-btn-primary inv-btn-sm">Iniciar salida</a>
             @endif
         </div>
+        @if(($availableAir + $availableSea + ($availableCft ?? 0)) === 0)
+        <div class="inv-empty">
+            <p class="inv-empty-title">Esta cuenta no tiene paquetes listos para retirar</p>
+            <p>No hay paquetes en estado «Listo para retiro» para {{ $packageHead }}. Seleccione otra cuenta o espere a que los paquetes estén listos.</p>
+        </div>
+        @else
         <div class="inv-card-body">
-            @if(($availableAir + $availableSea + ($availableCft ?? 0)) === 0)
-            <div class="inv-empty">
-                <p class="inv-empty-title">Esta cuenta no tiene paquetes listos para retirar</p>
-                <p>No hay paquetes en estado «Listo para retiro» para {{ $packageHead }}. Seleccione otra cuenta o espere a que los paquetes estén listos.</p>
-            </div>
-            @else
             <div class="inv-service-filter">
                 <span class="inv-service-label">Servicio:</span>
                 <a href="{{ route('salidas.create', $createParams) }}" class="inv-chip {{ !$serviceType ? 'is-active' : '' }}">Todos ({{ $availableAir + $availableSea + ($availableCft ?? 0) }})</a>
@@ -131,42 +137,39 @@
                 <a href="{{ route('salidas.create', $createParams + ['service_type' => 'SEA']) }}" class="inv-chip {{ $serviceType === 'SEA' ? 'is-active' : '' }}">Marítimo ({{ $availableSea }})</a>
                 <a href="{{ route('salidas.create', $createParams + ['service_type' => 'CFT']) }}" class="inv-chip {{ $serviceType === 'CFT' ? 'is-active' : '' }}">Pie cúbico ({{ $availableCft ?? 0 }})</a>
             </div>
-            <div class="inv-table-toolbar">
-                <p class="inv-hint">{{ $availableTotal }} {{ $availableTotal === 1 ? 'paquete listo' : 'paquetes listos' }}@if($serviceType) — {{ \App\Support\ServiceType::label($serviceType) }}@else ({{ $availableAir }} aéreo, {{ $availableSea }} marítimo, {{ $availableCft ?? 0 }} pie cúbico)@endif. Use «Iniciar salida» para escanear y registrar la entrega.</p>
-                <input type="search" id="package_table_filter" class="inv-input inv-input-search" placeholder="Buscar warehouse, tracking o nombre…" autocomplete="off">
-            </div>
-            <div class="inv-table-scroll">
-                <table class="inv-table" id="package_table">
-                    <thead>
-                        <tr>
-                            <th>Cliente (etiqueta)</th>
-                            <th>Warehouse</th>
-                            <th>Tracking</th>
-                            <th>Servicio</th>
-                            <th class="inv-num">Peso (lbs)</th>
-                            <th>Agencia</th>
-                            <th>Listo desde</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($availablePackages as $p)
-                        <tr data-search="{{ Str::lower(($p->label_name ?? '').' '.($p->warehouse_code ?? '').' '.($p->tracking_external ?? '').' '.($p->agency->name ?? '')) }}">
-                            <td title="{{ $p->label_name }}"><span class="inv-client">{{ Str::limit($p->label_name, 25) }}</span></td>
-                            <td><span class="inv-folio">{{ $p->warehouse_code ?? '—' }}</span></td>
-                            <td class="inv-muted" title="{{ $p->tracking_external }}">{{ Str::limit($p->tracking_external, 18) }}</td>
-                            <td>
-                                <span class="inv-type inv-type--{{ strtolower($p->service_type ?? '') }}">{{ \App\Support\ServiceType::label($p->service_type) }}</span>
-                            </td>
-                            <td class="inv-num">{{ $p->verified_weight_lbs ?? $p->intake_weight_lbs ?? '—' }}</td>
-                            <td class="inv-muted" title="{{ $p->agency?->listingAccountLabel() ?? '' }}"><x-account-label :agency="$p->agency" :show-code="false" /></td>
-                            <td class="inv-nowrap inv-muted">{{ $p->ready_at ? $p->ready_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') : '—' }}</td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            @endif
+            <p class="inv-hint">{{ $availableTotal }} {{ $availableTotal === 1 ? 'paquete listo' : 'paquetes listos' }}@if($serviceType) — {{ \App\Support\ServiceType::label($serviceType) }}@else ({{ $availableAir }} aéreo, {{ $availableSea }} marítimo, {{ $availableCft ?? 0 }} pie cúbico)@endif. Use «Iniciar salida» para escanear y registrar la entrega.</p>
         </div>
+        <div class="inv-table-scroll">
+            <table class="inv-table">
+                <thead>
+                    <tr>
+                        <th>Cliente (etiqueta)</th>
+                        <th>Warehouse</th>
+                        <th>Tracking</th>
+                        <th>Servicio</th>
+                        <th class="inv-num">Peso (lbs)</th>
+                        <th>Agencia</th>
+                        <th>Listo desde</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($availablePackages as $p)
+                    <tr>
+                        <td title="{{ $p->label_name }}"><span class="inv-client">{{ Str::limit($p->label_name, 25) }}</span></td>
+                        <td><span class="inv-folio">{{ $p->warehouse_code ?? '—' }}</span></td>
+                        <td class="inv-muted" title="{{ $p->tracking_external }}">{{ Str::limit($p->tracking_external, 18) }}</td>
+                        <td>
+                            <span class="inv-type inv-type--{{ strtolower($p->service_type ?? '') }}">{{ \App\Support\ServiceType::label($p->service_type) }}</span>
+                        </td>
+                        <td class="inv-num">{{ $p->verified_weight_lbs ?? $p->intake_weight_lbs ?? '—' }}</td>
+                        <td class="inv-muted" title="{{ $p->agency?->listingAccountLabel() ?? '' }}"><x-account-label :agency="$p->agency" :show-code="false" /></td>
+                        <td class="inv-nowrap inv-muted">{{ $p->ready_at ? $p->ready_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') : '—' }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        @endif
     </div>
     @else
     <div class="inv-card">
@@ -186,6 +189,7 @@
     --inv-line: #E8EEF8;
     --inv-border: #C5D4EB;
     --inv-soft: #F4F8FD;
+    --inv-muted: #5E6168;
     padding: 1.15rem 0 2.25rem;
     max-width: 96rem;
     margin: 0 auto;
@@ -195,15 +199,16 @@
 .inv-alert-success { background: #EFFAF4; border: 1px solid #A7DFC3; color: #116039; font-weight: 600; }
 .inv-alert-danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
 .inv-alert-info { background: #EFF6FF; border: 1px solid #BFDBFE; color: #1e3a8a; }
+.inv-mixed-list { display: flex; flex-direction: column; gap: 0.45rem; }
+.inv-mixed-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; background: #fff; border: 1px solid #fecaca; border-radius: 0.55rem; padding: 0.45rem 0.65rem; color: #0f172a; }
 .inv-card { background: #fff; border: 1px solid var(--inv-line); border-radius: 0.85rem; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04); overflow: hidden; margin-bottom: 1.15rem; }
 .inv-filters-card { padding: 0.9rem 1.1rem; overflow: visible; }
 .inv-filters-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.7rem; }
-.inv-field { display: flex; flex-direction: column; gap: 0.28rem; min-width: 12rem; flex: 1; max-width: 28rem; }
-.inv-field-wide { max-width: 36rem; }
+.inv-field { display: flex; flex-direction: column; gap: 0.28rem; min-width: 14rem; flex: 1 1 16rem; }
+#slo_client_wrap[hidden] { display: none !important; }
 .inv-label { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: #94a3b8; }
 .inv-input { padding: 0.52rem 0.7rem; font-size: 0.85rem; border: 1px solid #D8DCE2; border-radius: 0.55rem; background: #fff; color: #0f172a; width: 100%; box-sizing: border-box; }
 .inv-input:focus { outline: none; border-color: var(--inv-blue); box-shadow: 0 0 0 3px rgba(30, 79, 168, 0.15); }
-.inv-input-search { max-width: 18rem; }
 .inv-combo-wrap { position: relative; }
 .inv-combo-dropdown {
     position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px);
@@ -216,18 +221,16 @@
 .inv-combo-item:hover, .inv-combo-item.is-active { background: var(--inv-soft); color: var(--inv-navy); }
 .inv-combo-meta { display: block; font-size: 0.72rem; color: #94a3b8; font-weight: 600; }
 .inv-combo-empty { padding: 0.7rem 0.85rem; font-size: 0.85rem; color: #94a3b8; }
-.inv-filters-actions { display: flex; align-items: center; gap: 0.65rem; }
-.inv-clear-link { font-size: 0.8rem; font-weight: 700; color: #64748b; text-decoration: none; }
+.inv-filters-actions { display: flex; align-items: center; gap: 0.65rem; padding-bottom: 1px; flex: 0 0 auto; }
+.inv-clear-link { font-size: 0.8rem; font-weight: 700; color: #64748b; text-decoration: none; white-space: nowrap; }
 .inv-clear-link:hover { color: var(--inv-navy); text-decoration: underline; }
-.inv-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.58rem 1.05rem; font-size: 0.875rem; font-weight: 700; border-radius: 0.6rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; }
+.inv-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.58rem 1.05rem; font-size: 0.875rem; font-weight: 700; border-radius: 0.6rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; white-space: nowrap; }
 .inv-btn-primary { background: var(--inv-navy); color: #fff; border-color: var(--inv-navy); box-shadow: 0 5px 14px rgba(10, 45, 111, 0.25); }
 .inv-btn-primary:hover { background: var(--inv-blue); border-color: var(--inv-blue); color: #fff; }
 .inv-btn-sm { padding: 0.42rem 0.85rem; font-size: 0.8rem; }
 .inv-table-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.7rem; padding: 0.85rem 1.1rem; border-bottom: 1px solid var(--inv-line); }
 .inv-table-head-note { font-size: 0.85rem; font-weight: 700; color: #334155; }
-.inv-table-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.7rem; margin-bottom: 0.85rem; }
-.inv-table-toolbar .inv-hint { margin: 0; flex: 1; }
-.inv-card-body { padding: 1rem 1.1rem 1.15rem; }
+.inv-card-body { padding: 1rem 1.1rem 0.25rem; }
 .inv-service-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.85rem; }
 .inv-service-label { font-size: 0.8rem; font-weight: 700; color: #334155; }
 .inv-chip { display: inline-flex; padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 700; border-radius: 999px; border: 1px solid #d1d9e6; background: #fff; color: #334155; text-decoration: none; }
@@ -239,19 +242,22 @@
 .inv-table thead th { background: linear-gradient(135deg, var(--inv-navy), var(--inv-blue)); color: #fff; text-align: left; padding: 0.62rem 0.85rem; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
 .inv-table thead th.inv-num { text-align: right; }
 .inv-table td { padding: 0.66rem 0.85rem; border-bottom: 1px solid #f4f7fb; color: #334155; vertical-align: middle; }
+.inv-table tbody tr:last-child td { border-bottom: none; }
 .inv-table tbody tr:hover td { background: var(--inv-soft); }
-.inv-num { text-align: right; font-variant-numeric: tabular-nums; }
+.inv-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.inv-th-actions, .inv-actions { text-align: right; white-space: nowrap; }
 .inv-nowrap { white-space: nowrap; }
-.inv-muted { color: #94a3b8; font-size: 0.8rem; }
-.inv-empty { padding: 2rem 1.25rem; text-align: center; color: #94a3b8; font-size: 0.9rem; }
+.inv-muted { color: #94a3b8; font-size: 0.75rem; }
+.inv-empty { padding: 1.4rem 1rem; text-align: center; color: #94a3b8; font-size: 0.85rem; }
 .inv-empty-title { margin: 0 0 0.4rem; font-size: 1.05rem; font-weight: 700; color: #334155; }
 .inv-folio { font-weight: 800; color: #0f172a; font-variant-numeric: tabular-nums; }
 .inv-client { font-weight: 700; color: #0f172a; }
+.inv-paq { display: inline-flex; align-items: center; justify-content: center; min-width: 1.65rem; height: 1.65rem; padding: 0 0.35rem; border-radius: 999px; background: #EAF1FC; color: var(--inv-blue); font-size: 0.75rem; font-weight: 800; }
 .inv-type { display: inline-flex; padding: 0.14rem 0.5rem; border-radius: 999px; font-size: 0.68rem; font-weight: 700; }
 .inv-type--air { background: #EAF6FB; color: #0E6E8C; border: 1px solid #BFE3F0; }
 .inv-type--sea { background: #FDF3E8; color: #9A5B12; border: 1px solid #F0D4A8; }
 .inv-type--cft { background: #E8F6EE; color: #16794C; border: 1px solid #b7e0c8; }
-@media (max-width: 768px) { .inv-field, .inv-field-wide, .inv-input-search { max-width: none; } }
+@media (max-width: 768px) { .inv-field { min-width: 0; flex: 1 1 100%; } .inv-filters-actions { width: 100%; } }
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -277,13 +283,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!q) return true;
         return String(row.name || '').toLowerCase().indexOf(q) !== -1
             || String(row.code || '').toLowerCase().indexOf(q) !== -1;
-    }
-    function findById(list, id) {
-        id = String(id || '');
-        for (var i = 0; i < list.length; i++) {
-            if (String(list[i].id) === id) return list[i];
-        }
-        return null;
     }
     function clientItems(filter) {
         var q = (filter || '').trim().toLowerCase();
@@ -413,21 +412,6 @@ document.addEventListener('DOMContentLoaded', function() {
             sloDropdown.style.display = 'none';
         }
     });
-
-    function bindTableFilter(inputId, tableId) {
-        var input = document.getElementById(inputId);
-        var table = document.getElementById(tableId);
-        if (!input || !table) return;
-        input.addEventListener('input', function() {
-            var q = input.value.trim().toLowerCase();
-            table.querySelectorAll('tbody tr').forEach(function(row) {
-                var hay = row.getAttribute('data-search') || '';
-                row.style.display = !q || hay.indexOf(q) !== -1 ? '' : 'none';
-            });
-        });
-    }
-    bindTableFilter('slo_client_table_filter', 'slo_client_table');
-    bindTableFilter('package_table_filter', 'package_table');
 });
 </script>
 @endsection
