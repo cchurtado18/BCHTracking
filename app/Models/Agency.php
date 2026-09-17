@@ -128,6 +128,14 @@ class Agency extends Model
         }
 
         $name = mb_strtoupper($name, 'UTF-8');
+        $name = strtr($name, [
+            'Á' => 'A', 'À' => 'A', 'Ä' => 'A', 'Â' => 'A',
+            'É' => 'E', 'È' => 'E', 'Ë' => 'E', 'Ê' => 'E',
+            'Í' => 'I', 'Ì' => 'I', 'Ï' => 'I', 'Î' => 'I',
+            'Ó' => 'O', 'Ò' => 'O', 'Ö' => 'O', 'Ô' => 'O',
+            'Ú' => 'U', 'Ù' => 'U', 'Ü' => 'U', 'Û' => 'U',
+            'Ñ' => 'N',
+        ]);
         $folded = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $name);
         if (is_string($folded) && $folded !== '') {
             $name = strtoupper($folded);

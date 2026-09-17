@@ -107,12 +107,19 @@ class DeliveryNote extends Model
         $nonRoot = $billTos->reject(fn (Agency $agency) => $agency->isRootAccount())->values();
         $labels = $resolved->pluck('label')->filter()->unique()->values();
 
+        if ($labels->count() === 1) {
+            $match = $sloClientsByName[$labels->first()] ?? null;
+            if ($match instanceof Agency) {
+                return collect([$match])->values();
+            }
+        }
+
         if ($nonRoot->count() === 1 && ($labels->count() <= 1 || $this->sloLabelsBelongToClient($resolved, $nonRoot->first()))) {
             return collect([$nonRoot->first()])->values();
         }
 
         if ($labels->count() === 1 && $nonRoot->count() <= 1) {
-            $match = $sloClientsByName[$labels->first()] ?? $nonRoot->first();
+            $match = $nonRoot->first();
             if ($match instanceof Agency) {
                 return collect([$match])->values();
             }

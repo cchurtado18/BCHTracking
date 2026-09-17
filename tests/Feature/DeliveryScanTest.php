@@ -807,6 +807,72 @@ class DeliveryScanTest extends TestCase
             ->assertDontSee('hoja que mezcla');
     }
 
+    public function test_same_consignee_is_not_mixed_across_other_slo_clients_or_accents(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        [$slo] = $this->seedSloClients();
+        $diego = Agency::create([
+            'name' => 'Diego Bolaños',
+            'code' => '0055',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_DIRECT_CLIENT,
+            'parent_agency_id' => $slo->id,
+        ]);
+        $paqueteria = Agency::create([
+            'name' => 'Paqueteria',
+            'code' => '0057',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_DIRECT_CLIENT,
+            'parent_agency_id' => $slo->id,
+        ]);
+
+        $note = DeliveryNote::create([
+            'code' => 'SLO-1159',
+            'agency_id' => $slo->id,
+        ]);
+        $onDiego = $this->createReadyPackage($diego, [
+            'warehouse_code' => '008842',
+            'tracking_external' => 'TRK-DIEGO-1',
+            'label_name' => 'Diego Bolaños',
+            'status' => 'DELIVERED',
+        ]);
+        $onPaq = $this->createReadyPackage($paqueteria, [
+            'warehouse_code' => '009503',
+            'tracking_external' => 'TRK-DIEGO-2',
+            'label_name' => 'Diego Bolaños',
+            'status' => 'DELIVERED',
+        ]);
+        $onSlo = $this->createReadyPackage($slo, [
+            'warehouse_code' => '008704',
+            'tracking_external' => 'TRK-DIEGO-3',
+            'label_name' => 'Diego Bolanos',
+            'status' => 'DELIVERED',
+        ]);
+        foreach ([$onDiego, $onPaq, $onSlo] as $pkg) {
+            Delivery::create([
+                'delivery_note_id' => $note->id,
+                'preregistration_id' => $pkg->id,
+                'delivered_at' => now(),
+                'delivered_to' => 'Diego Bolaños',
+                'delivery_type' => 'PICKUP',
+            ]);
+        }
+
+        $this->assertFalse($note->fresh()->hasMixedBillTos());
+        $this->assertSame(
+            [$diego->id],
+            $note->fresh()->packageBillToAgencies()->pluck('id')->map(fn ($id) => (int) $id)->all()
+        );
+
+        $this->actingAs($admin)
+            ->get(route('salidas.index'))
+            ->assertOk()
+            ->assertSee('SLO-1159')
+            ->assertDontSee('hoja que mezcla');
+    }
+
     /**
      * @return array{0: Agency, 1: Agency, 2: Agency}
      */

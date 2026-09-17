@@ -191,7 +191,10 @@ class Preregistration extends Model
         }
 
         $billTo = $agency->commercialBillTo();
-        if ($billTo->isRootAccount()) {
+        $inSloNetwork = $billTo->isRootAccount()
+            || $billTo->isDirectClient()
+            || $agency->isSkyLinkOne();
+        if ($inSloNetwork) {
             $sloClientsByName ??= Agency::sloDirectClientsKeyedByName();
             $match = $sloClientsByName[Agency::normalizePersonNameForMatch($this->label_name)] ?? null;
             if ($match instanceof Agency) {
