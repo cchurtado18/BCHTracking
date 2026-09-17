@@ -1091,6 +1091,43 @@ class AccountingInvoiceFromDeliveryNoteTest extends TestCase
         $this->assertSame(0, AccountingInvoice::count());
     }
 
+    public function test_can_invoice_slo_note_when_same_client_packages_still_hang_on_root(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        [$slo, $clientA] = $this->seedSloWithClients();
+
+        $note = DeliveryNote::create([
+            'code' => 'SLO-1088',
+            'agency_id' => $slo->id,
+        ]);
+        $this->addLabeledPackageToNote($note, $clientA, '006996', 2.6, 'SEA', $clientA->name);
+        $this->addLabeledPackageToNote($note, $slo, '006438', 5.25, 'SEA', $clientA->name);
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.create'))
+            ->assertOk()
+            ->assertSee('SLO-1088')
+            ->assertSee('Cliente A Factura')
+            ->assertDontSee(' · cuentas mixtas');
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.create-from-note', $note))
+            ->assertOk()
+            ->assertSee('Cliente A Factura')
+            ->assertDontSee('otra red de agencia');
+
+        $this->actingAs($admin)
+            ->post(route('accounting.invoices.store-from-note', $note), [
+                'rate_sea' => 2,
+                'exchange_rate' => 36.5,
+            ])
+            ->assertRedirect();
+
+        $invoice = AccountingInvoice::first();
+        $this->assertNotNull($invoice);
+        $this->assertSame($clientA->id, (int) $invoice->agency_id);
+    }
+
     public function test_can_invoice_multiple_notes_of_the_same_slo_client(): void
     {
         $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
@@ -1231,11 +1268,16 @@ class AccountingInvoiceFromDeliveryNoteTest extends TestCase
 
     private function addPackageToNote(DeliveryNote $note, Agency $agency, string $warehouse, float $lbs, string $service = 'AIR'): void
     {
+        $this->addLabeledPackageToNote($note, $agency, $warehouse, $lbs, $service, 'Cliente '.$warehouse);
+    }
+
+    private function addLabeledPackageToNote(DeliveryNote $note, Agency $agency, string $warehouse, float $lbs, string $service, string $labelName): void
+    {
         $pkg = Preregistration::create([
             'intake_type' => 'COURIER',
             'tracking_external' => 'TRK-'.$warehouse,
             'warehouse_code' => $warehouse,
-            'label_name' => 'Cliente '.$warehouse,
+            'label_name' => $labelName,
             'service_type' => $service,
             'intake_weight_lbs' => $lbs,
             'verified_weight_lbs' => $lbs,

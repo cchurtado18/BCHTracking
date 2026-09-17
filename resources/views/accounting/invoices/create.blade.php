@@ -67,6 +67,7 @@
                                     ltrim((string) $codeDigits, '0'),
                                     $billTo?->name,
                                     $billTo?->code,
+                                    $billTo?->listingAccountLabel(),
                                     $note->agency?->name,
                                     $note->agency?->code,
                                     $mixed ? 'mixtas' : null,
@@ -83,7 +84,7 @@
                                 </td>
                                 <td><span class="pt-code">{{ $note->code }}</span></td>
                                 <td>
-                                    {{ $billTo?->name ?? 'Sin agencia' }}@if($billTo?->code) <span class="pt-muted">· {{ $billTo->code }}</span>@endif
+                                    {{ $billTo?->listingAccountLabel() ?? 'Sin agencia' }}@if($billTo?->code && ! $billTo->isDirectClient()) <span class="pt-muted">· {{ $billTo->code }}</span>@endif
                                     @if($mixed)
                                     <span class="pt-muted"> · cuentas mixtas</span>
                                     @endif

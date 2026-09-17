@@ -193,7 +193,7 @@ class AccountingInvoiceController extends Controller
         $notes = DeliveryNote::query()
             ->with([
                 'agency.parent.parent.parent',
-                'deliveries.preregistration:id,agency_id',
+                'deliveries.preregistration:id,agency_id,label_name',
                 'deliveries.preregistration.agency.parent.parent.parent',
             ])
             ->withCount('deliveries')
@@ -627,7 +627,7 @@ class AccountingInvoiceController extends Controller
         return DeliveryNote::query()
             ->with([
                 'agency.parent.parent.parent',
-                'deliveries.preregistration:id,agency_id',
+                'deliveries.preregistration:id,agency_id,label_name',
                 'deliveries.preregistration.agency.parent.parent.parent',
             ])
             ->withCount('deliveries')

@@ -64,18 +64,6 @@ class InvoiceFromDeliveryNoteService
         }
 
         $agencyId = $this->resolveBillToAgencyId($notes);
-        $allowedAgencyIds = $this->allowedPackageAgencyIds($agencyId);
-        $packageAgencyIds = $notes
-            ->flatMap(fn (DeliveryNote $note) => $note->deliveries->map(fn ($d) => $d->preregistration?->agency_id))
-            ->filter()
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values();
-
-        $outside = $packageAgencyIds->first(fn (int $id) => ! in_array($id, $allowedAgencyIds, true));
-        if ($outside !== null) {
-            throw new InvalidArgumentException('Hay paquetes de otra red de agencia. No se pueden facturar juntos.');
-        }
 
         $lines = [];
         $totalLbs = 0.0;
@@ -387,16 +375,6 @@ class InvoiceFromDeliveryNoteService
         $last = array_pop($names);
 
         return implode(', ', $names).' y '.$last;
-    }
-
-    /**
-     * @return list<int>
-     */
-    private function allowedPackageAgencyIds(int $agencyId): array
-    {
-        $agency = Agency::query()->with('parent.parent.parent')->find($agencyId);
-
-        return $agency ? $agency->deliveryNetworkIds() : [$agencyId];
     }
 
     /**

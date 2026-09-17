@@ -750,6 +750,63 @@ class DeliveryScanTest extends TestCase
             ->assertSessionHas('error', fn ($message) => str_contains((string) $message, 'no mezcla clientes'));
     }
 
+    public function test_same_consignee_on_sheet_is_not_mixed_when_ficha_name_differs(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        [$slo] = $this->seedSloClients();
+        $ezequiel = Agency::create([
+            'name' => 'Ezequiel Medal Garcia',
+            'code' => '0066',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_DIRECT_CLIENT,
+            'parent_agency_id' => $slo->id,
+        ]);
+
+        $note = DeliveryNote::create([
+            'code' => 'SLO-1088',
+            'agency_id' => $slo->id,
+        ]);
+        $onFicha = $this->createReadyPackage($ezequiel, [
+            'warehouse_code' => '006996',
+            'tracking_external' => 'TRK-EZ-FICHA',
+            'label_name' => 'Ezequiel Medal',
+            'status' => 'DELIVERED',
+        ]);
+        $onSlo = $this->createReadyPackage($slo, [
+            'warehouse_code' => '006438',
+            'tracking_external' => 'TRK-EZ-SLO',
+            'label_name' => 'Ezequiel Medal',
+            'status' => 'DELIVERED',
+        ]);
+        Delivery::create([
+            'delivery_note_id' => $note->id,
+            'preregistration_id' => $onFicha->id,
+            'delivered_at' => now(),
+            'delivered_to' => 'Ezequiel Medal',
+            'delivery_type' => 'PICKUP',
+        ]);
+        Delivery::create([
+            'delivery_note_id' => $note->id,
+            'preregistration_id' => $onSlo->id,
+            'delivered_at' => now(),
+            'delivered_to' => 'Ezequiel Medal',
+            'delivery_type' => 'PICKUP',
+        ]);
+
+        $this->assertFalse($note->fresh()->hasMixedBillTos());
+        $this->assertSame(
+            [$ezequiel->id],
+            $note->fresh()->packageBillToAgencies()->pluck('id')->map(fn ($id) => (int) $id)->all()
+        );
+
+        $this->actingAs($admin)
+            ->get(route('salidas.index'))
+            ->assertOk()
+            ->assertSee('SLO-1088')
+            ->assertDontSee('hoja que mezcla');
+    }
+
     /**
      * @return array{0: Agency, 1: Agency, 2: Agency}
      */

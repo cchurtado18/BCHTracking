@@ -193,7 +193,7 @@ class Preregistration extends Model
         $billTo = $agency->commercialBillTo();
         if ($billTo->isRootAccount()) {
             $sloClientsByName ??= Agency::sloDirectClientsKeyedByName();
-            $match = $sloClientsByName[Agency::normalizePersonName($this->label_name)] ?? null;
+            $match = $sloClientsByName[Agency::normalizePersonNameForMatch($this->label_name)] ?? null;
             if ($match instanceof Agency) {
                 return $match;
             }

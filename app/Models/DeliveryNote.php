@@ -76,11 +76,67 @@ class DeliveryNote extends Model
         $this->loadMissing(['deliveries.preregistration.agency.parent.parent.parent']);
         $sloClientsByName = Agency::sloDirectClientsKeyedByName();
 
-        return $this->deliveries
-            ->map(fn ($d) => $d->preregistration?->billToAgency($sloClientsByName))
-            ->filter()
+        $resolved = $this->deliveries
+            ->map(function ($delivery) use ($sloClientsByName) {
+                $package = $delivery->preregistration;
+                if (! $package) {
+                    return null;
+                }
+
+                $billTo = $package->billToAgency($sloClientsByName);
+                if (! $billTo) {
+                    return null;
+                }
+
+                return [
+                    'billTo' => $billTo,
+                    'label' => Agency::normalizePersonNameForMatch($package->label_name),
+                ];
+            })
+            ->filter();
+
+        $billTos = $resolved
+            ->map(fn (array $row) => $row['billTo'])
             ->unique(fn (Agency $agency) => (int) $agency->id)
             ->values();
+
+        if ($billTos->count() <= 1) {
+            return $billTos;
+        }
+
+        $nonRoot = $billTos->reject(fn (Agency $agency) => $agency->isRootAccount())->values();
+        $labels = $resolved->pluck('label')->filter()->unique()->values();
+
+        if ($nonRoot->count() === 1 && ($labels->count() <= 1 || $this->sloLabelsBelongToClient($resolved, $nonRoot->first()))) {
+            return collect([$nonRoot->first()])->values();
+        }
+
+        if ($labels->count() === 1 && $nonRoot->count() <= 1) {
+            $match = $sloClientsByName[$labels->first()] ?? $nonRoot->first();
+            if ($match instanceof Agency) {
+                return collect([$match])->values();
+            }
+        }
+
+        return $billTos;
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, array{billTo: Agency, label: string}>  $resolved
+     */
+    private function sloLabelsBelongToClient($resolved, Agency $client): bool
+    {
+        $clientKey = Agency::normalizePersonNameForMatch($client->name);
+        $clientLabels = $resolved
+            ->filter(fn (array $row) => (int) $row['billTo']->id === (int) $client->id)
+            ->pluck('label')
+            ->filter();
+
+        return $resolved
+            ->filter(fn (array $row) => $row['billTo']->isRootAccount())
+            ->pluck('label')
+            ->filter()
+            ->every(fn (string $label) => $label === $clientKey || $clientLabels->contains($label));
     }
 
     public function hasMixedBillTos(): bool

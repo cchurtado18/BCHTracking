@@ -454,7 +454,7 @@ class DeliveryController extends Controller
         }
 
         return DeliveryNote::query()
-            ->with(['agency.parent', 'deliveries.preregistration.agency.parent'])
+            ->with(['agency.parent.parent.parent', 'deliveries.preregistration.agency.parent.parent.parent'])
             ->withMultiplePackageAgencies()
             ->withoutActiveInvoice()
             ->orderByDesc('id')

@@ -118,6 +118,25 @@ class Agency extends Model
     }
 
     /**
+     * Comparación de destinatario vs ficha: mayúsculas, sin tildes ni puntuación.
+     */
+    public static function normalizePersonNameForMatch(?string $name): string
+    {
+        $name = trim((string) preg_replace('/\s+/', ' ', (string) $name));
+        if ($name === '') {
+            return '';
+        }
+
+        $name = mb_strtoupper($name, 'UTF-8');
+        $folded = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $name);
+        if (is_string($folded) && $folded !== '') {
+            $name = strtoupper($folded);
+        }
+
+        return trim((string) preg_replace('/[^A-Z0-9 ]+/', '', $name));
+    }
+
+    /**
      * Clientes propios de SkyLink One indexados por nombre normalizado.
      *
      * @return array<string, self>
@@ -135,7 +154,7 @@ class Agency extends Model
             ->where('parent_agency_id', $slo->id)
             ->where('account_type', self::TYPE_DIRECT_CLIENT)
             ->get() as $client) {
-            $key = static::normalizePersonName($client->name);
+            $key = static::normalizePersonNameForMatch($client->name);
             if ($key !== '') {
                 $map[$key] = $client;
             }
