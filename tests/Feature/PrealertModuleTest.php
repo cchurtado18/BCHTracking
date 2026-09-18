@@ -267,6 +267,7 @@ class PrealertModuleTest extends TestCase
         $this->actingAs($central)
             ->post(route('preregistrations.store-quick-courier'), [
                 'tracking_external' => 'SPXMIA777777777777',
+                'intake_weight_lbs' => 4.5,
                 'photos' => [UploadedFile::fake()->image('caja.jpg', 400, 400)],
             ])
             ->assertRedirect();
@@ -277,6 +278,7 @@ class PrealertModuleTest extends TestCase
             'tracking_external' => 'SPXMIA777777777777',
             'service_type' => 'SEA',
             'agency_id' => $agencies['subA']->id,
+            'intake_weight_lbs' => 4.5,
         ]);
 
         $package = Preregistration::where('tracking_external', 'SPXMIA777777777777')->first();

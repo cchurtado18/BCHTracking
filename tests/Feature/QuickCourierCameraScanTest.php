@@ -3,8 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\Agency;
+use App\Models\Preregistration;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class QuickCourierCameraScanTest extends TestCase
@@ -23,7 +26,9 @@ class QuickCourierCameraScanTest extends TestCase
             ->assertSee('Tomar foto')
             ->assertSee('Detener cámara')
             ->assertSee('Tome la foto del paquete y, si quiere, el tracking')
-            ->assertSee('id="quickTakePhoto"', false);
+            ->assertSee('id="quickTakePhoto"', false)
+            ->assertSee('Peso (lb)')
+            ->assertSee('id="intake_weight_lbs"', false);
     }
 
     public function test_tracking_photo_page_includes_scan_then_photo_camera(): void
@@ -43,7 +48,38 @@ class QuickCourierCameraScanTest extends TestCase
             ->assertSee('Apunte el código de barras del tracking')
             ->assertSee('Tracking (se llena al escanear)')
             ->assertSee('id="quickTakePhoto"', false)
-            ->assertSee('Si el tracking está vacío');
+            ->assertSee('Si el tracking está vacío')
+            ->assertSee('Peso (lb)')
+            ->assertSee('id="intake_weight_lbs"', false);
+    }
+
+    public function test_quick_courier_store_requires_and_saves_package_weight(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create(['agency_id' => null]);
+        $photo = UploadedFile::fake()->image('caja.jpg', 400, 400);
+
+        $this->actingAs($user)
+            ->post(route('preregistrations.store-quick-courier'), [
+                'tracking_external' => '1ZWEIGHTTEST001',
+                'photos' => [$photo],
+            ])
+            ->assertSessionHasErrors('intake_weight_lbs');
+
+        $this->actingAs($user)
+            ->post(route('preregistrations.store-quick-courier'), [
+                'tracking_external' => '1ZWEIGHTTEST001',
+                'intake_weight_lbs' => 12.75,
+                'photos' => [$photo],
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('preregistrations', [
+            'tracking_external' => '1ZWEIGHTTEST001',
+            'intake_weight_lbs' => 12.75,
+            'status' => 'PHOTO_PENDING',
+        ]);
+        $this->assertNotNull(Preregistration::where('tracking_external', '1ZWEIGHTTEST001')->first());
     }
 
     public function test_preregistration_index_shows_both_capture_buttons(): void

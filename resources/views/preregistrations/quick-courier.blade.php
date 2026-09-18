@@ -56,6 +56,28 @@
                         <p class="quick-help">{{ $scanThenPhoto ? 'Se llena al escanear la etiqueta. Si lo borra, la cámara vuelve a buscar el código.' : 'Si el paquete trae tracking de courier, ingrésalo aquí para poder buscarlo luego.' }}</p>
                         @include('preregistrations.partials.prealert-lookup')
                     </div>
+                    <div class="quick-field quick-field-weight">
+                        <label for="intake_weight_lbs" class="preregs-label">Peso (lb) <span class="preregs-req">*</span></label>
+                        <div class="quick-weight-affix">
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                inputmode="decimal"
+                                name="intake_weight_lbs"
+                                id="intake_weight_lbs"
+                                value="{{ old('intake_weight_lbs') }}"
+                                class="preregs-input"
+                                placeholder="0.00"
+                                required
+                            >
+                            <span class="quick-weight-unit">lb</span>
+                        </div>
+                        <p class="quick-help">Péselo en la báscula e ingrese el peso en libras.</p>
+                        @error('intake_weight_lbs')
+                        <p class="preregs-field-error">{{ $message }}</p>
+                        @enderror
+                    </div>
                 </div>
 
                 <div class="preregs-form-section preregs-photo-section">
@@ -230,12 +252,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Toma al menos una foto antes de guardar.');
                 return;
             }
+            var weightInput = document.getElementById('intake_weight_lbs');
+            var weight = weightInput ? parseFloat(weightInput.value) : NaN;
+            if (!weightInput || isNaN(weight) || weight <= 0) {
+                alert('Indique el peso del paquete en libras.');
+                if (weightInput) weightInput.focus();
+                return;
+            }
             var submitBtn = form.querySelector('button[type="submit"]');
             if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Guardando...'; }
 
             var fd = new FormData();
             fd.append('_token', form.querySelector('input[name="_token"]').value);
             fd.append('tracking_external', (document.getElementById('tracking_external') || {}).value || '');
+            fd.append('intake_weight_lbs', weightInput.value);
             files.forEach(function(item) { fd.append('photos[]', item.file); });
 
             fetch(form.action, {
@@ -300,7 +330,19 @@ document.addEventListener('DOMContentLoaded', function() {
 .preregs-input:focus { outline: none; border-color: #0A2D6F; box-shadow: 0 0 0 3px rgba(30, 79, 168, 0.15); }
 
 .quick-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 0.5rem; }
+@media (min-width: 720px) {
+    .quick-grid { grid-template-columns: minmax(0, 1fr) 13.5rem; align-items: start; }
+}
 .quick-field { max-width: 32rem; }
+.quick-field-weight { max-width: 13.5rem; }
+.quick-weight-affix { position: relative; }
+.quick-weight-affix .preregs-input { padding-right: 2.65rem; }
+.quick-weight-unit {
+    position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+    font-size: 0.8rem; font-weight: 700; color: #64748b;
+}
+.preregs-req { color: #b91c1c; }
+.preregs-field-error { margin: 0.3rem 0 0; font-size: 0.8rem; color: #b91c1c; }
 .quick-help { font-size: 0.8125rem; color: #6b7280; margin-top: 0.25rem; margin-bottom: 0; }
 .quick-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .preregs-hidden { display: none !important; }

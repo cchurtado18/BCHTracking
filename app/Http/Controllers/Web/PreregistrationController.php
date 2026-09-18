@@ -695,6 +695,10 @@ class PreregistrationController extends Controller
             'photo' => 'nullable|file|image|mimes:jpg,jpeg,png,webp|max:10240',
             'photos' => 'nullable|array|max:3',
             'photos.*' => 'file|image|mimes:jpg,jpeg,png,webp|max:10240',
+            'intake_weight_lbs' => 'required|numeric|min:0.01|max:999999.99',
+        ], [
+            'intake_weight_lbs.required' => 'Indique el peso del paquete en libras.',
+            'intake_weight_lbs.min' => 'El peso debe ser mayor a 0.',
         ]);
 
         $photoFiles = $request->file('photos', []);
@@ -716,6 +720,7 @@ class PreregistrationController extends Controller
             'intake_type' => 'COURIER',
             'tracking_external' => $data['tracking_external'] ?? null,
             'label_name' => '[PENDIENTE]',
+            'intake_weight_lbs' => $data['intake_weight_lbs'],
             'status' => 'PHOTO_PENDING',
         ]);
         $prealert = $this->attachPrealertMatch($preregistration);
