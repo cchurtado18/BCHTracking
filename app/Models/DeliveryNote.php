@@ -206,11 +206,29 @@ class DeliveryNote extends Model
 
     public function invoiceFamilyKey(): string
     {
+        return $this->invoiceGroupKey();
+    }
+
+    /**
+     * Clave para juntar hojas en una misma factura: el cliente canónico, no el id crudo de agencia.
+     */
+    public function invoiceGroupKey(): string
+    {
         if ($this->hasMixedBillTos()) {
             return 'mixed:'.$this->id;
         }
 
-        return implode(',', $this->invoiceFamilyIds());
+        $billTo = $this->billingAgency();
+        if (! $billTo) {
+            return 'none:'.$this->id;
+        }
+
+        $canonical = $billTo->canonicalInvoiceBillTo();
+        if ($canonical->isDirectClient() || $canonical->isRootAccount()) {
+            return 'billto:'.(int) $canonical->id;
+        }
+
+        return 'family:'.(int) $canonical->invoiceFamilyRoot()->id;
     }
 
     public function currentInvoice(): ?AccountingInvoice

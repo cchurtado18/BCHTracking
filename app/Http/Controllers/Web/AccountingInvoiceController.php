@@ -242,18 +242,12 @@ class AccountingInvoiceController extends Controller
                 ->with('error', 'La hoja '.$mixed->pluck('code')->implode(', ').' mezcla clientes. Sepárela en Salidas (una hoja por cliente) y luego facture cada cuenta.');
         }
 
-        $billToIds = $notes
-            ->map(function (DeliveryNote $note) {
-                $billTos = $note->packageBillToAgencies();
-
-                return $billTos->count() === 1
-                    ? (int) $billTos->first()->id
-                    : (int) ($note->billingAgency()?->id ?? 0);
-            })
+        $groupKeys = $notes
+            ->map(fn (DeliveryNote $note) => $note->invoiceGroupKey())
             ->unique()
             ->values();
 
-        if ($billToIds->count() !== 1 || (int) $billToIds->first() === 0) {
+        if ($groupKeys->count() !== 1 || str_starts_with((string) $groupKeys->first(), 'none:')) {
             return redirect()
                 ->route('accounting.invoices.create')
                 ->with('error', 'Seleccione solo hojas del mismo cliente a facturar. Varias hojas sí se pueden juntar si todas son de esa misma cuenta.');
@@ -617,11 +611,7 @@ class AccountingInvoiceController extends Controller
             return collect();
         }
 
-        $billToId = (int) $primaryBillTos->first()->id;
-        $family = $primary->invoiceFamilyIds();
-        if ($family === []) {
-            $family = array_filter([(int) $primary->agency_id, $billToId]);
-        }
+        $groupKey = $primary->invoiceGroupKey();
         $selectedIds = $alreadySelected->pluck('id')->map(fn ($id) => (int) $id)->all();
 
         return DeliveryNote::query()
@@ -633,19 +623,11 @@ class AccountingInvoiceController extends Controller
             ->withCount('deliveries')
             ->whereHas('deliveries')
             ->withoutActiveInvoice()
-            ->where(function ($q) use ($family) {
-                $q->whereIn('agency_id', $family)
-                    ->orWhereHas('deliveries.preregistration', fn ($p) => $p->whereIn('agency_id', $family));
-            })
             ->whereNotIn('id', $selectedIds)
             ->orderByDesc('id')
-            ->limit(80)
+            ->limit(200)
             ->get()
-            ->filter(function (DeliveryNote $note) use ($billToId) {
-                $billTos = $note->packageBillToAgencies();
-
-                return $billTos->count() === 1 && (int) $billTos->first()->id === $billToId;
-            })
+            ->filter(fn (DeliveryNote $note) => $note->invoiceGroupKey() === $groupKey)
             ->values();
     }
 }

@@ -1181,6 +1181,93 @@ class AccountingInvoiceFromDeliveryNoteTest extends TestCase
         );
     }
 
+    public function test_can_invoice_two_slo_notes_when_packages_hang_on_root_with_the_same_client_name(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        [$slo, $clientA] = $this->seedSloWithClients();
+
+        $noteOne = DeliveryNote::create(['code' => 'SLO-1401', 'agency_id' => $slo->id]);
+        $this->addLabeledPackageToNote($noteOne, $slo, '140101', 4, 'AIR', $clientA->name);
+        $noteTwo = DeliveryNote::create(['code' => 'SLO-1402', 'agency_id' => $slo->id]);
+        $this->addLabeledPackageToNote($noteTwo, $slo, '140201', 6, 'AIR', $clientA->name);
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.create'))
+            ->assertOk()
+            ->assertSee('SLO-1401')
+            ->assertSee('SLO-1402');
+
+        $start = $this->actingAs($admin)
+            ->post(route('accounting.invoices.start-create'), [
+                'delivery_note_ids' => [$noteOne->id, $noteTwo->id],
+            ]);
+        $start->assertRedirect();
+        $this->assertStringNotContainsString('mismo cliente', (string) $start->headers->get('Location'));
+        $start->assertSessionMissing('error');
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.create-from-note', $noteOne))
+            ->assertOk()
+            ->assertSee('SLO-1402');
+
+        $this->actingAs($admin)
+            ->post(route('accounting.invoices.store-from-note', $noteOne), [
+                'rate_air' => 2,
+                'exchange_rate' => 36.5,
+                'delivery_note_ids' => [$noteOne->id, $noteTwo->id],
+            ])
+            ->assertRedirect();
+
+        $invoice = AccountingInvoice::first();
+        $this->assertNotNull($invoice);
+        $this->assertSame($clientA->id, (int) $invoice->agency_id);
+        $this->assertEqualsCanonicalizing(
+            [$noteOne->id, $noteTwo->id],
+            $invoice->deliveryNotes()->pluck('delivery_notes.id')->all()
+        );
+    }
+
+    public function test_can_invoice_slo_client_note_together_with_same_name_ficha(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        [$slo, $clientA] = $this->seedSloWithClients();
+        $ficha = Agency::create([
+            'name' => 'Cliente Á Factura',
+            'code' => 'FICH',
+            'phone' => '555',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+        ]);
+
+        $noteClient = $this->seedSimpleNoteOnSheet($slo, $clientA, 'SLO-1411', '141101', 4);
+        $noteFicha = $this->seedSimpleNote($ficha, 'SLO-1412', '141201', 5);
+
+        $start = $this->actingAs($admin)
+            ->from(route('accounting.invoices.create'))
+            ->post(route('accounting.invoices.start-create'), [
+                'delivery_note_ids' => [$noteClient->id, $noteFicha->id],
+            ]);
+        $start->assertRedirect();
+        $start->assertSessionMissing('error');
+
+        $this->actingAs($admin)
+            ->post(route('accounting.invoices.store-from-note', $noteClient), [
+                'rate_air' => 2,
+                'exchange_rate' => 36.5,
+                'delivery_note_ids' => [$noteClient->id, $noteFicha->id],
+            ])
+            ->assertRedirect();
+
+        $invoice = AccountingInvoice::first();
+        $this->assertNotNull($invoice);
+        $this->assertSame($clientA->id, (int) $invoice->agency_id);
+        $this->assertEqualsCanonicalizing(
+            [$noteClient->id, $noteFicha->id],
+            $invoice->deliveryNotes()->pluck('delivery_notes.id')->all()
+        );
+    }
+
     public function test_preview_combines_air_and_sea_notes_and_asks_for_both_rates(): void
     {
         $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);

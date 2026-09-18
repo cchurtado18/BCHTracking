@@ -279,6 +279,38 @@ class Agency extends Model
     }
 
     /**
+     * Cliente propio de SkyLink One con el mismo nombre (ficha suelta vs cuenta SLO).
+     */
+    public function matchingSloDirectClient(): ?self
+    {
+        if ($this->isDirectClient()) {
+            return $this;
+        }
+
+        $key = static::normalizePersonNameForMatch($this->name);
+        if ($key === '') {
+            return null;
+        }
+
+        $match = static::sloDirectClientsKeyedByName()[$key] ?? null;
+
+        return $match instanceof self ? $match : null;
+    }
+
+    /**
+     * Cuenta a la que se cobra: cliente SLO canónico si el nombre coincide.
+     */
+    public function canonicalInvoiceBillTo(): self
+    {
+        $billTo = $this->isDirectClient() || $this->isRootAccount()
+            ? $this
+            : $this->commercialBillTo();
+        $sloClient = $billTo->matchingSloDirectClient();
+
+        return $sloClient ?? $billTo;
+    }
+
+    /**
      * Cliente al que se cobra y se envía la factura.
      * Subagencia anidada → el padre comercial al que está afiliada (bajo SLO).
      */

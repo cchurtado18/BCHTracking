@@ -320,6 +320,7 @@ class InvoiceFromDeliveryNoteService
 
         $billTos = $notes
             ->flatMap(fn (DeliveryNote $note) => $note->packageBillToAgencies())
+            ->map(fn (Agency $agency) => $agency->canonicalInvoiceBillTo())
             ->unique(fn (Agency $agency) => (int) $agency->id)
             ->values();
 

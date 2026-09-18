@@ -58,7 +58,7 @@
                             @php
                                 $billTo = $note->billingAgency();
                                 $mixed = $note->hasMixedBillTos();
-                                $family = $mixed ? 'mixed:'.$note->id : 'billto:'.((int) ($billTo?->id ?? 0));
+                                $family = $note->invoiceGroupKey();
                                 $oldIds = collect(old('delivery_note_ids', old('delivery_note_id') ? [old('delivery_note_id')] : []))->map(fn ($id) => (string) $id);
                                 $codeDigits = preg_replace('/^(SLO|BCH)-?/i', '', (string) $note->code);
                                 $searchBits = strtolower(trim(implode(' ', array_filter([

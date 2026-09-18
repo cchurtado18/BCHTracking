@@ -202,7 +202,7 @@ class Preregistration extends Model
             }
         }
 
-        return $billTo;
+        return $billTo->canonicalInvoiceBillTo();
     }
 
     public function agencyClient(): BelongsTo
