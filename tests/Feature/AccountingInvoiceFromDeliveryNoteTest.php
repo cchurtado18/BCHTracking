@@ -86,7 +86,9 @@ class AccountingInvoiceFromDeliveryNoteTest extends TestCase
             ->get(route('accounting.invoices.create-from-note', $note))
             ->assertOk()
             ->assertSee('Generar factura PrimeTrack')
-            ->assertSee('SLO-9501');
+            ->assertSee('SLO-9501')
+            ->assertSee('Tarifa pie cúbico')
+            ->assertSee('name="rate_cft"', false);
 
         $response = $this->actingAs($admin)
             ->post(route('accounting.invoices.store-from-note', $note), [
@@ -164,6 +166,14 @@ class AccountingInvoiceFromDeliveryNoteTest extends TestCase
             'delivered_at' => now(),
             'delivered_to' => 'Retira CFT',
         ]);
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.create-from-note', $note))
+            ->assertOk()
+            ->assertSee('Flete Pie Cubico')
+            ->assertSee('Tarifa pie cúbico')
+            ->assertSee('name="rate_cft"', false)
+            ->assertSee('1.00 pie³');
 
         $this->actingAs($admin)
             ->post(route('accounting.invoices.store-from-note', $note), [
@@ -766,6 +776,60 @@ class AccountingInvoiceFromDeliveryNoteTest extends TestCase
             ->assertSessionHas('error');
     }
 
+    public function test_parent_and_child_packages_on_same_note_can_be_invoiced(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        $parent = Agency::create([
+            'name' => 'CH Logistics Hoja',
+            'code' => 'CHHJ',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+        ]);
+        $child = Agency::create([
+            'name' => 'Norte Hija Hoja',
+            'code' => 'NHHJ',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'parent_agency_id' => $parent->id,
+        ]);
+
+        $note = DeliveryNote::create([
+            'code' => 'SLO-7720',
+            'agency_id' => $parent->id,
+        ]);
+        $this->addPackageToNote($note, $parent, '772001', 4);
+        $this->addPackageToNote($note, $child, '772002', 6);
+
+        $this->assertFalse($note->fresh()->hasMixedBillTos());
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.create'))
+            ->assertOk()
+            ->assertSee('SLO-7720')
+            ->assertDontSee('cuentas mixtas');
+
+        $this->actingAs($admin)
+            ->from(route('accounting.invoices.create'))
+            ->post(route('accounting.invoices.start-create'), [
+                'delivery_note_ids' => [$note->id],
+            ])
+            ->assertRedirect(route('accounting.invoices.create-from-note', $note));
+
+        $this->actingAs($admin)
+            ->post(route('accounting.invoices.store-from-note', $note), [
+                'rate_air' => 2,
+                'exchange_rate' => 36.5,
+            ])
+            ->assertRedirect();
+
+        $invoice = AccountingInvoice::first();
+        $this->assertNotNull($invoice);
+        $this->assertSame($parent->id, (int) $invoice->agency_id);
+        $this->assertEquals(20.0, (float) $invoice->total_usd);
+    }
+
     public function test_nested_subagency_invoice_bills_parent_with_parent_rates(): void
     {
         $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
@@ -1357,8 +1421,10 @@ class AccountingInvoiceFromDeliveryNoteTest extends TestCase
             ->assertSee('Flete Maritimo')
             ->assertSee('Tarifa aéreo')
             ->assertSee('Tarifa marítimo')
+            ->assertSee('Tarifa pie cúbico')
             ->assertSee('name="rate_air"', false)
             ->assertSee('name="rate_sea"', false)
+            ->assertSee('name="rate_cft"', false)
             ->assertSee('No hay tarifa aérea vigente')
             ->assertSee('No hay tarifa marítima vigente')
             ->assertSee('4.00')

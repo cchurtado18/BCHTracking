@@ -190,16 +190,7 @@ class AccountingInvoiceController extends Controller
 
     public function create()
     {
-        $notes = DeliveryNote::query()
-            ->with(['agency.parent.parent.parent'])
-            ->withCount('deliveries')
-            ->whereHas('deliveries')
-            ->withoutActiveInvoice()
-            ->orderByDesc('id')
-            ->limit(200)
-            ->get();
-
-        DeliveryNote::decorateForInvoicePicker($notes);
+        $notes = DeliveryNote::queryForInvoicePicker();
         $invoiceAccounts = $notes
             ->map(function (DeliveryNote $note) {
                 $billTo = $note->billingAgency();
@@ -660,20 +651,11 @@ class AccountingInvoiceController extends Controller
         $groupKey = $primary->invoiceGroupKey();
         $selectedIds = $alreadySelected->pluck('id')->map(fn ($id) => (int) $id)->all();
 
-        $candidates = DeliveryNote::query()
-            ->with(['agency.parent.parent.parent'])
-            ->withCount('deliveries')
-            ->whereHas('deliveries')
-            ->withoutActiveInvoice()
-            ->whereNotIn('id', $selectedIds)
-            ->orderByDesc('id')
-            ->limit(200)
-            ->get();
-
-        DeliveryNote::decorateForInvoicePicker($candidates);
-
-        return $candidates
-            ->filter(fn (DeliveryNote $note) => $note->invoiceGroupKey() === $groupKey)
+        return DeliveryNote::queryForInvoicePicker()
+            ->filter(function (DeliveryNote $note) use ($groupKey, $selectedIds) {
+                return ! in_array((int) $note->id, $selectedIds, true)
+                    && $note->invoiceGroupKey() === $groupKey;
+            })
             ->values();
     }
 }

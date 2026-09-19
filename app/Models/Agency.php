@@ -151,14 +151,21 @@ class Agency extends Model
      */
     public static function sloDirectClientsKeyedByName(): array
     {
+        if (app()->bound('agency.sloDirectClientsKeyedByName')) {
+            return app('agency.sloDirectClientsKeyedByName');
+        }
+
         $slo = static::query()->where('code', '0001')->first()
             ?? static::query()->whereRaw('UPPER(TRIM(name)) = ?', ['SKYLINK ONE'])->first();
         if (! $slo) {
+            app()->instance('agency.sloDirectClientsKeyedByName', []);
+
             return [];
         }
 
         $map = [];
         foreach (static::query()
+            ->with('parent:id,name,code,account_type,is_main')
             ->where('parent_agency_id', $slo->id)
             ->where('account_type', self::TYPE_DIRECT_CLIENT)
             ->get() as $client) {
@@ -167,6 +174,8 @@ class Agency extends Model
                 $map[$key] = $client;
             }
         }
+
+        app()->instance('agency.sloDirectClientsKeyedByName', $map);
 
         return $map;
     }
@@ -349,7 +358,7 @@ class Agency extends Model
 
     /**
      * Paquetes que van juntos en una hoja de salida para este nodo comercial.
-     * Subagencia: ella + sus subagencias. Cliente SLO o raíz SLO: solo esa cuenta
+     * Subagencia: toda la red (padre + hijas). Cliente SLO o raíz SLO: solo esa cuenta
      * (cada cliente de SkyLink One tiene su propia hoja para poder facturarlo aparte).
      *
      * @return list<int>
@@ -360,7 +369,12 @@ class Agency extends Model
             return [(int) $this->id];
         }
 
-        return $this->networkIds();
+        $root = $this->invoiceFamilyRoot();
+        if ($root->isDirectClient() || $root->isRootAccount()) {
+            return [(int) $this->id];
+        }
+
+        return $root->networkIds();
     }
 
     /**

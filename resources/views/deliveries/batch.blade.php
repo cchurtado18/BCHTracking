@@ -22,7 +22,7 @@
         section="Operaciones"
         current="Hoja de salida"
         title="Hoja de salida"
-        subtitle="Salida de producto para {{ $agencyName }}{{ $serviceLabel ? ' · '.$serviceLabel : '' }}. Indique quién retira y escanee warehouse o tracking."
+        subtitle="Salida de producto para {{ $agencyName }}{{ $serviceLabel ? ' · '.$serviceLabel : '' }}.{{ ($includesDeliveryFamily ?? false) ? ' Puede escanear paquetes de la agencia padre y de sus hijas en esta misma hoja.' : ' Indique quién retira y escanee warehouse o tracking.' }}"
         back-href="{{ route('salidas.index') }}"
         back-label="Volver a Salidas"
     >
@@ -165,6 +165,7 @@
                         <th>Bulto</th>
                         <th>Tracking</th>
                         <th>Servicio</th>
+                        <th>Agencia</th>
                         <th class="inv-num">Peso (lbs)</th>
                         <th>Listo desde</th>
                     </tr>
@@ -177,6 +178,7 @@
                         <td>{{ ($p->bultos_total && $p->bultos_total > 1 && $p->bulto_index) ? $p->bulto_index . '/' . $p->bultos_total : '—' }}</td>
                         <td class="inv-muted" title="{{ $p->tracking_external }}">{{ Str::limit($p->tracking_external, 20) }}</td>
                         <td><span class="inv-type inv-type--{{ strtolower($p->service_type ?? 'air') }}">{{ \App\Support\ServiceType::label($p->service_type) }}</span></td>
+                        <td class="inv-muted" title="{{ $p->agency?->listingAccountLabel() ?? '' }}"><x-account-label :agency="$p->agency" :show-code="false" /></td>
                         <td class="inv-num">{{ $p->verified_weight_lbs ?? $p->intake_weight_lbs ?? '—' }}</td>
                         <td class="inv-muted">{{ $p->ready_at ? $p->ready_at->timezone(config('app.display_timezone'))->format('d/m/Y H:i') : '—' }}</td>
                     </tr>
@@ -267,8 +269,8 @@
                                 @if($pkg?->bultos_total && $pkg->bultos_total > 1 && $pkg->bulto_index)
                                 <span class="hs-chip">{{ $pkg->bulto_index }}/{{ $pkg->bultos_total }}</span>
                                 @endif
-                                @if($pkg?->tracking_external)
-                                <span class="inv-muted" title="{{ $pkg->tracking_external }}">{{ Str::limit($pkg->tracking_external, 24) }}</span>
+                                @if($pkg?->agency)
+                                <span class="inv-muted">{{ $pkg->agency->name }}</span>
                                 @endif
                             </div>
                         </div>
@@ -297,6 +299,7 @@
                         <th>Bulto</th>
                         <th>Tracking</th>
                         <th>Servicio</th>
+                        <th>Agencia</th>
                         <th class="inv-num">Peso (lbs)</th>
                     </tr>
                 </thead>
@@ -308,6 +311,7 @@
                         <td>{{ ($p->bultos_total && $p->bultos_total > 1 && $p->bulto_index) ? $p->bulto_index . '/' . $p->bultos_total : '—' }}</td>
                         <td class="inv-muted" title="{{ $p->tracking_external }}">{{ Str::limit($p->tracking_external, 20) }}</td>
                         <td><span class="inv-type inv-type--{{ strtolower($p->service_type ?? 'air') }}">{{ \App\Support\ServiceType::label($p->service_type) }}</span></td>
+                        <td class="inv-muted" title="{{ $p->agency?->listingAccountLabel() ?? '' }}"><x-account-label :agency="$p->agency" :show-code="false" /></td>
                         <td class="inv-num">{{ $p->verified_weight_lbs ?? $p->intake_weight_lbs ?? '—' }}</td>
                     </tr>
                     @endforeach

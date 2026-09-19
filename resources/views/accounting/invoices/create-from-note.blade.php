@@ -180,17 +180,18 @@
                         @endif
                     </div>
                     @endif
-                    @if($hasCft)
                     <div class="pt-field">
-                        <label class="pt-label" for="rate_cft">Tarifa pie cúbico (USD/pie³) *</label>
-                        <input type="number" step="0.0001" min="0" name="rate_cft" id="rate_cft" required
+                        <label class="pt-label" for="rate_cft">Tarifa pie cúbico (USD/pie³)@if($hasCft) * @endif</label>
+                        <input type="number" step="0.0001" min="0" name="rate_cft" id="rate_cft"
+                               @if($hasCft) required @endif
                                value="{{ $cftRate === null || $cftRate === '' ? '' : $cftRate }}" class="pt-input"
                                placeholder="Indique la tarifa de pie cúbico">
-                        @if(($suggestedRates['CFT'] ?? null) === null)
+                        @if($hasCft && ($suggestedRates['CFT'] ?? null) === null)
                         <p class="pt-muted">No hay tarifa de pie cúbico vigente. Indique el precio para las hojas con ese servicio.</p>
+                        @elseif(! $hasCft)
+                        <p class="pt-muted">Se usa si hay paquetes de pie cúbico (CFT). Puede dejarlo vacío o guardarlo como tarifa vigente.</p>
                         @endif
                     </div>
-                    @endif
                     <div class="pt-field">
                         <label class="pt-label" for="delivery_fee">Delivery (USD)</label>
                         <input type="number" step="0.01" min="0" name="delivery_fee" id="delivery_fee"

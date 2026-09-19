@@ -398,6 +398,7 @@ class DeliveryController extends Controller
         $availableAir = 0;
         $availableSea = 0;
         $availableCft = 0;
+        $includesDeliveryFamily = false;
 
         if ($selectedAgency && ! $needsClientPick) {
             $availableQuery = Preregistration::with('agency.parent')
@@ -405,6 +406,7 @@ class DeliveryController extends Controller
                 ->whereDoesntHave('delivery')
                 ->whereIn('agency_id', $selectedAgency->deliveryNetworkIds());
             $this->applyConsigneeFilter($availableQuery, $consignee);
+            $includesDeliveryFamily = count($selectedAgency->deliveryNetworkIds()) > 1;
 
             $allPackages = $availableQuery->orderBy('agency_id')->orderBy('warehouse_code')->get();
             $availableAir = $allPackages->where('service_type', 'AIR')->count();
@@ -438,6 +440,7 @@ class DeliveryController extends Controller
             'availableAir',
             'availableSea',
             'availableCft',
+            'includesDeliveryFamily',
             'mixedNotesToSplit'
         ));
     }
@@ -685,6 +688,7 @@ class DeliveryController extends Controller
             ->orderByRaw('COALESCE(bulto_index, 999) ASC')
             ->get();
         $agencyName = $agency->listingAccountLabel();
+        $includesDeliveryFamily = count($agency->deliveryNetworkIds()) > 1;
         $filterParams = array_filter([
             'agency_id' => $agency->id,
             'service_type' => $serviceType,
@@ -713,7 +717,7 @@ class DeliveryController extends Controller
             $batchRetirerSession = session(self::SESSION_BATCH_RETIRER);
             $retirerSessionActive = $this->batchRetirerSessionMatches($batchRetirerSession, $deliveryNote, (int) $agency->id, $serviceType);
             $scannedDeliveries = $deliveryNote->deliveries()
-                ->with('preregistration')
+                ->with('preregistration.agency.parent')
                 ->orderByDesc('delivered_at')
                 ->orderByDesc('id')
                 ->get();
@@ -729,7 +733,8 @@ class DeliveryController extends Controller
             'retirerSessionActive',
             'batchRetirerSession',
             'deliveredCount',
-            'scannedDeliveries'
+            'scannedDeliveries',
+            'includesDeliveryFamily'
         ));
     }
 
@@ -1087,8 +1092,12 @@ class DeliveryController extends Controller
                 // de su agencia (si es de subagencia) y/o de la agencia del batch.
                 if ($allowedAgencyIds !== null && ! in_array((int) $preregistration->agency_id, $allowedAgencyIds, true)) {
                     $pkgName = $preregistration->agency?->name ?? 'otra cuenta';
+                    $sloStyle = $preregistration->agency
+                        && ($preregistration->agency->isDirectClient() || $preregistration->agency->isRootAccount());
 
-                    return ['error' => 'Este paquete es de '.$pkgName.'. Cada cliente debe tener su propia hoja de salida. No se pueden mezclar cuentas en la misma hoja.'];
+                    return ['error' => $sloStyle
+                        ? 'Este paquete es de '.$pkgName.'. Cada cliente debe tener su propia hoja de salida. No se pueden mezclar cuentas en la misma hoja.'
+                        : 'Este paquete es de '.$pkgName.'. En una misma hoja solo se mezclan la agencia padre y sus hijas de esa red.'];
                 }
 
                 $deliveryData = [
@@ -1116,8 +1125,12 @@ class DeliveryController extends Controller
                     if (! in_array($pkgAgencyId, $allowedOnNote, true)) {
                         $pkgName = $preregistration->agency?->name ?? 'otra cuenta';
                         $noteName = $noteAgency?->name ?? 'esta hoja';
+                        $sloStyle = ($noteAgency && ($noteAgency->isDirectClient() || $noteAgency->isRootAccount()))
+                            || ($preregistration->agency && ($preregistration->agency->isDirectClient() || $preregistration->agency->isRootAccount()));
 
-                        return ['error' => 'Este paquete es de '.$pkgName.'. La hoja es de '.$noteName.'. Cada cliente de SkyLink One debe ir en su propia hoja de salida.'];
+                        return ['error' => $sloStyle
+                            ? 'Este paquete es de '.$pkgName.'. La hoja es de '.$noteName.'. Cada cliente de SkyLink One debe ir en su propia hoja de salida.'
+                            : 'Este paquete es de '.$pkgName.'. La hoja es de '.$noteName.'. En una misma hoja solo se mezclan la agencia padre y sus hijas de esa red.'];
                     }
                 } else {
                     $note = $this->createDeliveryNoteForAgency($preregistration->agency);

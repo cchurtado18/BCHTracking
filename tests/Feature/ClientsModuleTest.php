@@ -219,6 +219,7 @@ class ClientsModuleTest extends TestCase
         $this->assertContains($ch->id, $network);
         $this->assertContains($child->id, $network);
         $this->assertNotContains($slo->id, $network);
+        $this->assertContains($ch->id, $child->deliveryNetworkIds());
         $this->assertTrue($child->isChLogistics());
     }
 

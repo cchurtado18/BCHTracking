@@ -20,7 +20,7 @@
         $packageHead = $selectedSloClient?->name
             ?? ($consignee !== '' ? $consignee : $selectedAgency?->name);
     @endphp
-    <x-module-banner section="Operaciones" current="Nueva hoja" title="Crear hoja de salida" subtitle="Elija la cuenta y, si es SkyLink One, el cliente. Solo se cargan los paquetes de esa cuenta." back-href="{{ route('salidas.index') }}" back-label="Volver a Salidas">
+    <x-module-banner section="Operaciones" current="Nueva hoja" title="Crear hoja de salida" subtitle="Elija la cuenta. En una subagencia, la hoja puede mezclar paquetes del padre y de sus hijas. En SkyLink One cada cliente va en su propia hoja." back-href="{{ route('salidas.index') }}" back-label="Volver a Salidas">
         <x-slot:icon>
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
         </x-slot:icon>
@@ -137,7 +137,7 @@
                 <a href="{{ route('salidas.create', $createParams + ['service_type' => 'SEA']) }}" class="inv-chip {{ $serviceType === 'SEA' ? 'is-active' : '' }}">Marítimo ({{ $availableSea }})</a>
                 <a href="{{ route('salidas.create', $createParams + ['service_type' => 'CFT']) }}" class="inv-chip {{ $serviceType === 'CFT' ? 'is-active' : '' }}">Pie cúbico ({{ $availableCft ?? 0 }})</a>
             </div>
-            <p class="inv-hint">{{ $availableTotal }} {{ $availableTotal === 1 ? 'paquete listo' : 'paquetes listos' }}@if($serviceType) — {{ \App\Support\ServiceType::label($serviceType) }}@else ({{ $availableAir }} aéreo, {{ $availableSea }} marítimo, {{ $availableCft ?? 0 }} pie cúbico)@endif. Use «Iniciar salida» para escanear y registrar la entrega.</p>
+            <p class="inv-hint">{{ $availableTotal }} {{ $availableTotal === 1 ? 'paquete listo' : 'paquetes listos' }}@if($serviceType) — {{ \App\Support\ServiceType::label($serviceType) }}@else ({{ $availableAir }} aéreo, {{ $availableSea }} marítimo, {{ $availableCft ?? 0 }} pie cúbico)@endif. Use «Iniciar salida» para escanear y registrar la entrega.@if($includesDeliveryFamily ?? false) Esta hoja incluye la agencia padre y sus hijas.@endif</p>
         </div>
         <div class="inv-table-scroll">
             <table class="inv-table">

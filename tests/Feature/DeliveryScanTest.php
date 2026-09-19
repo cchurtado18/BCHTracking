@@ -564,6 +564,130 @@ class DeliveryScanTest extends TestCase
         $this->assertNotContains($magali->id, $slo->deliveryNetworkIds());
     }
 
+    public function test_parent_and_child_subagency_packages_can_share_one_delivery_note(): void
+    {
+        $user = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        $slo = Agency::query()->where('code', '0001')->first()
+            ?? Agency::create([
+                'name' => 'SkyLink One',
+                'code' => '0001',
+                'is_active' => true,
+                'is_main' => true,
+                'account_type' => Agency::TYPE_ROOT,
+            ]);
+        $parent = Agency::create([
+            'name' => 'CH Logistics Mix',
+            'code' => 'CHMX',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'parent_agency_id' => $slo->id,
+        ]);
+        $child = Agency::create([
+            'name' => 'Norte Hija Mix',
+            'code' => 'NHMX',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'parent_agency_id' => $parent->id,
+        ]);
+        $other = Agency::create([
+            'name' => 'Otra Red Mix',
+            'code' => 'OTMX',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'parent_agency_id' => $slo->id,
+        ]);
+
+        $parentPkg = $this->createReadyPackage($parent, [
+            'warehouse_code' => '771101',
+            'tracking_external' => 'TRK-PARENT-MIX',
+            'label_name' => 'Paquete Padre',
+        ]);
+        $childPkg = $this->createReadyPackage($child, [
+            'warehouse_code' => '771102',
+            'tracking_external' => 'TRK-CHILD-MIX',
+            'label_name' => 'Paquete Hija',
+        ]);
+        $otherPkg = $this->createReadyPackage($other, [
+            'warehouse_code' => '771199',
+            'tracking_external' => 'TRK-OTHER-MIX',
+            'label_name' => 'Paquete Otra',
+        ]);
+
+        $this->assertContains($parent->id, $child->deliveryNetworkIds());
+        $this->assertContains($child->id, $parent->deliveryNetworkIds());
+
+        $this->actingAs($user)
+            ->get(route('salidas.create', ['agency_id' => $child->id]))
+            ->assertOk()
+            ->assertSee('771101')
+            ->assertSee('771102')
+            ->assertDontSee('771199')
+            ->assertSee('agencia padre y sus hijas');
+
+        $this->actingAs($user)
+            ->get(route('salidas.create', ['agency_id' => $parent->id]))
+            ->assertOk()
+            ->assertSee('771101')
+            ->assertSee('771102')
+            ->assertDontSee('771199');
+
+        $note = DeliveryNote::create([
+            'code' => 'SLO-7711',
+            'agency_id' => $child->id,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('salidas.process-scan'), [
+                'code' => '771102',
+                'delivered_to' => 'Retira Red',
+                'return_to_batch' => '1',
+                'agency_id' => $child->id,
+                'delivery_note_id' => $note->id,
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($user)
+            ->post(route('salidas.process-scan'), [
+                'code' => '771101',
+                'delivered_to' => 'Retira Red',
+                'return_to_batch' => '1',
+                'agency_id' => $child->id,
+                'delivery_note_id' => $note->id,
+            ])
+            ->assertRedirect()
+            ->assertSessionMissing('error');
+
+        $this->assertDatabaseHas('deliveries', [
+            'preregistration_id' => $parentPkg->id,
+            'delivery_note_id' => $note->id,
+        ]);
+        $this->assertDatabaseHas('deliveries', [
+            'preregistration_id' => $childPkg->id,
+            'delivery_note_id' => $note->id,
+        ]);
+        $this->assertFalse($note->fresh()->hasMixedBillTos());
+
+        $this->actingAs($user)
+            ->from(route('salidas.batch', ['agency_id' => $child->id, 'delivery_note_id' => $note->id]))
+            ->post(route('salidas.process-scan'), [
+                'code' => '771199',
+                'delivered_to' => 'Retira Red',
+                'return_to_batch' => '1',
+                'agency_id' => $child->id,
+                'delivery_note_id' => $note->id,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('error', fn ($message) => str_contains((string) $message, 'Otra Red Mix')
+                && str_contains((string) $message, 'padre y sus hijas'));
+
+        $this->assertDatabaseMissing('deliveries', [
+            'preregistration_id' => $otherPkg->id,
+        ]);
+    }
+
     public function test_admin_can_split_mixed_slo_note_into_one_sheet_per_client(): void
     {
         $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);

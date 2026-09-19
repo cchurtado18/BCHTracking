@@ -63,9 +63,93 @@ class DeliveryNote extends Model
      */
     public function scopeWithoutActiveInvoice(Builder $query): Builder
     {
-        return $query
-            ->whereDoesntHave('accountingInvoices', fn ($q) => $q->where('status', '!=', 'void'))
-            ->whereDoesntHave('linkedInvoices', fn ($q) => $q->where('status', '!=', 'void'));
+        $ids = static::activeInvoiceNoteIds();
+        if ($ids === []) {
+            return $query;
+        }
+
+        return $query->whereNotIn($query->getModel()->getQualifiedKeyName(), $ids);
+    }
+
+    /**
+     * Hojas con factura activa (columna o pivot), para excluirlas de una sola vez.
+     *
+     * @return list<int>
+     */
+    public static function activeInvoiceNoteIds(): array
+    {
+        if (app()->bound('deliveryNote.activeInvoiceNoteIds')) {
+            return app('deliveryNote.activeInvoiceNoteIds');
+        }
+
+        $direct = DB::table('accounting_invoices')
+            ->where('status', '!=', 'void')
+            ->whereNotNull('delivery_note_id')
+            ->pluck('delivery_note_id');
+
+        $linked = DB::table('accounting_invoice_delivery_notes as pivot')
+            ->join('accounting_invoices as invoices', 'invoices.id', '=', 'pivot.accounting_invoice_id')
+            ->where('invoices.status', '!=', 'void')
+            ->pluck('pivot.delivery_note_id');
+
+        $ids = $direct->merge($linked)
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        app()->instance('deliveryNote.activeInvoiceNoteIds', $ids);
+
+        return $ids;
+    }
+
+    /**
+     * Lista liviana para Nueva factura: sin cargar cada paquete ni contar hoja por hoja.
+     *
+     * @return Collection<int, self>
+     */
+    public static function queryForInvoicePicker(int $limit = 200): Collection
+    {
+        $notes = static::query()
+            ->select(['id', 'code', 'agency_id'])
+            ->with([
+                'agency:id,name,code,account_type,parent_agency_id,is_main',
+                'agency.parent:id,name,code,account_type,is_main',
+            ])
+            ->whereExists(function ($query) {
+                $query->selectRaw('1')
+                    ->from('deliveries')
+                    ->whereColumn('deliveries.delivery_note_id', 'delivery_notes.id');
+            })
+            ->withoutActiveInvoice()
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get();
+
+        static::attachDeliveryCounts($notes);
+        static::decorateForInvoicePicker($notes);
+
+        return $notes;
+    }
+
+    /**
+     * @param  Collection<int, self>  $notes
+     */
+    public static function attachDeliveryCounts(Collection $notes): void
+    {
+        if ($notes->isEmpty()) {
+            return;
+        }
+
+        $counts = DB::table('deliveries')
+            ->whereIn('delivery_note_id', $notes->pluck('id')->all())
+            ->selectRaw('delivery_note_id, COUNT(*) as aggregate')
+            ->groupBy('delivery_note_id')
+            ->pluck('aggregate', 'delivery_note_id');
+
+        foreach ($notes as $note) {
+            $note->setAttribute('deliveries_count', (int) ($counts[$note->id] ?? 0));
+        }
     }
 
     /**
