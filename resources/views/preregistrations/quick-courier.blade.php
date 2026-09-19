@@ -73,7 +73,7 @@
                             >
                             <span class="quick-weight-unit">lb</span>
                         </div>
-                        <p class="quick-help">Péselo en la báscula e ingrese el peso en libras.</p>
+                        <p class="quick-help">Según la báscula.</p>
                         @error('intake_weight_lbs')
                         <p class="preregs-field-error">{{ $message }}</p>
                         @enderror
@@ -329,12 +329,21 @@ document.addEventListener('DOMContentLoaded', function() {
 .preregs-input-upper::placeholder { text-transform: none; }
 .preregs-input:focus { outline: none; border-color: #0A2D6F; box-shadow: 0 0 0 3px rgba(30, 79, 168, 0.15); }
 
-.quick-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 0.5rem; }
-@media (min-width: 720px) {
-    .quick-grid { grid-template-columns: minmax(0, 1fr) 13.5rem; align-items: start; }
+.quick-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    max-width: 40rem;
+}
+@media (min-width: 640px) {
+    .quick-grid {
+        grid-template-columns: minmax(16rem, 1fr) 10.75rem;
+        align-items: start;
+    }
 }
 .quick-field { max-width: 32rem; }
-.quick-field-weight { max-width: 13.5rem; }
+.quick-field-weight { max-width: none; width: 100%; }
 .quick-weight-affix { position: relative; }
 .quick-weight-affix .preregs-input { padding-right: 2.65rem; }
 .quick-weight-unit {
