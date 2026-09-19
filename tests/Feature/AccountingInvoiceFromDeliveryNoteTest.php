@@ -236,7 +236,11 @@ class AccountingInvoiceFromDeliveryNoteTest extends TestCase
             ->assertSee('Nueva factura PrimeTrack')
             ->assertSee('SLO-9501')
             ->assertSee('invoice-notes-q', false)
-            ->assertSee('Buscar por hoja, cliente o código');
+            ->assertSee('Buscar por hoja, cliente o código')
+            ->assertSee('Agencias')
+            ->assertSee('Clientes finales')
+            ->assertSee('busque la subagencia')
+            ->assertDontSee('Facturar a Agencia Factura Test');
 
         $this->actingAs($admin)
             ->post(route('accounting.invoices.start-create'), [
@@ -914,6 +918,68 @@ class AccountingInvoiceFromDeliveryNoteTest extends TestCase
         Mail::assertSent(InvoiceSentToClient::class, function (InvoiceSentToClient $mail) {
             return $mail->hasTo('padre@ch.test') && ! $mail->hasTo('nieta@norte.test');
         });
+    }
+
+    public function test_create_page_offers_bill_parent_for_nested_subagency_network(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        $parent = Agency::create([
+            'name' => 'CH Logistics Red',
+            'code' => 'N400',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+        ]);
+        $child = Agency::create([
+            'name' => 'Norte Hija Red',
+            'code' => 'N401',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'parent_agency_id' => $parent->id,
+        ]);
+
+        $noteParent = $this->seedSimpleNote($parent, 'SLO-9401', '940101', 6);
+        $noteChild = $this->seedSimpleNote($child, 'SLO-9402', '940201', 4);
+
+        $html = $this->actingAs($admin)
+            ->get(route('accounting.invoices.create'))
+            ->assertOk()
+            ->assertSee('CH Logistics Red')
+            ->assertSee('2 hojas')
+            ->assertSee('Hoja de Norte Hija Red')
+            ->assertSee('incluye Norte Hija Red')
+            ->assertSee('data-family="family:'.$parent->id.'"', false)
+            ->assertSee('data-kind="agency"', false)
+            ->assertSee('Agencia')
+            ->assertSee('SLO-9401')
+            ->assertSee('SLO-9402')
+            ->getContent();
+
+        $this->assertSame(2, substr_count($html, 'data-family="family:'.$parent->id.'"'));
+
+        $this->actingAs($admin)
+            ->post(route('accounting.invoices.start-create'), [
+                'delivery_note_ids' => [$noteParent->id, $noteChild->id],
+            ])
+            ->assertRedirect();
+    }
+
+    public function test_create_page_does_not_offer_bill_parent_for_slo_clients(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        [$slo, $clientA] = $this->seedSloWithClients();
+        $this->seedSimpleNoteOnSheet($slo, $clientA, 'SLO-9411', '941101', 3);
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.create'))
+            ->assertOk()
+            ->assertSee('SLO-9411')
+            ->assertSee('Cliente A Factura')
+            ->assertSee('data-kind="client"', false)
+            ->assertSee('Cliente final')
+            ->assertDontSee('Facturar a Cliente A Factura')
+            ->assertDontSee('Facturar a SkyLink One');
     }
 
     public function test_slo_direct_client_is_the_bill_to_on_invoice(): void

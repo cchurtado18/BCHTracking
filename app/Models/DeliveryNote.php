@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class DeliveryNote extends Model
 {
@@ -67,12 +69,21 @@ class DeliveryNote extends Model
     }
 
     /**
+     * @var Collection<int, Agency>|null
+     */
+    protected ?Collection $packageBillTosMemo = null;
+
+    /**
      * Cuentas comerciales (bill-to) de los paquetes de esta hoja.
      *
-     * @return \Illuminate\Support\Collection<int, Agency>
+     * @return Collection<int, Agency>
      */
     public function packageBillToAgencies()
     {
+        if ($this->packageBillTosMemo !== null) {
+            return $this->packageBillTosMemo;
+        }
+
         $this->loadMissing(['deliveries.preregistration.agency.parent.parent.parent']);
         $sloClientsByName = Agency::sloDirectClientsKeyedByName();
 
@@ -95,6 +106,148 @@ class DeliveryNote extends Model
             })
             ->filter();
 
+        return $this->packageBillTosMemo = $this->collapseResolvedBillTos($resolved, $sloClientsByName);
+    }
+
+    /**
+     * Lista de Nueva factura: resuelve bill-to por combinaciones únicas
+     * (agencia + destinatario), no cargando cada paquete de cada hoja.
+     *
+     * @param  Collection<int, self>|iterable<self>  $notes
+     */
+    public static function decorateForInvoicePicker(iterable $notes): void
+    {
+        $notes = collect($notes)->values();
+        if ($notes->isEmpty()) {
+            return;
+        }
+
+        $noteIds = $notes->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $rows = DB::table('deliveries')
+            ->join('preregistrations', 'preregistrations.id', '=', 'deliveries.preregistration_id')
+            ->whereIn('deliveries.delivery_note_id', $noteIds)
+            ->select([
+                'deliveries.delivery_note_id',
+                'preregistrations.agency_id',
+                'preregistrations.label_name',
+            ])
+            ->distinct()
+            ->get();
+
+        $agencyIds = $rows->pluck('agency_id')
+            ->merge($notes->pluck('agency_id'))
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $agencies = $agencyIds === []
+            ? collect()
+            : Agency::query()
+                ->with('parent.parent.parent')
+                ->whereIn('id', $agencyIds)
+                ->get()
+                ->keyBy(fn (Agency $agency) => (int) $agency->id);
+
+        $sloClientsByName = Agency::sloDirectClientsKeyedByName();
+        $resolvedByNote = [];
+
+        foreach ($rows as $row) {
+            $agency = $agencies->get((int) $row->agency_id);
+            if (! $agency) {
+                continue;
+            }
+
+            $package = new Preregistration([
+                'agency_id' => $agency->id,
+                'label_name' => $row->label_name,
+            ]);
+            $package->setRelation('agency', $agency);
+            $billTo = $package->billToAgency($sloClientsByName);
+            if (! $billTo) {
+                continue;
+            }
+
+            $resolvedByNote[(int) $row->delivery_note_id][] = [
+                'billTo' => $billTo,
+                'label' => Agency::normalizePersonNameForMatch($row->label_name),
+            ];
+        }
+
+        foreach ($notes as $note) {
+            $resolved = collect($resolvedByNote[(int) $note->id] ?? []);
+            $note->packageBillTosMemo = $note->collapseResolvedBillTos($resolved, $sloClientsByName);
+        }
+    }
+
+    /**
+     * Botones «Facturar a padre» para redes de subagencia con hijas.
+     *
+     * @param  Collection<int, self>|iterable<self>  $notes
+     * @return list<array{key: string, parent: Agency, count: int}>
+     */
+    public static function parentInvoiceActions(iterable $notes): array
+    {
+        $notes = collect($notes);
+        $groups = [];
+
+        foreach ($notes as $note) {
+            $key = $note->invoiceGroupKey();
+            if (! str_starts_with($key, 'family:') || $note->hasMixedBillTos()) {
+                continue;
+            }
+
+            $billTo = $note->billingAgency();
+            if (! $billTo) {
+                continue;
+            }
+
+            $parent = $billTo->canonicalInvoiceBillTo()->invoiceFamilyRoot();
+            if ($parent->isDirectClient() || $parent->isRootAccount()) {
+                continue;
+            }
+
+            $groups[$key] ??= [
+                'key' => $key,
+                'parent' => $parent,
+                'count' => 0,
+            ];
+            $groups[$key]['count']++;
+        }
+
+        if ($groups === []) {
+            return [];
+        }
+
+        $parentsWithNestedChildren = Agency::query()
+            ->where('account_type', Agency::TYPE_SUBAGENCY)
+            ->whereNotNull('parent_agency_id')
+            ->whereHas('parent', function ($query) {
+                $query->where('is_main', false)
+                    ->where(function ($inner) {
+                        $inner->whereNull('account_type')
+                            ->orWhere('account_type', '!=', Agency::TYPE_ROOT);
+                    });
+            })
+            ->pluck('parent_agency_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->all();
+
+        return array_values(array_filter(
+            $groups,
+            fn (array $group) => in_array((int) $group['parent']->id, $parentsWithNestedChildren, true)
+        ));
+    }
+
+    /**
+     * @param  Collection<int, array{billTo: Agency, label: string}>  $resolved
+     * @param  array<string, Agency>  $sloClientsByName
+     * @return Collection<int, Agency>
+     */
+    private function collapseResolvedBillTos(Collection $resolved, array $sloClientsByName): Collection
+    {
         $billTos = $resolved
             ->map(fn (array $row) => $row['billTo'])
             ->unique(fn (Agency $agency) => (int) $agency->id)

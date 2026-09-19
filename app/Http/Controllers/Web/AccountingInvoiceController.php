@@ -191,11 +191,7 @@ class AccountingInvoiceController extends Controller
     public function create()
     {
         $notes = DeliveryNote::query()
-            ->with([
-                'agency.parent.parent.parent',
-                'deliveries.preregistration:id,agency_id,label_name',
-                'deliveries.preregistration.agency.parent.parent.parent',
-            ])
+            ->with(['agency.parent.parent.parent'])
             ->withCount('deliveries')
             ->whereHas('deliveries')
             ->withoutActiveInvoice()
@@ -203,7 +199,57 @@ class AccountingInvoiceController extends Controller
             ->limit(200)
             ->get();
 
-        return view('accounting.invoices.create', compact('notes'));
+        DeliveryNote::decorateForInvoicePicker($notes);
+        $invoiceAccounts = $notes
+            ->map(function (DeliveryNote $note) {
+                $billTo = $note->billingAgency();
+                if (! $billTo || $note->hasMixedBillTos()) {
+                    return null;
+                }
+
+                return [
+                    'id' => (int) $billTo->id,
+                    'name' => $billTo->listingAccountLabel(),
+                    'code' => $billTo->code,
+                    'kind' => $billTo->isDirectClient() ? 'client' : 'agency',
+                ];
+            })
+            ->filter()
+            ->unique('id')
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
+
+        $invoiceAgencies = $invoiceAccounts
+            ->where('kind', 'agency')
+            ->map(function (array $account) use ($notes) {
+                $familyNotes = $notes->filter(function (DeliveryNote $note) use ($account) {
+                    $billTo = $note->billingAgency();
+
+                    return $billTo && (int) $billTo->id === $account['id'] && ! $note->hasMixedBillTos();
+                });
+                $children = $familyNotes
+                    ->map(function (DeliveryNote $note) {
+                        $origin = $note->agency;
+
+                        return ($origin && $origin->isNestedUnderPartner()) ? $origin->name : null;
+                    })
+                    ->filter()
+                    ->unique()
+                    ->values();
+
+                return $account + [
+                    'count' => $familyNotes->count(),
+                    'children' => $children->all(),
+                    'search' => strtolower(trim(implode(' ', array_filter([
+                        $account['name'],
+                        $account['code'],
+                        $children->implode(' '),
+                    ])))),
+                ];
+            })
+            ->values();
+
+        return view('accounting.invoices.create', compact('notes', 'invoiceAgencies'));
     }
 
     public function startCreate(Request $request)
@@ -614,19 +660,19 @@ class AccountingInvoiceController extends Controller
         $groupKey = $primary->invoiceGroupKey();
         $selectedIds = $alreadySelected->pluck('id')->map(fn ($id) => (int) $id)->all();
 
-        return DeliveryNote::query()
-            ->with([
-                'agency.parent.parent.parent',
-                'deliveries.preregistration:id,agency_id,label_name',
-                'deliveries.preregistration.agency.parent.parent.parent',
-            ])
+        $candidates = DeliveryNote::query()
+            ->with(['agency.parent.parent.parent'])
             ->withCount('deliveries')
             ->whereHas('deliveries')
             ->withoutActiveInvoice()
             ->whereNotIn('id', $selectedIds)
             ->orderByDesc('id')
             ->limit(200)
-            ->get()
+            ->get();
+
+        DeliveryNote::decorateForInvoicePicker($candidates);
+
+        return $candidates
             ->filter(fn (DeliveryNote $note) => $note->invoiceGroupKey() === $groupKey)
             ->values();
     }
