@@ -98,7 +98,7 @@ class Preregistration extends Model
 
     public static function normalizeTrackingExternal(?string $value): ?string
     {
-        $normalized = strtoupper(preg_replace('/\s+/', '', trim((string) $value)) ?? '');
+        $normalized = \App\Support\TrackingCode::canonical($value);
 
         return $normalized === '' ? null : $normalized;
     }

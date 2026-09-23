@@ -233,6 +233,33 @@ class PrealertModuleTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_warehouse_lookup_matches_usps_prefixed_barcode(): void
+    {
+        $agencies = $this->createAgencies();
+        $central = User::factory()->create(['agency_id' => null]);
+        $agencyUser = User::factory()->create(['agency_id' => $agencies['subA']->id]);
+
+        Prealert::create([
+            'name' => 'Aiman Usps',
+            'agency_id' => $agencies['subA']->id,
+            'tracking' => '42033142940011189956253786216799',
+            'service_type' => 'AIR',
+            'status' => Prealert::STATUS_PENDING,
+            'created_by' => $agencyUser->id,
+        ]);
+
+        $this->actingAs($central)
+            ->getJson(route('prealerts.lookup', ['tracking' => '9400111899562537862167']))
+            ->assertOk()
+            ->assertJson([
+                'found' => true,
+                'prealert' => [
+                    'tracking' => '9400111899562537862167',
+                    'name' => 'AIMAN USPS',
+                ],
+            ]);
+    }
+
     public function test_intake_pages_include_prealert_lookup(): void
     {
         $user = User::factory()->create(['agency_id' => null]);

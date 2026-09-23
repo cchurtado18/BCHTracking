@@ -79,7 +79,9 @@ class QuickCourierCameraScanTest extends TestCase
             'intake_weight_lbs' => 12.75,
             'status' => 'PHOTO_PENDING',
         ]);
-        $this->assertNotNull(Preregistration::where('tracking_external', '1ZWEIGHTTEST001')->first());
+        $created = Preregistration::where('tracking_external', '1ZWEIGHTTEST001')->first();
+        $this->assertNotNull($created);
+        $this->assertNull($created->warehouse_code);
     }
 
     public function test_preregistration_index_shows_both_capture_buttons(): void

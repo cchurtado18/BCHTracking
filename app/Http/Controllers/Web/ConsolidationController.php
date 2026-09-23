@@ -10,6 +10,7 @@ use App\Models\ConsolidationItem;
 use App\Models\Preregistration;
 use App\Services\ConsolidationService;
 use App\Support\ServiceType;
+use App\Support\TrackingCode;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -334,12 +335,25 @@ class ConsolidationController extends Controller
                 ->with('error', 'Debe ingresar un código.');
         }
 
-        $duplicateInSack = $consolidation->items()->where(function ($q) use ($code) {
-            $q->where('unmatched_code', $code)
-              ->orWhereHas('preregistration', function ($qq) use ($code) {
-                  $qq->where('tracking_external', $code)
-                     ->orWhere('warehouse_code', $code);
-              });
+        $lookupValues = TrackingCode::lookupValues($code);
+        $uspsSuffix = TrackingCode::uspsSuffixForLike($code);
+        $warehouseCode = preg_match('/^\d{6}$/', $code) ? $code : null;
+        $duplicateInSack = $consolidation->items()->where(function ($q) use ($lookupValues, $uspsSuffix, $warehouseCode) {
+            $q->whereIn('unmatched_code', $lookupValues);
+            if ($uspsSuffix !== null) {
+                $q->orWhere('unmatched_code', 'like', '%'.$uspsSuffix);
+            }
+            $q->orWhereHas('preregistration', function ($qq) use ($lookupValues, $uspsSuffix, $warehouseCode) {
+                $qq->where(function ($inner) use ($lookupValues, $uspsSuffix, $warehouseCode) {
+                    $inner->whereIn('tracking_external', $lookupValues);
+                    if ($uspsSuffix !== null) {
+                        $inner->orWhere('tracking_external', 'like', '%'.$uspsSuffix);
+                    }
+                    if ($warehouseCode !== null) {
+                        $inner->orWhere('warehouse_code', $warehouseCode);
+                    }
+                });
+            });
         })->exists();
         if ($duplicateInSack) {
             return redirect()->route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'scan'])

@@ -91,6 +91,11 @@ class PreregistrationController extends Controller
         }
 
         $preregistrations = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
+        $preregistrations->getCollection()->each(function (Preregistration $package) {
+            if ($package->status !== 'PHOTO_PENDING' && ! filled($package->warehouse_code)) {
+                $this->warehouseService->ensureWarehouseCode($package);
+            }
+        });
 
         // Estadísticas con los mismos filtros
         $statsQuery = Preregistration::query();
@@ -533,6 +538,9 @@ class PreregistrationController extends Controller
         }
 
         $preregistration = Preregistration::with($with)->findOrFail($id);
+        if ($preregistration->status !== 'PHOTO_PENDING' && ! filled($preregistration->warehouse_code)) {
+            $this->warehouseService->ensureWarehouseCode($preregistration);
+        }
         $preregistration->photos->each(function ($photo) {
             $photo->url = asset('storage/'.$photo->path);
         });
@@ -606,6 +614,10 @@ class PreregistrationController extends Controller
         if ($request->exists('tracking_external') && is_string($request->input('tracking_external'))) {
             $upperMerge['tracking_external'] = Preregistration::normalizeTrackingExternal($request->input('tracking_external'));
         }
+        $resolvedService = \App\Support\ServiceType::fromRouteAndBilling($request->input('service_route'), $request->input('sea_billing'));
+        if ($resolvedService) {
+            $request->merge(['service_type' => $resolvedService]);
+        }
         if ($upperMerge !== []) {
             $request->merge($upperMerge);
         }
@@ -617,23 +629,30 @@ class PreregistrationController extends Controller
             'agency_id' => 'required|exists:agencies,id',
             'label_name' => 'sometimes|string|max:255',
             'service_type' => 'required|'.\App\Support\ServiceType::rule(),
+            'service_route' => 'nullable|'.\App\Support\ServiceType::routeRule(),
+            'sea_billing' => 'required_if:service_route,SEA|nullable|in:LBS,CFT',
             'intake_weight_lbs' => 'sometimes|numeric|min:0|max:999999.99',
             'tracking_external' => $trackingRules,
-            'dimension' => 'nullable|string|max:100',
+            'dimension' => \App\Support\ServiceType::isCft($request->input('service_type'))
+                ? 'required|string|max:100'
+                : 'nullable|string|max:100',
             'description' => 'nullable|string|max:500',
         ], [
             'tracking_external.unique' => 'Este tracking ya está registrado en otro paquete. Use otro número o elimine el paquete que lo tiene.',
             'service_type.required' => 'Debe elegir el tipo de servicio.',
             'service_type.in' => 'Debe elegir el tipo de servicio.',
+            'sea_billing.required_if' => 'En marítimo elija si se cobra por libra o por pie cúbico.',
+            'dimension.required' => 'En pie cúbico la dimensión es obligatoria.',
         ]);
+        unset($data['service_route'], $data['sea_billing']);
 
         // Cuando estaba en PHOTO_PENDING y ya se completan los datos,
         // pasarlo a RECEIVED_MIAMI y generar código de almacén si aún no tiene.
         if ($wasPhotoPending) {
             $data['status'] = 'RECEIVED_MIAMI';
-            if (! $preregistration->warehouse_code) {
-                $data['warehouse_code'] = $this->warehouseService->generateWarehouseCode();
-            }
+        }
+        if ($wasPhotoPending && ! filled($preregistration->warehouse_code) && empty($data['warehouse_code'])) {
+            $data['warehouse_code'] = $this->warehouseService->generateWarehouseCode();
         }
 
         $assigned = Agency::find((int) $data['agency_id']);
@@ -828,11 +847,18 @@ class PreregistrationController extends Controller
     public function updateServiceType(Request $request, string $id)
     {
         $preregistration = Preregistration::with(['consolidationItem', 'delivery'])->findOrFail($id);
+        $resolved = \App\Support\ServiceType::fromRouteAndBilling($request->input('service_route'), $request->input('sea_billing'));
+        if ($resolved) {
+            $request->merge(['service_type' => $resolved]);
+        }
         $validated = $request->validate([
             'service_type' => 'required|'.\App\Support\ServiceType::rule(),
+            'service_route' => 'nullable|'.\App\Support\ServiceType::routeRule(),
+            'sea_billing' => 'required_if:service_route,SEA|nullable|in:LBS,CFT',
         ], [
             'service_type.required' => 'Seleccione un tipo de servicio.',
-            'service_type.in' => 'El servicio debe ser aéreo, marítimo o pie cúbico.',
+            'service_type.in' => 'El servicio debe ser aéreo o marítimo, y en marítimo por libra o pie cúbico.',
+            'sea_billing.required_if' => 'En marítimo elija si se cobra por libra o por pie cúbico.',
         ]);
 
         $newType = \App\Support\ServiceType::normalize($validated['service_type']);
@@ -866,8 +892,11 @@ class PreregistrationController extends Controller
     {
         $preregistration = Preregistration::with(['agency', 'agency.parent'])->findOrFail($id);
         if (empty($preregistration->warehouse_code)) {
-            return redirect()->route('preregistrations.show', $preregistration->id)
-                ->with('error', 'Este preregistro no tiene código de almacén.');
+            if ($preregistration->status === 'PHOTO_PENDING') {
+                return redirect()->route('preregistrations.edit', $preregistration->id)
+                    ->with('error', 'Complete y guarde el preregistro para asignar el código de almacén.');
+            }
+            $this->warehouseService->ensureWarehouseCode($preregistration);
         }
         $dropoffNextStep = null;
         $dropoffTotal = null;

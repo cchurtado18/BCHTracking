@@ -109,6 +109,32 @@ class DeliveryScanTest extends TestCase
         );
     }
 
+    public function test_can_deliver_usps_package_from_prefixed_barcode(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+        $agency = $this->createAgency();
+        $package = $this->createReadyPackage($agency, [
+            'tracking_external' => '9400111899562537862167',
+            'warehouse_code' => '778801',
+        ]);
+        $note = DeliveryNote::create([
+            'code' => 'SLO-9002U',
+            'agency_id' => $agency->id,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('salidas.process-scan'), [
+                'code' => '42033142940011189956253786216799',
+                'delivered_to' => 'Ana Receptor',
+                'return_to_batch' => '1',
+                'agency_id' => $agency->id,
+                'delivery_note_id' => $note->id,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('DELIVERED', $package->fresh()->status);
+    }
+
     public function test_standalone_scan_always_creates_delivery_note(): void
     {
         $user = User::factory()->create(['agency_id' => null]);

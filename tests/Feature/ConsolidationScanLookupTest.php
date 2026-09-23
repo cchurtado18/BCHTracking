@@ -8,6 +8,7 @@ use App\Models\ConsolidationItem;
 use App\Models\Preregistration;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ConsolidationScanLookupTest extends TestCase
@@ -200,5 +201,96 @@ class ConsolidationScanLookupTest extends TestCase
                 'service_mismatch' => false,
                 'package' => null,
             ]);
+    }
+
+    public function test_saving_usps_barcode_keeps_only_the_tracking_core(): void
+    {
+        $agency = $this->agency();
+        $package = $this->package($agency, [
+            'tracking_external' => '42033142940011189956253786216799',
+            'warehouse_code' => '010077',
+        ]);
+
+        $this->assertSame('9400111899562537862167', $package->tracking_external);
+        $this->assertDatabaseHas('preregistrations', [
+            'id' => $package->id,
+            'tracking_external' => '9400111899562537862167',
+        ]);
+    }
+
+    public function test_scan_lookup_finds_clean_usps_from_prefixed_barcode(): void
+    {
+        $user = $this->centralUser();
+        $agency = $this->agency();
+        $this->package($agency, [
+            'tracking_external' => '9400111899562537862167',
+            'warehouse_code' => '010078',
+        ]);
+
+        $this->actingAs($user)
+            ->getJson(route('consolidations.scan-lookup', [
+                'code' => '42033142940011189956253786216799',
+                'service_type' => 'AIR',
+            ]))
+            ->assertOk()
+            ->assertJson([
+                'found' => true,
+                'package' => [
+                    'tracking' => '9400111899562537862167',
+                    'warehouse' => '010078',
+                ],
+            ]);
+    }
+
+    public function test_scan_lookup_finds_legacy_prefixed_usps_from_clean_scan(): void
+    {
+        $user = $this->centralUser();
+        $agency = $this->agency();
+        $package = $this->package($agency, [
+            'tracking_external' => '9400111899562537862167',
+            'warehouse_code' => '010079',
+        ]);
+        DB::table('preregistrations')->where('id', $package->id)->update([
+            'tracking_external' => '420331429400111899562537862167',
+        ]);
+
+        $this->actingAs($user)
+            ->getJson(route('consolidations.scan-lookup', [
+                'code' => '9400111899562537862167',
+                'service_type' => 'AIR',
+            ]))
+            ->assertOk()
+            ->assertJson([
+                'found' => true,
+                'package' => [
+                    'warehouse' => '010079',
+                ],
+            ]);
+    }
+
+    public function test_open_sack_scan_accepts_usps_prefix_and_extra_digits(): void
+    {
+        $user = $this->centralUser();
+        $agency = $this->agency();
+        $package = $this->package($agency, [
+            'tracking_external' => '9400111899562537862167',
+            'warehouse_code' => '010080',
+        ]);
+        $sack = Consolidation::create([
+            'code' => 'SAC-SCAN-USPS',
+            'service_type' => 'AIR',
+            'status' => 'OPEN',
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('consolidations.scan-item', $sack->id), [
+                'entry_code' => '42033142940011189956253786216799',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('consolidation_items', [
+            'consolidation_id' => $sack->id,
+            'preregistration_id' => $package->id,
+        ]);
     }
 }

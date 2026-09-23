@@ -45,7 +45,7 @@ class Prealert extends Model
 
     public static function normalizeTracking(?string $value): string
     {
-        return preg_replace('/\s+/', '', (string) self::toUpper($value)) ?? '';
+        return \App\Support\TrackingCode::canonical($value);
     }
 
     public static function findOpenByTracking(?string $tracking): ?self
@@ -56,8 +56,10 @@ class Prealert extends Model
         }
 
         return static::query()
-            ->where('tracking', $code)
             ->where('status', self::STATUS_PENDING)
+            ->where(function ($query) use ($tracking) {
+                \App\Support\TrackingCode::constrainLookup($query, 'tracking', $tracking);
+            })
             ->first();
     }
 

@@ -6,10 +6,14 @@ use App\Models\Consolidation;
 use App\Models\ConsolidationItem;
 use App\Models\Preregistration;
 use App\Support\ServiceType;
+use App\Support\TrackingCode;
 use Illuminate\Support\Facades\DB;
 
 class ConsolidationService
 {
+    public function __construct(protected WarehouseService $warehouseService)
+    {
+    }
     /**
      * Código único: SAC-YYYYMM-0001 (aéreo) o CNT-YYYYMM-0001 (marítimo).
      */
@@ -57,6 +61,14 @@ class ConsolidationService
             $preregistrationIds = $consolidation->items()
                 ->whereNotNull('preregistration_id')
                 ->pluck('preregistration_id');
+
+            Preregistration::query()
+                ->whereIn('id', $preregistrationIds)
+                ->where(function ($query) {
+                    $query->whereNull('warehouse_code')->orWhere('warehouse_code', '');
+                })
+                ->get()
+                ->each(fn (Preregistration $package) => $this->warehouseService->ensureWarehouseCode($package));
 
             DB::table('preregistrations')
                 ->whereIn('id', $preregistrationIds)
@@ -121,7 +133,7 @@ class ConsolidationService
      */
     public static function normalizeScanCode(?string $code): string
     {
-        return strtoupper(preg_replace('/\s+/', '', trim((string) $code)) ?? '');
+        return TrackingCode::compact($code);
     }
 
     public function packageMatchesCode(Preregistration $package, string $normalizedCode): bool
@@ -130,8 +142,8 @@ class ConsolidationService
             return false;
         }
 
-        return $normalizedCode === self::normalizeScanCode($package->tracking_external)
-            || $normalizedCode === self::normalizeScanCode($package->warehouse_code);
+        return TrackingCode::matches($package->tracking_external, $normalizedCode)
+            || TrackingCode::compact($package->warehouse_code) === TrackingCode::compact($normalizedCode);
     }
 
     /**
@@ -190,19 +202,27 @@ class ConsolidationService
             return;
         }
 
-        $codes = collect([
-            self::normalizeScanCode($package->tracking_external),
-            self::normalizeScanCode($package->warehouse_code),
-        ])->filter()->unique()->values();
+        $codes = collect(TrackingCode::lookupValues($package->tracking_external))
+            ->push(TrackingCode::compact($package->warehouse_code))
+            ->filter()
+            ->unique()
+            ->values();
 
         if ($codes->isEmpty()) {
             return;
         }
 
+        $suffix = TrackingCode::uspsSuffixForLike($package->tracking_external);
+
         $item = ConsolidationItem::query()
             ->with('consolidation')
             ->whereNull('preregistration_id')
-            ->whereIn('unmatched_code', $codes->all())
+            ->where(function ($query) use ($codes, $suffix) {
+                $query->whereIn('unmatched_code', $codes->all());
+                if ($suffix !== null) {
+                    $query->orWhere('unmatched_code', 'like', '%'.$suffix);
+                }
+            })
             ->orderBy('id')
             ->first();
 
@@ -267,6 +287,8 @@ class ConsolidationService
 
     private function attachPackageToUnmatchedItem(ConsolidationItem $item, Preregistration $package, ?Consolidation $sack): void
     {
+        $this->warehouseService->ensureWarehouseCode($package);
+
         $item->update([
             'preregistration_id' => $package->id,
         ]);
@@ -299,10 +321,10 @@ class ConsolidationService
         $candidates->load('consolidationItem');
 
         return $candidates->first(function (Preregistration $package) use ($normalized, $sackService, $anyService, $alreadyInSack, $miamiOnly) {
-            if ($miamiOnly && $package->status !== 'RECEIVED_MIAMI') {
+            if (in_array($package->status, ['PHOTO_PENDING', 'CANCELLED'], true)) {
                 return false;
             }
-            if (! $miamiOnly && $package->status === 'CANCELLED') {
+            if ($miamiOnly && $package->status !== 'RECEIVED_MIAMI') {
                 return false;
             }
 
@@ -330,7 +352,9 @@ class ConsolidationService
     private function candidatesByExactScanCode(string $normalized)
     {
         $byTracking = Preregistration::query()
-            ->where('tracking_external', $normalized)
+            ->where(function ($query) use ($normalized) {
+                TrackingCode::constrainLookup($query, 'tracking_external', $normalized);
+            })
             ->orderBy('id')
             ->get();
 

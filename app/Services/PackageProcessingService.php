@@ -61,8 +61,11 @@ class PackageProcessingService
      */
     public function reprintLabel(Preregistration $preregistration): Preregistration
     {
-        if (!$preregistration->warehouse_code) {
-            throw new \Exception('No se puede reimprimir la etiqueta: el paquete no tiene warehouse_code.');
+        if (! $preregistration->warehouse_code) {
+            if ($preregistration->status === 'PHOTO_PENDING') {
+                throw new \Exception('No se puede reimprimir la etiqueta: complete y guarde el preregistro para asignar el código.');
+            }
+            $this->warehouseService->ensureWarehouseCode($preregistration);
         }
 
         $preregistration->update([

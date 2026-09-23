@@ -79,7 +79,9 @@ window.skylinkBindPrealertLookup = function (input, host) {
             if (descField && !String(descField.value || '').trim() && data.description) {
                 descField.value = data.description;
             }
-            if (data.service_type) {
+            if (data.service_type && typeof window.skylinkApplyPreregService === 'function') {
+                window.skylinkApplyPreregService(data.service_type);
+            } else if (data.service_type) {
                 ['service_type', 'service_type_multi', 'service_type_post'].forEach(function (id) {
                     var el = document.getElementById(id);
                     if (el && !String(el.value || '').trim()) {

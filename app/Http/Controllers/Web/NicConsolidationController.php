@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Consolidation;
 use App\Models\ConsolidationItem;
 use App\Models\Preregistration;
+use App\Support\TrackingCode;
 use Illuminate\Http\Request;
 
 class NicConsolidationController extends Controller
@@ -95,13 +96,18 @@ class NicConsolidationController extends Controller
         }
 
         $request->validate(['code' => 'required|string|max:100']);
-        $code = trim($request->input('code'));
+        $code = TrackingCode::compact($request->input('code'));
 
         $isSixDigits = preg_match('/^\d{6}$/', $code);
         // Mismo warehouse puede tener varios bultos (dropoff): buscar el siguiente ítem no escaneado en orden (bulto 1, 2, 3…)
         $matchingPreregIds = $isSixDigits
             ? Preregistration::where('warehouse_code', $code)->pluck('id')->toArray()
-            : [Preregistration::where('tracking_external', $code)->value('id')];
+            : Preregistration::query()
+                ->where(function ($query) use ($code) {
+                    TrackingCode::constrainLookup($query, 'tracking_external', $code);
+                })
+                ->pluck('id')
+                ->all();
 
         $matchingPreregIds = array_filter($matchingPreregIds);
         if (empty($matchingPreregIds)) {

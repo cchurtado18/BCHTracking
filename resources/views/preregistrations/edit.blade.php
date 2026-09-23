@@ -150,23 +150,18 @@
                                     @enderror
                                 </div>
 
-                                <div class="preregs-field">
-                                    <label for="service_type" class="preregs-field-label">Tipo de servicio <span class="preregs-req">*</span></label>
+                                <div class="preregs-field preregs-field--full">
                                     @php
                                         $editService = old(
                                             'service_type',
                                             $preregistration->status === 'PHOTO_PENDING' ? '' : $preregistration->service_type
                                         );
                                     @endphp
-                                    <select name="service_type" id="service_type" required class="preregs-input preregs-select">
-                                        <option value="" disabled {{ $editService ? '' : 'selected' }}>Seleccione un servicio</option>
-                                        <option value="AIR" {{ $editService == 'AIR' ? 'selected' : '' }}>Aéreo</option>
-                                        <option value="SEA" {{ $editService == 'SEA' ? 'selected' : '' }}>Marítimo</option>
-                                        <option value="CFT" {{ $editService == 'CFT' ? 'selected' : '' }}>Pie cúbico</option>
-                                    </select>
-                                    @error('service_type')
-                                    <p class="preregs-field-error">{{ $message }}</p>
-                                    @enderror
+                                    @include('preregistrations.partials.service-route-fields', [
+                                        'selectId' => 'service_type',
+                                        'named' => true,
+                                        'currentService' => $editService,
+                                    ])
                                 </div>
 
                                 <div class="preregs-field">
@@ -188,15 +183,18 @@
                                     @enderror
                                 </div>
 
-                                @if($preregistration->intake_type === 'DROP_OFF')
-                                <div class="preregs-field">
-                                    <label for="dimension" class="preregs-field-label">Dimensión</label>
-                                    <input type="text" name="dimension" id="dimension" value="{{ old('dimension', $preregistration->dimension) }}" placeholder="ej: 10 x 8 x 5 in" class="preregs-input preregs-input-upper" autocapitalize="characters">
+                                @php
+                                    $editDimService = old('service_type', $preregistration->service_type);
+                                    $showEditDimension = $preregistration->intake_type === 'DROP_OFF'
+                                        || \App\Support\ServiceType::isCft($editDimService);
+                                @endphp
+                                <div class="preregs-field" id="wrap_dimension_edit" @if(! $showEditDimension) hidden @endif>
+                                    <label for="dimension" class="preregs-field-label">Dimensión @if(\App\Support\ServiceType::isCft($editDimService) || $preregistration->intake_type === 'DROP_OFF')<span class="preregs-req">*</span>@endif</label>
+                                    <input type="text" name="dimension" id="dimension" value="{{ old('dimension', $preregistration->dimension) }}" placeholder="ej: 10 x 8 x 5 in" class="preregs-input preregs-input-upper" autocapitalize="characters" @if($showEditDimension) required @endif>
                                     @error('dimension')
                                     <p class="preregs-field-error">{{ $message }}</p>
                                     @enderror
                                 </div>
-                                @endif
 
                                 <div class="preregs-field preregs-field--full">
                                     <label for="description" class="preregs-field-label">Descripción del contenido <span class="preregs-opt">(opcional)</span></label>
@@ -878,5 +876,37 @@
     .preregs-edit-page .preregs-form-header-text { padding: 0.9rem; }
 }
 </style>
+<script>
+(function () {
+    var route = document.getElementById('service_type');
+    var wrap = document.getElementById('wrap_sea_billing');
+    var dimWrap = document.getElementById('wrap_dimension_edit');
+    var dimInput = document.getElementById('dimension');
+    var dropOff = {{ $preregistration->intake_type === 'DROP_OFF' ? 'true' : 'false' }};
+    function billing() {
+        var checked = wrap ? wrap.querySelector('.js-sea-billing:checked') : null;
+        return checked ? String(checked.value || '').toUpperCase() : '';
+    }
+    function sync() {
+        if (!route || !wrap) return;
+        var isSea = String(route.value || '').toUpperCase() === 'SEA';
+        wrap.hidden = !isSea;
+        if (!isSea) {
+            wrap.querySelectorAll('.js-sea-billing').forEach(function (radio) { radio.checked = false; });
+        }
+        var needsDim = dropOff || billing() === 'CFT';
+        if (dimWrap) dimWrap.hidden = !needsDim;
+        if (dimInput) {
+            if (needsDim) dimInput.setAttribute('required', 'required');
+            else dimInput.removeAttribute('required');
+        }
+    }
+    if (route) route.addEventListener('change', sync);
+    document.querySelectorAll('.js-sea-billing').forEach(function (radio) {
+        radio.addEventListener('change', sync);
+    });
+    sync();
+})();
+</script>
 @include('preregistrations.partials.agency-slo-combos-script')
 @endsection

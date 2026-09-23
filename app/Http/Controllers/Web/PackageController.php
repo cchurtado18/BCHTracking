@@ -7,6 +7,7 @@ use App\Http\Controllers\Concerns\AuthorizesAgencyAccess;
 use App\Models\Agency;
 use App\Models\Preregistration;
 use App\Services\PackageProcessingService;
+use App\Services\WarehouseService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -14,7 +15,10 @@ class PackageController extends Controller
 {
     use AuthorizesAgencyAccess;
 
-    public function __construct(protected PackageProcessingService $packageService) {}
+    public function __construct(
+        protected PackageProcessingService $packageService,
+        protected WarehouseService $warehouseService,
+    ) {}
 
     private function scopePackagesForCurrentUser($query)
     {
@@ -93,6 +97,11 @@ class PackageController extends Controller
         }
 
         $packages = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
+        $packages->getCollection()->each(function (Preregistration $package) {
+            if ($package->status !== 'PHOTO_PENDING' && ! filled($package->warehouse_code)) {
+                $this->warehouseService->ensureWarehouseCode($package);
+            }
+        });
         $agenciesForFilter = Agency::where('is_active', true)->with('parent')->orderBy('name')->get();
 
         // Estadísticas con los mismos filtros (para la vista principal)
@@ -144,6 +153,9 @@ class PackageController extends Controller
             'delivery.deliveryNote',
         ])->findOrFail($id);
         $this->ensureUserCanAccessPreregistration($package);
+        if ($package->status !== 'PHOTO_PENDING' && ! filled($package->warehouse_code)) {
+            $this->warehouseService->ensureWarehouseCode($package);
+        }
         $package->photos->each(fn ($p) => $p->url = asset('storage/'.$p->path));
 
         return view('packages.show', compact('package'));

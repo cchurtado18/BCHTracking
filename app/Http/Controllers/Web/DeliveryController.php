@@ -8,6 +8,7 @@ use App\Models\Agency;
 use App\Models\Delivery;
 use App\Models\DeliveryNote;
 use App\Models\Preregistration;
+use App\Support\TrackingCode;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -1042,7 +1043,9 @@ class DeliveryController extends Controller
                     ->when(
                         $isWarehouseCode,
                         fn ($query) => $query->where('warehouse_code', $code),
-                        fn ($query) => $query->whereRaw('UPPER(tracking_external) = ?', [$code])
+                        fn ($query) => $query->where(function ($inner) use ($code) {
+                            TrackingCode::constrainLookup($inner, 'tracking_external', $code);
+                        })
                     )
                     ->where('status', 'READY')
                     ->whereDoesntHave('delivery')
@@ -1055,7 +1058,9 @@ class DeliveryController extends Controller
                         ->when(
                             $isWarehouseCode,
                             fn ($query) => $query->where('warehouse_code', $code),
-                            fn ($query) => $query->whereRaw('UPPER(tracking_external) = ?', [$code])
+                            fn ($query) => $query->where(function ($inner) use ($code) {
+                                TrackingCode::constrainLookup($inner, 'tracking_external', $code);
+                            })
                         )
                         ->first();
                     if (! $any) {

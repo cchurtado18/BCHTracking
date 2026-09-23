@@ -216,15 +216,14 @@
                         <div class="prd-field prd-field-span">
                             <span class="prd-field-label">Tipo de servicio</span>
                             @if($canEditService)
-                            <form method="POST" action="{{ route('preregistrations.service-type', $preregistration->id) }}" class="prd-service-form">
+                            <form method="POST" action="{{ route('preregistrations.service-type', $preregistration->id) }}" class="prd-service-form" id="prd-service-form">
                                 @csrf
                                 @method('PATCH')
-                                <label for="service_type_show" class="sr-only">Tipo de servicio</label>
-                                <select name="service_type" id="service_type_show" class="prd-service-select" required>
-                                    <option value="AIR" @selected($currentService === 'AIR')>Aéreo</option>
-                                    <option value="SEA" @selected($currentService === 'SEA')>Marítimo</option>
-                                    <option value="CFT" @selected($currentService === 'CFT')>Pie cúbico</option>
-                                </select>
+                                @include('preregistrations.partials.service-route-fields', [
+                                    'selectId' => 'service_type_show',
+                                    'named' => true,
+                                    'currentService' => $currentService,
+                                ])
                                 <button type="submit" class="prd-service-save">Guardar</button>
                             </form>
                             @else
@@ -682,7 +681,8 @@
 .prd-field-value { font-size: 0.92rem; font-weight: 650; color: #0f172a; word-break: break-word; }
 .prd-field-intake { display: inline-flex; align-items: center; gap: 0.45rem; }
 .prd-intake-dot { width: 0.5rem; height: 0.5rem; border-radius: 999px; background: #1E4FA8; flex-shrink: 0; }
-.prd-service-form { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.15rem; }
+.prd-service-form { display: flex; flex-direction: column; align-items: flex-start; gap: 0.55rem; margin-top: 0.15rem; width: 100%; }
+.prd-service-form .preregs-field { width: 100%; max-width: 28rem; }
 .prd-service-select {
     min-width: 10.5rem; padding: 0.5rem 0.7rem; font-size: 0.9rem; font-weight: 700;
     border: 1px solid #cbd5e1; border-radius: 0.55rem; background: #fff; color: #0f172a;
@@ -819,4 +819,31 @@
     </form>
 </div>
 @endif
+<script>
+(function () {
+    var form = document.getElementById('prd-service-form');
+    if (!form) return;
+    var route = document.getElementById('service_type_show');
+    var wrap = document.getElementById('wrap_sea_billing');
+    function sync() {
+        if (!route || !wrap) return;
+        var isSea = String(route.value || '').toUpperCase() === 'SEA';
+        wrap.hidden = !isSea;
+        if (!isSea) {
+            wrap.querySelectorAll('.js-sea-billing').forEach(function (radio) { radio.checked = false; });
+        }
+    }
+    if (route) route.addEventListener('change', sync);
+    form.addEventListener('submit', function (e) {
+        if (String(route && route.value || '').toUpperCase() === 'SEA') {
+            var checked = wrap ? wrap.querySelector('.js-sea-billing:checked') : null;
+            if (!checked) {
+                e.preventDefault();
+                alert('En marítimo elija si se cobra por libra o por pie cúbico.');
+            }
+        }
+    });
+    sync();
+})();
+</script>
 @endsection

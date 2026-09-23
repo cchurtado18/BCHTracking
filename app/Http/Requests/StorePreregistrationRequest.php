@@ -27,6 +27,11 @@ class StorePreregistrationRequest extends FormRequest
             $merge['tracking_external'] = \App\Models\Preregistration::normalizeTrackingExternal($this->input('tracking_external'));
         }
 
+        $resolved = ServiceType::fromRouteAndBilling($this->input('service_route'), $this->input('sea_billing'));
+        if ($resolved) {
+            $merge['service_type'] = $resolved;
+        }
+
         $bultos = $this->input('bultos');
         if (is_array($bultos)) {
             foreach ($bultos as $i => $bulto) {
@@ -133,6 +138,7 @@ class StorePreregistrationRequest extends FormRequest
             'service_type.required' => 'Debe elegir el tipo de servicio.',
             'service_type.required_if' => 'Debe elegir el tipo de servicio.',
             'service_type.in' => 'Debe elegir el tipo de servicio.',
+            'sea_billing.required' => 'En marítimo elija si se cobra por libra o por pie cúbico.',
         ];
         if ($this->isMultiBultoDropoff()) {
             $n = min((int) $this->input('bultos_count', 1), count($this->input('bultos', [])));
@@ -150,14 +156,25 @@ class StorePreregistrationRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             $id = (int) $this->input('agency_id');
-            if ($id <= 0) {
+            if ($id > 0) {
+                $agency = \App\Models\Agency::find($id);
+                if ($agency && $agency->isRootAccount()) {
+                    $validator->errors()->add(
+                        'agency_id',
+                        'Si el paquete es de SkyLink One, seleccione un cliente propio de SLO. No se puede asignar a SLO como cuenta genérica.'
+                    );
+                }
+            }
+
+            if ($this->isDropoffStepSubmission() && (int) $this->input('dropoff_step') !== 1) {
                 return;
             }
-            $agency = \App\Models\Agency::find($id);
-            if ($agency && $agency->isRootAccount()) {
+
+            $route = strtoupper(trim((string) $this->input('service_route')));
+            if ($route === ServiceType::SEA && ServiceType::fromRouteAndBilling($route, $this->input('sea_billing')) === null) {
                 $validator->errors()->add(
-                    'agency_id',
-                    'Si el paquete es de SkyLink One, seleccione un cliente propio de SLO. No se puede asignar a SLO como cuenta genérica.'
+                    'sea_billing',
+                    'En marítimo elija si se cobra por libra o por pie cúbico.'
                 );
             }
         });

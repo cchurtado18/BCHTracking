@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Preregistration;
 use App\Models\WarehouseSequence;
 use Illuminate\Support\Facades\DB;
 
@@ -48,6 +49,19 @@ class WarehouseService
         }
 
         return str_pad((string) max(1, $next), 6, '0', STR_PAD_LEFT);
+    }
+
+    public function ensureWarehouseCode(Preregistration $preregistration): string
+    {
+        $existing = trim((string) ($preregistration->warehouse_code ?? ''));
+        if ($existing !== '') {
+            return $existing;
+        }
+
+        $code = $this->generateWarehouseCode();
+        $preregistration->forceFill(['warehouse_code' => $code])->save();
+
+        return $code;
     }
 }
 

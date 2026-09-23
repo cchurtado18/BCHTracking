@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\Preregistration;
+use App\Support\TrackingCode;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -17,15 +18,18 @@ class TrackingController extends Controller
         $notFound = false;
 
         if ($code !== '') {
-            $isSixDigits = preg_match('/^\d{6}$/', $code);
+            $lookup = TrackingCode::compact($code);
+            $isSixDigits = preg_match('/^\d{6}$/', $lookup);
             if ($isSixDigits) {
                 $preregistrations = Preregistration::with(['agency', 'delivery'])
-                    ->where('warehouse_code', $code)
+                    ->where('warehouse_code', $lookup)
                     ->orderByRaw('COALESCE(bulto_index, 999) ASC')
                     ->get();
             } else {
                 $preregistrations = Preregistration::with(['agency', 'delivery'])
-                    ->where('tracking_external', $code)
+                    ->where(function ($query) use ($lookup) {
+                        TrackingCode::constrainLookup($query, 'tracking_external', $lookup);
+                    })
                     ->orderByRaw('COALESCE(bulto_index, 999) ASC')
                     ->get();
             }

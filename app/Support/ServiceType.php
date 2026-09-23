@@ -30,6 +30,53 @@ class ServiceType
         return 'in:'.implode(',', self::ROUTES);
     }
 
+    public const BILLING_LBS = 'LBS';
+
+    /**
+     * Aéreo o marítimo a partir del servicio almacenado (CFT viaja por mar).
+     */
+    public static function routeValue(?string $service): string
+    {
+        return self::isCft($service) ? self::SEA : self::normalize($service, self::AIR);
+    }
+
+    /**
+     * LBS o CFT cuando el servicio es marítimo; null en aéreo.
+     */
+    public static function seaBillingValue(?string $service): ?string
+    {
+        if (self::isCft($service)) {
+            return self::CFT;
+        }
+
+        return strtoupper((string) $service) === self::SEA ? self::BILLING_LBS : null;
+    }
+
+    /**
+     * Servicio persistido desde la vía (AIR/SEA) y, en marítimo, el cobro (LBS/CFT).
+     * Null si eligieron marítimo y aún no el cobro.
+     */
+    public static function fromRouteAndBilling(?string $route, ?string $billing): ?string
+    {
+        $route = strtoupper(trim((string) $route));
+        $billing = strtoupper(trim((string) $billing));
+        if ($route === self::AIR) {
+            return self::AIR;
+        }
+        if ($route === self::SEA) {
+            if ($billing === self::CFT) {
+                return self::CFT;
+            }
+            if ($billing === self::BILLING_LBS || $billing === self::SEA) {
+                return self::SEA;
+            }
+
+            return null;
+        }
+
+        return null;
+    }
+
     public static function isValid(?string $value): bool
     {
         return in_array(strtoupper((string) $value), self::ALL, true);

@@ -145,6 +145,8 @@
         <form action="{{ route('preregistrations.store') }}" method="POST" enctype="multipart/form-data" class="preregs-create-formwrap" id="preregForm" novalidate>
             @csrf
             <input type="hidden" name="service_type" id="service_type_post" value="{{ old('service_type') }}">
+            <input type="hidden" name="service_route" id="service_route_post" value="{{ old('service_route', in_array(old('service_type'), ['SEA', 'CFT'], true) ? 'SEA' : old('service_type')) }}">
+            <input type="hidden" name="sea_billing" id="sea_billing_post" value="{{ old('sea_billing', \App\Support\ServiceType::seaBillingValue(old('service_type'))) }}">
 
             <div class="preregs-form-panel">
                 <div class="preregs-form-panel-head">
@@ -228,18 +230,11 @@
                         <label for="label_name" class="preregs-field-label">Nombre en etiqueta <span class="preregs-req">*</span></label>
                         <input type="text" name="label_name" id="label_name" class="preregs-input preregs-input-upper" autocapitalize="characters" placeholder="Nombre del destinatario">
                     </div>
-                    <div class="preregs-field">
-                        <label for="service_type" class="preregs-field-label">Tipo de servicio <span class="preregs-req">*</span></label>
-                        <select id="service_type" class="preregs-input preregs-select">
-                            <option value="" disabled {{ old('service_type') ? '' : 'selected' }}>Seleccione un servicio</option>
-                            <option value="AIR" {{ old('service_type') === 'AIR' ? 'selected' : '' }}>Aéreo</option>
-                            <option value="SEA" {{ old('service_type') === 'SEA' ? 'selected' : '' }}>Marítimo</option>
-                            <option value="CFT" {{ old('service_type') === 'CFT' ? 'selected' : '' }}>Pie cúbico</option>
-                        </select>
-                        @error('service_type')
-                        <p class="preregs-field-error">{{ $message }}</p>
-                        @enderror
-                    </div>
+                    @include('preregistrations.partials.service-route-fields', [
+                        'selectId' => 'service_type',
+                        'named' => false,
+                        'currentService' => old('service_type'),
+                    ])
                     <div class="preregs-field">
                         <label for="intake_weight_lbs" class="preregs-field-label">Peso (lb) <span class="preregs-req">*</span></label>
                         <div class="preregs-input-affix">
@@ -261,15 +256,11 @@
 
                 <div id="wrap_multi_bultos" class="preregs-multi-bultos-wrap" style="display: none;">
                     <p class="preregs-multi-lead">Se mostrará un formulario por cada bulto. Al guardar podrás imprimir la etiqueta de ese bulto y luego continuar con el siguiente.</p>
-                    <div class="preregs-field preregs-field--inline">
-                        <label for="service_type_multi" class="preregs-field-label">Tipo de servicio <span class="preregs-req">*</span></label>
-                        <select id="service_type_multi" class="preregs-input preregs-select preregs-input--narrow">
-                            <option value="" disabled {{ old('service_type') ? '' : 'selected' }}>Seleccione un servicio</option>
-                            <option value="AIR" {{ old('service_type') === 'AIR' ? 'selected' : '' }}>Aéreo</option>
-                            <option value="SEA" {{ old('service_type') === 'SEA' ? 'selected' : '' }}>Marítimo</option>
-                            <option value="CFT" {{ old('service_type') === 'CFT' ? 'selected' : '' }}>Pie cúbico</option>
-                        </select>
-                    </div>
+                    @include('preregistrations.partials.service-route-fields', [
+                        'selectId' => 'service_type_multi',
+                        'named' => false,
+                        'currentService' => old('service_type'),
+                    ])
                     <div id="bultos_container" class="preregs-bultos-container"></div>
                     <input type="hidden" name="dropoff_step" id="dropoff_step_input" value="1">
                 </div>
@@ -370,7 +361,7 @@
                 </ul>
 
                 <p class="preregs-side-heading">Servicio</p>
-                <p class="preregs-side-note">Aéreo, marítimo y pie cúbico tienen tarifa propia. En pie cúbico las dimensiones son obligatorias porque se cobra por pie³.</p>
+                <p class="preregs-side-note">Aéreo se cobra por libra. En marítimo hay que elegir si se cobra por libra o por pie cúbico; si elige pie cúbico las dimensiones son obligatorias.</p>
             </div>
             <div class="preregs-side-card">
                 <h3 class="preregs-side-title">
@@ -1172,17 +1163,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
             }
-            var serviceSelect = isMultiBultos() && document.getElementById('service_type_multi')
-                ? document.getElementById('service_type_multi')
-                : document.getElementById('service_type');
-            var selectedService = serviceSelect ? String(serviceSelect.value || '').trim() : '';
-            if (!selectedService) {
+            var selectedRoute = selectedServiceRoute();
+            if (!selectedRoute) {
                 showFormAlert(form, 'Debe elegir el tipo de servicio.');
+                var serviceSelect = activeServiceRouteSelect();
                 if (serviceSelect && !serviceSelect.disabled) serviceSelect.focus();
                 return;
             }
-            var serviceTypePost = document.getElementById('service_type_post');
-            if (serviceTypePost) serviceTypePost.value = selectedService;
+            if (selectedRoute === 'SEA' && !selectedSeaBilling()) {
+                showFormAlert(form, 'En marítimo elija si se cobra por libra o por pie cúbico.');
+                var billingWrap = activeSeaBillingWrap();
+                if (billingWrap) billingWrap.hidden = false;
+                var firstBilling = billingWrap ? billingWrap.querySelector('.js-sea-billing') : null;
+                if (firstBilling) firstBilling.focus();
+                return;
+            }
+            syncServicePosts();
 
             if (isDropOff() && !isMultiBultos()) {
                 var dim = document.getElementById('dimension');
@@ -1436,11 +1432,91 @@ document.addEventListener('DOMContentLoaded', function() {
         if (submitBtn) submitBtn.textContent = 'Guardar e imprimir etiqueta 1/' + n;
     }
 
-    function currentService() {
-        var multi = isMultiBultos() && document.getElementById('service_type_multi');
-        var el = multi ? document.getElementById('service_type_multi') : document.getElementById('service_type');
-        return el ? el.value : '';
+    function activeServiceRouteSelect() {
+        return isMultiBultos() && document.getElementById('service_type_multi')
+            ? document.getElementById('service_type_multi')
+            : document.getElementById('service_type');
     }
+
+    function selectedServiceRoute() {
+        var el = activeServiceRouteSelect();
+        return el ? String(el.value || '').trim().toUpperCase() : '';
+    }
+
+    function activeSeaBillingWrap() {
+        return document.getElementById(isMultiBultos() ? 'wrap_sea_billing_multi' : 'wrap_sea_billing');
+    }
+
+    function selectedSeaBilling() {
+        var wrap = activeSeaBillingWrap();
+        if (!wrap) return '';
+        var checked = wrap.querySelector('.js-sea-billing:checked');
+        return checked ? String(checked.value || '').trim().toUpperCase() : '';
+    }
+
+    function currentService() {
+        var route = selectedServiceRoute();
+        if (route === 'AIR') return 'AIR';
+        if (route === 'SEA') {
+            var billing = selectedSeaBilling();
+            if (billing === 'CFT') return 'CFT';
+            if (billing === 'LBS') return 'SEA';
+            return '';
+        }
+        return '';
+    }
+
+    function syncServicePosts() {
+        var route = selectedServiceRoute();
+        var billing = selectedSeaBilling();
+        var resolved = currentService();
+        var typePost = document.getElementById('service_type_post');
+        var routePost = document.getElementById('service_route_post');
+        var billingPost = document.getElementById('sea_billing_post');
+        if (typePost) typePost.value = resolved;
+        if (routePost) routePost.value = route;
+        if (billingPost) billingPost.value = route === 'SEA' ? billing : '';
+    }
+
+    function toggleSeaBilling() {
+        ['wrap_sea_billing', 'wrap_sea_billing_multi'].forEach(function (id) {
+            var wrap = document.getElementById(id);
+            var selectId = id === 'wrap_sea_billing_multi' ? 'service_type_multi' : 'service_type';
+            var select = document.getElementById(selectId);
+            if (!wrap) return;
+            var show = select && String(select.value || '').toUpperCase() === 'SEA';
+            wrap.hidden = !show;
+            if (!show) {
+                wrap.querySelectorAll('.js-sea-billing').forEach(function (radio) {
+                    radio.checked = false;
+                });
+            }
+        });
+        syncServicePosts();
+    }
+
+    window.skylinkApplyPreregService = function (service) {
+        var key = String(service || '').toUpperCase();
+        var route = key === 'CFT' ? 'SEA' : key;
+        var billing = key === 'CFT' ? 'CFT' : (key === 'SEA' ? 'LBS' : '');
+        ['service_type', 'service_type_multi'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (!el || String(el.value || '').trim()) return;
+            if (route === 'AIR' || route === 'SEA') {
+                el.value = route;
+            }
+        });
+        if (billing) {
+            document.querySelectorAll('.js-sea-billing-wrap').forEach(function (wrap) {
+                var radio = wrap.querySelector('.js-sea-billing[value="' + billing + '"]');
+                if (radio && !wrap.querySelector('.js-sea-billing:checked')) {
+                    radio.checked = true;
+                }
+            });
+        }
+        toggleSeaBilling();
+        if (typeof toggleDropOff === 'function') toggleDropOff();
+    };
 
     function needsDimension() {
         return isDropOff() || currentService() === 'CFT';
@@ -1527,10 +1603,11 @@ document.addEventListener('DOMContentLoaded', function() {
         var previewDimension = document.getElementById('preview_dimension');
         var previewAgency = document.getElementById('preview_agency');
         var serviceSelect = document.getElementById('service_type');
-        var serviceValue = (serviceSelect && serviceSelect.value) ? serviceSelect.value.toUpperCase() : 'AIR';
+        var serviceValue = (typeof currentService === 'function' && currentService()) ? currentService() : ((serviceSelect && serviceSelect.value) ? serviceSelect.value.toUpperCase() : 'AIR');
+        var serviceLabel = serviceValue === 'CFT' ? 'Pie cúbico' : ((serviceEl && serviceEl.value && serviceEl.selectedOptions[0]) ? serviceEl.selectedOptions[0].text : '—');
         if (previewName) previewName.textContent = name;
         if (previewService) {
-            previewService.textContent = service;
+            previewService.textContent = serviceLabel;
             previewService.className = 'preregs-label-preview-service preregs-label-preview-service-' + (serviceValue === 'AIR' ? 'air' : 'sea');
         }
         if (previewWeight) previewWeight.textContent = weight;
@@ -1609,9 +1686,21 @@ document.addEventListener('DOMContentLoaded', function() {
         intakeType.addEventListener('change', toggleDropOff);
         toggleDropOff();
     }
+    toggleSeaBilling();
     ['service_type', 'service_type_multi'].forEach(function(id) {
         var el = document.getElementById(id);
-        if (el) el.addEventListener('change', toggleDropOff);
+        if (el) el.addEventListener('change', function () {
+            toggleSeaBilling();
+            toggleDropOff();
+            updatePreview();
+        });
+    });
+    document.querySelectorAll('.js-sea-billing').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            syncServicePosts();
+            toggleDropOff();
+            updatePreview();
+        });
     });
     ['agency_combobox', 'label_name', 'service_type', 'intake_weight_lbs', 'dimension'].forEach(function(id) {
         var el = document.getElementById(id);
