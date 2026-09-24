@@ -16,7 +16,10 @@
     ];
     $statusLabel = $statusReadable[$preregistration->status] ?? $preregistration->status;
     $weightLbs = $preregistration->verified_weight_lbs ?? $preregistration->intake_weight_lbs;
-    $showAdmin = auth()->user()?->is_admin;
+    $canDeletePreregistration = auth()->user()?->hasPermission(\App\Support\Permission::ACTION_DELETE_PREREGISTRATION);
+    $canChangeIntake = auth()->user()?->hasPermission(\App\Support\Permission::ACTION_CHANGE_INTAKE_TYPE);
+    $canResetToMiami = auth()->user()?->hasPermission(\App\Support\Permission::ACTION_RESET_TO_MIAMI);
+    $showAdmin = $canChangeIntake || $canResetToMiami;
 
     $stageIndex = match ($preregistration->status) {
         'RECEIVED_MIAMI' => 1,
@@ -88,7 +91,7 @@
                 <a href="{{ route('preregistrations.label', $preregistration->id) }}" target="_blank" class="mb-btn mb-btn-secondary">Etiqueta 4×6</a>
                 @endif
             @endif
-            @if(in_array($preregistration->status, ['PHOTO_PENDING', 'RECEIVED_MIAMI', 'CANCELLED']))
+            @if($canDeletePreregistration && in_array($preregistration->status, ['PHOTO_PENDING', 'RECEIVED_MIAMI', 'CANCELLED']))
             <form action="{{ route('preregistrations.destroy', $preregistration->id) }}" method="POST" onsubmit="return confirm('¿Eliminar este preregistro y todas sus fotos? Esta acción no se puede deshacer.');">
                 @csrf
                 @method('DELETE')

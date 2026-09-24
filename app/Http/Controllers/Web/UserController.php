@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\Permission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -40,7 +41,11 @@ class UserController extends Controller
 
     public function create()
     {
-        return view('users.create');
+        return view('users.create', [
+            'permissionModules' => Permission::modules(),
+            'permissionActions' => Permission::actions(),
+            'defaultPermissions' => Permission::operationalDefaults(),
+        ]);
     }
 
     public function store(Request $request)
@@ -50,6 +55,8 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email',
             'password' => ['required', 'confirmed', Password::defaults()],
             'is_admin' => 'boolean',
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'string|in:'.implode(',', Permission::allKeys()),
         ], [
             'name.required' => 'El nombre es obligatorio.',
             'email.required' => 'El correo es obligatorio.',
@@ -58,11 +65,13 @@ class UserController extends Controller
             'password.confirmed' => 'La confirmación de contraseña no coincide.',
         ]);
 
+        $isAdmin = (bool) $request->boolean('is_admin');
         User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'is_admin' => (bool) $request->boolean('is_admin'),
+            'is_admin' => $isAdmin,
+            'permissions' => $isAdmin ? null : Permission::sanitize($request->input('permissions', [])),
         ]);
 
         return redirect()->route('users.index')->with('success', 'Usuario creado correctamente.');
@@ -74,7 +83,12 @@ class UserController extends Controller
             return redirect()->route('agencies.users.edit', [$user->agency_id, $user]);
         }
 
-        return view('users.edit', compact('user'));
+        return view('users.edit', [
+            'user' => $user,
+            'permissionModules' => Permission::modules(),
+            'permissionActions' => Permission::actions(),
+            'defaultPermissions' => Permission::operationalDefaults(),
+        ]);
     }
 
     public function update(Request $request, User $user)
@@ -86,6 +100,8 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'is_admin' => 'boolean',
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'string|in:'.implode(',', Permission::allKeys()),
         ];
 
         if ($request->filled('password')) {
@@ -101,6 +117,9 @@ class UserController extends Controller
         $user->name = $request->name;
         $user->email = $request->email;
         $user->is_admin = (bool) $request->boolean('is_admin');
+        $user->permissions = $user->is_admin
+            ? null
+            : Permission::sanitize($request->input('permissions', []));
         if ($request->filled('password')) {
             $user->password = Hash::make($request->password);
         }

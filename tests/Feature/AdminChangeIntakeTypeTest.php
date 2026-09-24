@@ -101,4 +101,31 @@ class AdminChangeIntakeTypeTest extends TestCase
             ->assertOk()
             ->assertDontSee('admin-intake-panel__btn', false);
     }
+
+    public function test_ops_user_with_intake_permission_can_change_and_sees_panel(): void
+    {
+        $user = User::factory()->create([
+            'agency_id' => null,
+            'is_admin' => false,
+            'permissions' => array_merge(\App\Support\Permission::operationalDefaults(), [
+                \App\Support\Permission::ACTION_CHANGE_INTAKE_TYPE,
+            ]),
+        ]);
+        $package = $this->createPackage('DROP_OFF');
+
+        $this->actingAs($user)
+            ->get(route('packages.show', $package->id))
+            ->assertOk()
+            ->assertSee('Tipo de ingreso')
+            ->assertSee('admin-intake-panel__btn', false);
+
+        $this->actingAs($user)
+            ->post(route('preregistrations.admin.intake-type', $package->id), [
+                'intake_type' => 'COURIER',
+                'return_to' => 'package',
+            ])
+            ->assertRedirect(route('packages.show', $package->id));
+
+        $this->assertSame('COURIER', $package->fresh()->intake_type);
+    }
 }

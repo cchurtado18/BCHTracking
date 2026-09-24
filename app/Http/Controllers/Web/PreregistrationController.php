@@ -952,6 +952,11 @@ class PreregistrationController extends Controller
 
     public function destroy(string $id)
     {
+        if (! auth()->user()?->hasPermission(\App\Support\Permission::ACTION_DELETE_PREREGISTRATION)) {
+            return redirect()->route('preregistrations.index', session('preregistrations_index_filters', []))
+                ->with('error', 'No tiene permiso para eliminar preregistros.');
+        }
+
         $preregistration = Preregistration::with('photos')->findOrFail($id);
 
         if (! in_array($preregistration->status, ['PHOTO_PENDING', 'RECEIVED_MIAMI', 'CANCELLED'], true)) {

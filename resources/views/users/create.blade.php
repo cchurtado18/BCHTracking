@@ -6,7 +6,7 @@
 @php
     $isAdmin = (string) old('is_admin', '0') === '1';
 @endphp
-<div class="cx-page">
+<div class="cx-page cx-page-wide">
     <x-module-banner
         section="Administración"
         current="Crear usuario"
@@ -73,7 +73,7 @@
                     <input type="radio" name="is_admin" value="0" {{ ! $isAdmin ? 'checked' : '' }}>
                     <span class="cx-type-card-body">
                         <strong>Operaciones</strong>
-                        <span>Paquetes, salidas, consolidaciones y fichaje. Sin administración ni contabilidad.</span>
+                        <span>Marca abajo los módulos y opciones que puede usar. Un administrador tiene todo.</span>
                     </span>
                 </label>
                 <label class="cx-type-card {{ $isAdmin ? 'is-selected' : '' }}">
@@ -85,6 +85,10 @@
                 </label>
             </div>
         </div>
+
+        @include('users.partials.permissions', [
+            'selectedPermissions' => old('permissions', $defaultPermissions ?? []),
+        ])
 
         <div class="cx-card-foot">
             <a href="{{ route('users.index') }}" class="cx-btn cx-btn-secondary">Cancelar</a>

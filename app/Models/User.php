@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Support\Permission;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -26,6 +27,7 @@ class User extends Authenticatable
         'password',
         'is_admin',
         'agency_id',
+        'permissions',
     ];
 
     /**
@@ -117,6 +119,61 @@ class User extends Authenticatable
     }
 
     /**
+     * @return list<string>
+     */
+    public function effectivePermissions(): array
+    {
+        if ($this->isAgencyUser()) {
+            return [];
+        }
+        if ($this->is_admin) {
+            return Permission::allKeys();
+        }
+        if (! is_array($this->permissions)) {
+            return Permission::operationalDefaults();
+        }
+
+        return Permission::sanitize($this->permissions);
+    }
+
+    public function hasPermission(string $key): bool
+    {
+        if ($this->isAgencyUser()) {
+            return false;
+        }
+
+        return in_array($key, $this->effectivePermissions(), true);
+    }
+
+    public function canAccessModule(string $key): bool
+    {
+        if ($this->isAgencyUser()) {
+            return match ($key) {
+                Permission::MODULE_PACKAGES, Permission::MODULE_PREALERTS => true,
+                Permission::MODULE_DELIVERIES, Permission::MODULE_ACCOUNTING => ! $this->isPackagesOnlyPortal(),
+                default => false,
+            };
+        }
+
+        return $this->hasPermission($key);
+    }
+
+    public function homePath(): string
+    {
+        if ($this->isAgencyUser() || $this->canAccessModule(Permission::MODULE_PACKAGES)) {
+            return route('packages.index', absolute: false);
+        }
+        if ($this->hasPermission(Permission::MODULE_PREREGISTRATIONS)) {
+            return route('preregistrations.index', absolute: false);
+        }
+        if ($this->hasPermission(Permission::MODULE_DASHBOARD)) {
+            return route('dashboard', absolute: false);
+        }
+
+        return route('tracking.index', absolute: false);
+    }
+
+    /**
      * The attributes that should be hidden for serialization.
      *
      * @var list<string>
@@ -137,6 +194,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'permissions' => 'array',
         ];
     }
 }

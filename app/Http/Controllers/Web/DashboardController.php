@@ -12,8 +12,8 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        if (! auth()->user()?->is_admin) {
-            return redirect()->route('packages.index');
+        if (! auth()->user()?->hasPermission(\App\Support\Permission::MODULE_DASHBOARD)) {
+            return redirect()->to(auth()->user()->homePath());
         }
 
         $displayTz = config('app.display_timezone') ?: 'America/New_York';

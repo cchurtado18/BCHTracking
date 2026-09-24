@@ -17,7 +17,7 @@
         </x-slot:icon>
         <x-slot:actions>
             <a href="{{ route('preregistrations.index') }}" class="mb-btn mb-btn-secondary">Lista de preregistros</a>
-            @if($preregistration->status === 'PHOTO_PENDING')
+            @if(auth()->user()?->hasPermission(\App\Support\Permission::ACTION_DELETE_PREREGISTRATION) && $preregistration->status === 'PHOTO_PENDING')
             <form action="{{ route('preregistrations.destroy', $preregistration->id) }}" method="POST" onsubmit="return confirm('¿Eliminar este preregistro y todas sus fotos? Esta acción no se puede deshacer.');">
                 @csrf
                 @method('DELETE')
@@ -238,7 +238,7 @@
                     <p class="preregs-photo-empty-text">Puedes agregar fotos desde la vista de detalle del preregistro.</p>
                     <a href="{{ route('preregistrations.show', $preregistration->id) }}" class="preregs-btn preregs-btn-secondary preregs-photo-empty-btn">Ir al detalle</a>
                 </div>
-                @if($preregistration->status === 'PHOTO_PENDING')
+                @if(auth()->user()?->hasPermission(\App\Support\Permission::ACTION_DELETE_PREREGISTRATION) && $preregistration->status === 'PHOTO_PENDING')
                 <form method="POST" action="{{ route('preregistrations.destroy', $preregistration->id) }}" class="preregs-photo-delete-form" onsubmit="return confirm('¿Eliminar este preregistro y todas sus fotos? Esta acción no se puede deshacer.');">
                     @csrf
                     @method('DELETE')
@@ -283,7 +283,7 @@
                     </div>
                     @endforeach
                 </div>
-                @if($preregistration->status === 'PHOTO_PENDING')
+                @if(auth()->user()?->hasPermission(\App\Support\Permission::ACTION_DELETE_PREREGISTRATION) && $preregistration->status === 'PHOTO_PENDING')
                 <form method="POST" action="{{ route('preregistrations.destroy', $preregistration->id) }}" class="preregs-photo-delete-form" onsubmit="return confirm('¿Eliminar este preregistro y todas sus fotos? Esta acción no se puede deshacer.');">
                     @csrf
                     @method('DELETE')

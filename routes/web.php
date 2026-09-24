@@ -43,13 +43,12 @@ Route::get('/factura/{invoice}/voucher', [AccountingInvoiceController::class, 'p
 Route::middleware(['auth'])->group(function () {
     // Panel operativo: solo administrador. El resto se redirige a paquetes.
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
-    Route::middleware('central')->group(function () {
+    Route::middleware(['central', 'permission:module.dashboard'])->group(function () {
         Route::get('/reporte-paquetes/solicitar', [DashboardController::class, 'reporteSolicitar'])->name('reporte.solicitar');
         Route::get('/reporte-paquetes', [DashboardController::class, 'reportePaquetes'])->name('reporte.paquetes');
     });
 
-    // Solo administrador: agencias, auditoría, usuarios
-    Route::middleware('admin')->group(function () {
+    Route::middleware('permission:module.agencies')->group(function () {
         Route::resource('agencies', AgencyController::class);
         Route::post('agencies/{id}/toggle', [AgencyController::class, 'toggle'])->name('agencies.toggle');
         Route::get('agencies/{agency}/acceso/nuevo', [AgencyController::class, 'createAccess'])->name('agencies.users.create');
@@ -68,22 +67,34 @@ Route::middleware(['auth'])->group(function () {
             Route::put('/{id}', [AgencyClientController::class, 'update'])->name('update');
             Route::post('/{id}/toggle', [AgencyClientController::class, 'toggle'])->name('toggle');
         });
+    });
+    Route::middleware('permission:module.audit')->group(function () {
         Route::get('auditoria', [AuditLogController::class, 'index'])->name('audit.index');
         Route::get('auditoria/{id}', [AuditLogController::class, 'show'])->name('audit.show');
+    });
+    Route::middleware('permission:module.alerts')->group(function () {
         Route::get('alertas', [AlertController::class, 'index'])->name('alerts.index');
         Route::post('alertas/revisar', [AlertController::class, 'dispatch'])->name('alerts.dispatch');
         Route::post('alertas/{alert}/revisada', [AlertController::class, 'dismiss'])->name('alerts.dismiss');
+    });
+    Route::middleware('permission:module.time_entries_admin')->group(function () {
         Route::get('admin/time-entries', [TimeEntryAdminController::class, 'index'])->name('time-entries.admin.index');
-        Route::post('preregistrations/{id}/admin/reset-to-miami', [AdminPreregistrationResetController::class, 'resetToMiami'])
-            ->name('preregistrations.admin.reset-to-miami');
-        Route::post('preregistrations/{id}/admin/intake-type', [AdminPreregistrationResetController::class, 'updateIntakeType'])
-            ->name('preregistrations.admin.intake-type');
+    });
+    Route::middleware('permission:action.reset_to_miami')->post('preregistrations/{id}/admin/reset-to-miami', [AdminPreregistrationResetController::class, 'resetToMiami'])
+        ->name('preregistrations.admin.reset-to-miami');
+    Route::middleware('permission:action.change_intake_type')->post('preregistrations/{id}/admin/intake-type', [AdminPreregistrationResetController::class, 'updateIntakeType'])
+        ->name('preregistrations.admin.intake-type');
+
+    // Solo administrador: usuarios y tokens
+    Route::middleware('admin')->group(function () {
         Route::resource('users', UserController::class)->except(['show']);
 
         Route::get('api-tokens', [ApiTokenController::class, 'index'])->name('api-tokens.index');
         Route::post('api-tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store');
         Route::delete('api-tokens/{tokenId}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
+    });
 
+    Route::middleware('permission:module.accounting')->group(function () {
         Route::prefix('contabilidad/facturas')->name('accounting.invoices.')->group(function () {
             Route::get('/nueva', [AccountingInvoiceController::class, 'create'])->name('create');
             Route::post('/nueva', [AccountingInvoiceController::class, 'startCreate'])->name('start-create');
@@ -138,15 +149,14 @@ Route::middleware(['auth'])->group(function () {
         Route::put('contabilidad/parametros', [AccountingSettingController::class, 'update'])->name('accounting.settings.update');
     });
 
-    Route::middleware('not-packages-only')->prefix('contabilidad/facturas')->name('accounting.invoices.')->group(function () {
+    Route::middleware(['module:module.accounting', 'not-packages-only'])->prefix('contabilidad/facturas')->name('accounting.invoices.')->group(function () {
         Route::get('/', [AccountingInvoiceController::class, 'index'])->name('index');
         Route::get('/{invoice}/voucher', [AccountingInvoiceController::class, 'voucher'])->name('voucher');
         Route::get('/{invoice}/pdf', [AccountingInvoiceController::class, 'pdf'])->name('pdf');
         Route::get('/{invoice}', [AccountingInvoiceController::class, 'show'])->name('show');
     });
 
-    // Usuario central: preregistros, consolidaciones, comprobantes recepción, escaneo NIC
-    Route::middleware('central')->group(function () {
+    Route::middleware(['central', 'permission:module.preregistrations'])->group(function () {
         Route::resource('preregistrations', PreregistrationController::class);
         Route::get('preregistrations/courier/quick', [PreregistrationController::class, 'quickCourier'])->name('preregistrations.quick-courier');
         Route::get('preregistrations/courier/tracking-photo', [PreregistrationController::class, 'trackingPhoto'])->name('preregistrations.tracking-photo');
@@ -156,19 +166,21 @@ Route::middleware(['auth'])->group(function () {
         Route::post('preregistrations/{id}/photos', [PreregistrationController::class, 'uploadPhoto'])->name('preregistrations.upload-photo');
         Route::post('preregistrations/{id}/photos/{photo}/move', [PreregistrationController::class, 'movePhoto'])->name('preregistrations.photos.move');
         Route::patch('preregistrations/{id}/service-type', [PreregistrationController::class, 'updateServiceType'])->name('preregistrations.service-type');
-
         Route::post('preregistrations/{preregistration}/create-single-consolidation', [ConsolidationController::class, 'createSingleFromPreregistration'])->name('preregistrations.create-single-consolidation');
         Route::post('preregistrations/{preregistration}/quick-receipt', [ReceiptNoteController::class, 'quickFromPreregistration'])->name('preregistrations.quick-receipt');
+    });
 
-        Route::prefix('receipt-notes')->name('receipt-notes.')->group(function () {
-            Route::get('/', [ReceiptNoteController::class, 'index'])->name('index');
-            Route::get('/batch', [ReceiptNoteController::class, 'batch'])->name('batch');
-            Route::post('/', [ReceiptNoteController::class, 'store'])->name('store');
-            Route::post('/{id}/items', [ReceiptNoteController::class, 'addItem'])->name('add-item');
-            Route::delete('/{id}/items/{preregistration}', [ReceiptNoteController::class, 'removeItem'])->name('remove-item');
-            Route::get('/{id}/print', [ReceiptNoteController::class, 'printReport'])->name('print');
-            Route::delete('/{id}', [ReceiptNoteController::class, 'destroy'])->name('destroy');
-        });
+    Route::middleware(['central', 'permission:module.receipt_notes'])->prefix('receipt-notes')->name('receipt-notes.')->group(function () {
+        Route::get('/', [ReceiptNoteController::class, 'index'])->name('index');
+        Route::get('/batch', [ReceiptNoteController::class, 'batch'])->name('batch');
+        Route::post('/', [ReceiptNoteController::class, 'store'])->name('store');
+        Route::post('/{id}/items', [ReceiptNoteController::class, 'addItem'])->name('add-item');
+        Route::delete('/{id}/items/{preregistration}', [ReceiptNoteController::class, 'removeItem'])->name('remove-item');
+        Route::get('/{id}/print', [ReceiptNoteController::class, 'printReport'])->name('print');
+        Route::delete('/{id}', [ReceiptNoteController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::middleware(['central', 'permission:module.consolidations'])->group(function () {
         Route::get('consolidations/create/select', [ConsolidationController::class, 'createSelect'])->name('consolidations.create-select');
         Route::get('consolidations/create/scan', [ConsolidationController::class, 'createScan'])->name('consolidations.create-scan');
         Route::get('consolidations/scan-lookup', [ConsolidationController::class, 'lookupScan'])->name('consolidations.scan-lookup');
@@ -180,16 +192,16 @@ Route::middleware(['auth'])->group(function () {
         Route::post('consolidations/{id}/scan-item', [ConsolidationController::class, 'addItemByScan'])->name('consolidations.scan-item');
         Route::delete('consolidations/{id}/items/{item}', [ConsolidationController::class, 'removeItem'])->name('consolidations.items.destroy');
         Route::post('consolidations/{id}/send', [ConsolidationController::class, 'send'])->name('consolidations.send');
+    });
 
-        Route::prefix('nic-consolidations')->name('nic-consolidations.')->group(function () {
-            Route::get('/', [NicConsolidationController::class, 'index'])->name('index');
-            Route::get('/{id}', [NicConsolidationController::class, 'show'])->name('show');
-            Route::post('/{id}/scan', [NicConsolidationController::class, 'scan'])->name('scan');
-        });
+    Route::middleware(['central', 'permission:module.nic'])->prefix('nic-consolidations')->name('nic-consolidations.')->group(function () {
+        Route::get('/', [NicConsolidationController::class, 'index'])->name('index');
+        Route::get('/{id}', [NicConsolidationController::class, 'show'])->name('show');
+        Route::post('/{id}/scan', [NicConsolidationController::class, 'scan'])->name('scan');
     });
 
     // Prealerta: cliente (subagencia) y almacén
-    Route::prefix('prealerta')->name('prealerts.')->group(function () {
+    Route::middleware('module:module.prealerts')->prefix('prealerta')->name('prealerts.')->group(function () {
         Route::get('/', [PrealertController::class, 'index'])->name('index');
         Route::get('/nueva', [PrealertController::class, 'create'])->name('create');
         Route::get('/consultar', [PrealertController::class, 'lookup'])->name('lookup');
@@ -199,7 +211,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Paquetes y entregas: central y subagencias (con filtro por agencia en controlador)
-    Route::prefix('packages')->name('packages.')->group(function () {
+    Route::middleware('module:module.packages')->prefix('packages')->name('packages.')->group(function () {
         Route::get('/', [PackageController::class, 'index'])->name('index');
         Route::get('/{id}', [PackageController::class, 'show'])->name('show');
         Route::get('/{id}/process', [PackageController::class, 'showProcess'])->name('process');
@@ -207,7 +219,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{id}/reprint-label', [PackageController::class, 'reprintLabel'])->name('reprint-label');
     });
 
-    Route::middleware('not-packages-only')->prefix('salidas')->name('salidas.')->group(function () {
+    Route::middleware(['module:module.deliveries', 'not-packages-only'])->prefix('salidas')->name('salidas.')->group(function () {
         Route::get('/', [DeliveryController::class, 'index'])->name('index');
         Route::get('/nueva', [DeliveryController::class, 'create'])->name('create');
         Route::get('/batch', [DeliveryController::class, 'batch'])->name('batch');
@@ -232,7 +244,7 @@ Route::middleware(['auth'])->group(function () {
         return redirect('/salidas/'.$path, 301);
     })->where('path', '.*');
 
-    Route::middleware('central.worker')->prefix('time-entries')->name('time-entries.')->group(function () {
+    Route::middleware(['central.worker', 'permission:module.time_entries'])->prefix('time-entries')->name('time-entries.')->group(function () {
         Route::get('/', [TimeEntryController::class, 'index'])->name('index');
         Route::post('/clock-in', [TimeEntryController::class, 'clockIn'])->name('clock-in');
         Route::post('/clock-out', [TimeEntryController::class, 'clockOut'])->name('clock-out');

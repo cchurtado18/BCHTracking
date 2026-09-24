@@ -4,6 +4,17 @@
     --cx-line: #E8EEF8; --cx-border: #C5D4EB; --cx-soft: #F4F8FD; --cx-muted: #5E6168;
     padding: 1.15rem 0 2.25rem; max-width: 46rem; margin: 0 auto; width: 100%;
 }
+.cx-page-wide { max-width: 56rem; }
+.cx-perm-group { margin-bottom: 1rem; }
+.cx-perm-group:last-child { margin-bottom: 0; }
+.cx-perm-group-title { margin: 0 0 0.55rem; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #64748b; }
+.cx-perm-grid, .cx-perm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem 0.75rem; }
+.cx-perm-item { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.55rem 0.7rem; border: 1px solid #e5e7eb; border-radius: 0.55rem; background: #fff; cursor: pointer; }
+.cx-perm-item:hover { border-color: var(--cx-border); background: var(--cx-soft); }
+.cx-perm-item input { margin-top: 0.15rem; }
+.cx-perm-item span { font-size: 0.84rem; color: #0f172a; font-weight: 600; line-height: 1.3; }
+.cx-perm-item-wide { grid-column: 1 / -1; }
+.cx-perm-item-wide small { display: block; margin-top: 0.15rem; font-size: 0.75rem; font-weight: 500; color: #64748b; }
 .cx-alert { padding: 0.85rem 1.05rem; border-radius: 0.7rem; margin-bottom: 1rem; font-size: 0.875rem; }
 .cx-alert-danger { background: #FDECEC; border: 1px solid #F6C9C9; color: #B03030; }
 .cx-alert-danger strong { display: block; margin-bottom: 0.25rem; }
@@ -42,7 +53,7 @@
 .cx-type-card.is-locked { cursor: default; opacity: 0.72; }
 .cx-lock-note { margin: 0.85rem 0 0; padding: 0.7rem 0.9rem; border-radius: 0.55rem; background: #FFF8E8; border: 1px solid #F3D58A; color: #8A5A00; font-size: 0.8125rem; font-weight: 600; }
 @media (max-width: 700px) {
-    .cx-form-grid, .cx-type-cards { grid-template-columns: 1fr; }
+    .cx-form-grid, .cx-type-cards, .cx-perm-grid, .cx-perm-actions { grid-template-columns: 1fr; }
 }
 </style>
 <script>
@@ -65,5 +76,16 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         sync();
     });
+
+    var permBox = document.getElementById('user-permissions');
+    function syncPerms() {
+        var admin = document.querySelector('input[name="is_admin"]:checked');
+        if (!permBox) return;
+        permBox.hidden = !!(admin && admin.value === '1');
+    }
+    document.querySelectorAll('input[name="is_admin"]').forEach(function (input) {
+        input.addEventListener('change', syncPerms);
+    });
+    syncPerms();
 });
 </script>

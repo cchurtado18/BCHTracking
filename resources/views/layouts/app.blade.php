@@ -293,7 +293,7 @@
 <body class="bg-gray-50" style="background: var(--app-bg-base);">
     <header class="mobile-header" aria-hidden="true">
         <div class="sidebar-brand">
-            <a href="{{ auth()->user()?->is_admin ? route('dashboard') : route('packages.index') }}" class="brand-logo"><img src="{{ asset('images/primetrack-group-logo.png') }}?v=2" alt="PrimeTrack Group"></a>
+            <a href="{{ auth()->user()?->homePath() ?? route('tracking.index') }}" class="brand-logo"><img src="{{ asset('images/primetrack-group-logo.png') }}?v=2" alt="PrimeTrack Group"></a>
         </div>
         <button type="button" class="sidebar-open-btn" id="sidebar-open" aria-label="Abrir menú">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
@@ -307,13 +307,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
             </button>
             <div class="sidebar-brand">
-                @if(auth()->user() && auth()->user()->isAgencyUser())
-                <a href="{{ route('packages.index') }}" class="brand-logo"><img src="{{ asset('images/primetrack-group-logo.png') }}?v=2" alt="PrimeTrack Group"></a>
-                @elseif(auth()->user() && !auth()->user()->is_admin)
-                <a href="{{ route('packages.index') }}" class="brand-logo"><img src="{{ asset('images/primetrack-group-logo.png') }}?v=2" alt="PrimeTrack Group"></a>
-                @else
-                <a href="{{ route('dashboard') }}" class="brand-logo"><img src="{{ asset('images/primetrack-group-logo.png') }}?v=2" alt="PrimeTrack Group"></a>
-                @endif
+                <a href="{{ auth()->user()?->homePath() ?? route('tracking.index') }}" class="brand-logo"><img src="{{ asset('images/primetrack-group-logo.png') }}?v=2" alt="PrimeTrack Group"></a>
             </div>
             <nav class="sidebar-nav">
                 @if(auth()->user() && auth()->user()->isAgencyUser())
@@ -350,56 +344,74 @@
                 @else
                 <div class="sidebar-section">
                     <p class="sidebar-section-title">General</p>
-                    @if(auth()->user() && auth()->user()->is_admin)
+                    @if(auth()->user()?->canAccessModule(\App\Support\Permission::MODULE_DASHBOARD))
                     <a href="{{ route('dashboard') }}" class="sidebar-link {{ request()->routeIs('dashboard') ? 'sidebar-link-active' : '' }}">
                         <svg class="sidebar-link-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.5h8.25V3H3v10.5Zm0 7.5h8.25v-4.5H3V21Zm9.75 0H21V10.5h-8.25V21Zm0-12h8.25V3h-8.25v6Z" /></svg>
                         <span class="sidebar-link-label">Panel</span>
                     </a>
                     @endif
+                    @if(auth()->user()?->canAccessModule(\App\Support\Permission::MODULE_PACKAGES))
                     <a href="{{ route('packages.index') }}" class="sidebar-link {{ request()->routeIs('packages.*') ? 'sidebar-link-active' : '' }}">
                         <svg class="sidebar-link-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.5 12 13 3 8.5M12 13v8M4.2 7.8 12 3l7.8 4.8A2 2 0 0 1 21 9.5v8.9a2 2 0 0 1-1 1.73l-7 4.02a2 2 0 0 1-2 0l-7-4.02a2 2 0 0 1-1-1.73V9.5a2 2 0 0 1 1.2-1.7Z" /></svg>
                         <span class="sidebar-link-label">Paquetes</span>
                     </a>
+                    @endif
+                    @if(auth()->user()?->canAccessModule(\App\Support\Permission::MODULE_PREREGISTRATIONS))
                     <a href="{{ route('preregistrations.index') }}" class="sidebar-link {{ request()->routeIs('preregistrations.*') ? 'sidebar-link-active' : '' }}">
                         <svg class="sidebar-link-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 6h9m-9 4.5h9m-9 4.5h5.25M5.25 3.75h13.5A1.5 1.5 0 0 1 20.25 5.25v13.5a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V5.25a1.5 1.5 0 0 1 1.5-1.5Z" /></svg>
                         <span class="sidebar-link-label">Preregistros</span>
                     </a>
+                    @endif
+                    @if(auth()->user()?->canAccessModule(\App\Support\Permission::MODULE_PREALERTS))
                     <a href="{{ route('prealerts.index') }}" class="sidebar-link {{ request()->routeIs('prealerts.*') ? 'sidebar-link-active' : '' }}">
                         <svg class="sidebar-link-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" /></svg>
                         <span class="sidebar-link-label">Prealerta</span>
                     </a>
-                    @if(auth()->user() && auth()->user()->is_admin)
+                    @endif
+                    @if(auth()->user()?->canAccessModule(\App\Support\Permission::MODULE_ALERTS))
                     <a href="{{ route('alerts.index') }}" class="sidebar-link {{ request()->routeIs('alerts.*') ? 'sidebar-link-active' : '' }}">
                         <svg class="sidebar-link-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/></svg>
                         <span class="sidebar-link-label">Alertas</span>
                     </a>
                     @endif
+                    @if(auth()->user()?->canAccessModule(\App\Support\Permission::MODULE_TIME_ENTRIES))
                     <a href="{{ route('time-entries.index') }}" class="sidebar-link {{ request()->routeIs('time-entries.index') ? 'sidebar-link-active' : '' }}">
                         <svg class="sidebar-link-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
                         <span class="sidebar-link-label">Fichaje</span>
                     </a>
+                    @endif
                 </div>
+                @if(auth()->user()?->canAccessModule(\App\Support\Permission::MODULE_CONSOLIDATIONS) || auth()->user()?->canAccessModule(\App\Support\Permission::MODULE_NIC) || auth()->user()?->canAccessModule(\App\Support\Permission::MODULE_DELIVERIES) || auth()->user()?->canAccessModule(\App\Support\Permission::MODULE_RECEIPT_NOTES))
                 <div class="sidebar-divider"></div>
                 <div class="sidebar-section">
                     <p class="sidebar-section-title">Operaciones</p>
+                    @if(auth()->user()?->canAccessModule(\App\Support\Permission::MODULE_CONSOLIDATIONS))
                     <a href="{{ route('consolidations.index') }}" class="sidebar-link {{ request()->routeIs('consolidations.*') ? 'sidebar-link-active' : '' }}">
                         <svg class="sidebar-link-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 8.25h16.5M3.75 15.75h16.5M7.5 3.75v16.5m9-16.5v16.5" /></svg>
                         <span class="sidebar-link-label">Consolidaciones</span>
                     </a>
+                    @endif
+                    @if(auth()->user()?->canAccessModule(\App\Support\Permission::MODULE_NIC))
                     <a href="{{ route('nic-consolidations.index') }}" class="sidebar-link {{ request()->routeIs('nic-consolidations.*') ? 'sidebar-link-active' : '' }}">
                         <svg class="sidebar-link-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 6.75h15v10.5h-15V6.75Zm3 3h4.5m-4.5 3h9" /></svg>
                         <span class="sidebar-link-label">Escaneo NIC</span>
                     </a>
+                    @endif
+                    @if(auth()->user()?->canAccessModule(\App\Support\Permission::MODULE_DELIVERIES))
                     <a href="{{ route('salidas.index') }}" class="sidebar-link {{ request()->routeIs('salidas.*') ? 'sidebar-link-active' : '' }}">
                         <svg class="sidebar-link-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h11.25v10.5H3.75V6.75Zm11.25 3h3.19a1.5 1.5 0 0 1 1.22.63l1.59 2.24v4.63H15V9.75ZM7.5 18.75a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm12 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z" /></svg>
                         <span class="sidebar-link-label">Salidas</span>
                     </a>
+                    @endif
+                    @if(auth()->user()?->canAccessModule(\App\Support\Permission::MODULE_RECEIPT_NOTES))
                     <a href="{{ route('receipt-notes.index') }}" class="sidebar-link {{ request()->routeIs('receipt-notes.*') ? 'sidebar-link-active' : '' }}">
                         <svg class="sidebar-link-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M7.5 3.75h9a1.5 1.5 0 0 1 1.5 1.5v13.5a1.5 1.5 0 0 1-1.5 1.5h-9a1.5 1.5 0 0 1-1.5-1.5V5.25a1.5 1.5 0 0 1 1.5-1.5Zm1.5 4.5h6"/></svg>
                         <span class="sidebar-link-label">Comprobantes recepción</span>
                     </a>
+                    @endif
                 </div>
-                @if(auth()->user() && auth()->user()->is_admin)
+                @endif
+                @if(auth()->user()?->canAccessModule(\App\Support\Permission::MODULE_ACCOUNTING))
                 <div class="sidebar-divider"></div>
                 <div class="sidebar-section">
                     <p class="sidebar-section-title">Contabilidad</p>
@@ -444,19 +456,25 @@
                 <div class="sidebar-divider"></div>
                 <div class="sidebar-section">
                     <p class="sidebar-section-title">Administración</p>
-                    @if(auth()->user() && auth()->user()->is_admin)
+                    @if(auth()->user()?->canAccessModule(\App\Support\Permission::MODULE_AGENCIES))
                     <a href="{{ route('agencies.index') }}" class="sidebar-link {{ request()->routeIs('agencies.*') ? 'sidebar-link-active' : '' }}">
                         <svg class="sidebar-link-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 20.25h16.5m-15-3V5.25A1.5 1.5 0 0 1 6.75 3.75h10.5a1.5 1.5 0 0 1 1.5 1.5v12M8.25 7.5h1.5m4.5 0h1.5m-7.5 3h1.5m4.5 0h1.5m-7.5 3h1.5m4.5 0h1.5" /></svg>
                         <span class="sidebar-link-label">Clientes</span>
                     </a>
+                    @endif
+                    @if(auth()->user()?->canAccessModule(\App\Support\Permission::MODULE_AUDIT))
                     <a href="{{ route('audit.index') }}" class="sidebar-link {{ request()->routeIs('audit.*') ? 'sidebar-link-active' : '' }}">
                         <svg class="sidebar-link-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9Z" /></svg>
                         <span class="sidebar-link-label">Auditoría</span>
                     </a>
+                    @endif
+                    @if(auth()->user()?->canAccessModule(\App\Support\Permission::MODULE_TIME_ENTRIES_ADMIN))
                     <a href="{{ route('time-entries.admin.index') }}" class="sidebar-link {{ request()->routeIs('time-entries.admin.index') ? 'sidebar-link-active' : '' }}">
                         <svg class="sidebar-link-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5a2.25 2.25 0 0 0 2.25-2.25m-18 0v-7.5a2.25 2.25 0 0 1 2.25-2.25h13.5a2.25 2.25 0 0 1 2.25 2.25v7.5" /></svg>
                         <span class="sidebar-link-label">Fichaje equipo</span>
                     </a>
+                    @endif
+                    @if(auth()->user()?->is_admin)
                     <a href="{{ route('users.index') }}" class="sidebar-link {{ request()->routeIs('users.*') ? 'sidebar-link-active' : '' }}">
                         <svg class="sidebar-link-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.9" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6.75a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.25a7.5 7.5 0 1 1 15 0" /></svg>
                         <span class="sidebar-link-label">Usuarios</span>

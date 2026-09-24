@@ -16,7 +16,8 @@
     $isAgencyUser = auth()->user() && auth()->user()->isAgencyUser();
     $packagesOnlyPortal = auth()->user()?->isPackagesOnlyPortal();
     $weightLbs = $package->verified_weight_lbs ?? $package->intake_weight_lbs;
-    $showAdmin = auth()->user()?->is_admin;
+    $showAdmin = auth()->user()?->hasPermission(\App\Support\Permission::ACTION_CHANGE_INTAKE_TYPE)
+        || auth()->user()?->hasPermission(\App\Support\Permission::ACTION_RESET_TO_MIAMI);
 
     $stageIndex = match ($package->status) {
         'RECEIVED_MIAMI' => 1,

@@ -6,6 +6,7 @@ use App\Models\Preregistration;
 use App\Models\PreregistrationPhoto;
 use App\Models\User;
 use App\Services\PreregistrationPhotoService;
+use App\Support\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -38,7 +39,12 @@ class PreregistrationPhotoDedupeTest extends TestCase
     public function test_pending_preregistration_can_be_deleted_with_its_photos(): void
     {
         Storage::fake('public');
-        $user = User::factory()->create(['agency_id' => null]);
+        $user = User::factory()->create([
+            'agency_id' => null,
+            'permissions' => array_merge(Permission::operationalDefaults(), [
+                Permission::ACTION_DELETE_PREREGISTRATION,
+            ]),
+        ]);
         $package = $this->createPackage('PHOTO_PENDING');
         $service = app(PreregistrationPhotoService::class);
         $first = $service->uploadPhoto($package, UploadedFile::fake()->image('caja-1.jpg', 240, 240));
@@ -57,7 +63,12 @@ class PreregistrationPhotoDedupeTest extends TestCase
     public function test_in_process_preregistration_cannot_be_deleted(): void
     {
         Storage::fake('public');
-        $user = User::factory()->create(['agency_id' => null]);
+        $user = User::factory()->create([
+            'agency_id' => null,
+            'permissions' => array_merge(Permission::operationalDefaults(), [
+                Permission::ACTION_DELETE_PREREGISTRATION,
+            ]),
+        ]);
         $package = $this->createPackage('IN_TRANSIT');
         $service = app(PreregistrationPhotoService::class);
         $photo = $service->uploadPhoto($package, UploadedFile::fake()->image('caja.jpg', 240, 240));

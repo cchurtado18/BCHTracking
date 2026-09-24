@@ -3,13 +3,13 @@
     $currentType = $preregistration->intake_type === 'DROP_OFF' ? 'DROP_OFF' : 'COURIER';
     $currentLabel = $currentType === 'COURIER' ? 'Courier' : 'Drop Off';
 @endphp
-@if(auth()->user()?->is_admin)
+@if(auth()->user()?->hasPermission(\App\Support\Permission::ACTION_CHANGE_INTAKE_TYPE))
 <div class="admin-intake-panel">
     <div class="admin-intake-panel__row">
         <div class="admin-intake-panel__text">
             <span class="admin-intake-panel__label">Tipo de ingreso</span>
             <p class="admin-intake-panel__desc">
-                Actual: <strong>{{ $currentLabel }}</strong>. Solo administradores pueden cambiar entre Courier y Drop Off.
+                Actual: <strong>{{ $currentLabel }}</strong>. Cambiar entre Courier y Drop Off.
                 @if($currentType === 'DROP_OFF' && $preregistration->receipt_note_id)
                 <span class="admin-intake-panel__note">Al pasar a Courier se desvincula de la nota de recepción.</span>
                 @endif

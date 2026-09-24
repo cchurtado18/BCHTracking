@@ -1,18 +1,22 @@
 @php
     use App\Services\PreregistrationAdminResetService;
-    $canAdminResetToMiami = auth()->user()?->is_admin && PreregistrationAdminResetService::canResetToMiami($preregistration);
-    $adminResetBlockReason = auth()->user()?->is_admin ? PreregistrationAdminResetService::resetBlockReason($preregistration) : null;
+    $canUseResetAction = auth()->user()?->hasPermission(\App\Support\Permission::ACTION_RESET_TO_MIAMI);
+    $canAdminResetToMiami = $canUseResetAction && PreregistrationAdminResetService::canResetToMiami($preregistration);
+    $adminResetBlockReason = $canUseResetAction ? PreregistrationAdminResetService::resetBlockReason($preregistration) : null;
     $dialogId = 'admin-return-dialog-' . $preregistration->id;
     $adminReturnErrors = $errors->has('admin_reset_reason') || $errors->has('admin_reset_confirm');
 @endphp
-@if(auth()->user()?->is_admin)
+@if($canUseResetAction)
 <div class="admin-return-panel">
     <div class="admin-return-panel__row">
         <div class="admin-return-panel__text">
             <span class="admin-return-panel__label">Administración</span>
             <p class="admin-return-panel__desc">
                 @if($canAdminResetToMiami)
-                    Devuelve el paquete a <strong>Recibido en Miami</strong>, quita el vínculo con el saco o contenedor y limpia tránsito / Nicaragua / listo en sistema. Queda en <a href="{{ route('audit.index', ['action' => 'admin_reset_to_miami']) }}" class="admin-return-panel__link">Auditoría</a>.
+                    Devuelve el paquete a <strong>Recibido en Miami</strong>, quita el vínculo con el saco o contenedor y limpia tránsito / Nicaragua / listo en sistema.
+                    @if(auth()->user()?->canAccessModule(\App\Support\Permission::MODULE_AUDIT))
+                    Queda en <a href="{{ route('audit.index', ['action' => 'admin_reset_to_miami']) }}" class="admin-return-panel__link">Auditoría</a>.
+                    @endif
                 @else
                     <span class="admin-return-panel__muted">{{ $adminResetBlockReason ?? 'No aplica en el estado actual.' }}</span>
                 @endif

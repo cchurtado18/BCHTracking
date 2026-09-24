@@ -27,8 +27,8 @@ class AccountingInvoiceController extends Controller
     private function ensureCanBrowseInvoices(): ?\Illuminate\Http\RedirectResponse
     {
         $user = auth()->user();
-        if (! $user || (! $user->is_admin && ! $user->isAgencyUser()) || $user->isPackagesOnlyPortal()) {
-            return redirect()->route('packages.index');
+        if (! $user || ! $user->canAccessModule(\App\Support\Permission::MODULE_ACCOUNTING) || $user->isPackagesOnlyPortal()) {
+            return redirect()->to($user?->homePath() ?? route('packages.index'));
         }
 
         return null;

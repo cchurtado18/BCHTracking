@@ -7,12 +7,12 @@
     $isAdmin = (string) old('is_admin', $user->is_admin ? '1' : '0') === '1';
     $editingSelf = $user->id === auth()->id();
 @endphp
-<div class="cx-page">
+<div class="cx-page cx-page-wide">
     <x-module-banner
         section="Administración"
         current="Editar usuario"
         title="Editar usuario"
-        subtitle="Actualice nombre, correo, contraseña o el rol de este acceso interno."
+        subtitle="Actualice nombre, correo, contraseña, rol y los módulos u opciones que puede usar."
         back-href="{{ route('users.index') }}"
         back-label="Volver a usuarios"
     >
@@ -81,7 +81,7 @@
                     <input type="radio" name="is_admin" value="0" {{ ! $isAdmin ? 'checked' : '' }} {{ $editingSelf ? 'disabled' : '' }}>
                     <span class="cx-type-card-body">
                         <strong>Operaciones</strong>
-                        <span>Paquetes, salidas, consolidaciones y fichaje. Sin administración ni contabilidad.</span>
+                        <span>Marca abajo los módulos y opciones que puede usar. Un administrador tiene todo.</span>
                     </span>
                 </label>
                 <label class="cx-type-card {{ $isAdmin ? 'is-selected' : '' }}">
@@ -97,6 +97,10 @@
             <p class="cx-lock-note">No puede quitarse el rol de administrador mientras esté en esta sesión.</p>
             @endif
         </div>
+
+        @include('users.partials.permissions', [
+            'selectedPermissions' => old('permissions', $user->permissions ?? $defaultPermissions ?? []),
+        ])
 
         <div class="cx-card-foot">
             <a href="{{ route('users.index') }}" class="cx-btn cx-btn-secondary">Cancelar</a>

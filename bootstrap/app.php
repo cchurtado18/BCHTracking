@@ -17,6 +17,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'permission' => \App\Http\Middleware\EnsurePermission::class,
+            'module' => \App\Http\Middleware\EnsureModuleAccess::class,
             'central' => \App\Http\Middleware\EnsureCentralUser::class,
             'central.worker' => \App\Http\Middleware\EnsureCentralWorker::class,
             'not-packages-only' => \App\Http\Middleware\DenyPackagesOnlyPortal::class,
