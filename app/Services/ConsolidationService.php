@@ -198,7 +198,7 @@ class ConsolidationService
             return;
         }
 
-        if (in_array($package->status, ['PHOTO_PENDING', 'CANCELLED'], true)) {
+        if ($package->status === 'CANCELLED') {
             return;
         }
 
@@ -282,6 +282,7 @@ class ConsolidationService
             'label' => (string) ($package->label_name ?? ''),
             'service_type' => $package->service_type,
             'weight_lbs' => round((float) ($package->verified_weight_lbs ?? $package->intake_weight_lbs ?? 0), 2),
+            'incomplete' => $package->status === 'PHOTO_PENDING',
         ];
     }
 
@@ -293,7 +294,7 @@ class ConsolidationService
             'preregistration_id' => $package->id,
         ]);
 
-        if ($sack?->status === 'SENT' && $package->status === 'RECEIVED_MIAMI') {
+        if ($sack?->status === 'SENT' && in_array($package->status, ['RECEIVED_MIAMI', 'PHOTO_PENDING'], true)) {
             $package->update(['status' => 'IN_TRANSIT']);
         }
     }
@@ -321,10 +322,10 @@ class ConsolidationService
         $candidates->load('consolidationItem');
 
         return $candidates->first(function (Preregistration $package) use ($normalized, $sackService, $anyService, $alreadyInSack, $miamiOnly) {
-            if (in_array($package->status, ['PHOTO_PENDING', 'CANCELLED'], true)) {
+            if ($package->status === 'CANCELLED') {
                 return false;
             }
-            if ($miamiOnly && $package->status !== 'RECEIVED_MIAMI') {
+            if ($miamiOnly && ! in_array($package->status, ['RECEIVED_MIAMI', 'PHOTO_PENDING'], true)) {
                 return false;
             }
 

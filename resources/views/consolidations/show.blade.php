@@ -595,6 +595,9 @@
                                     <div class="cons-show-item-name">{{ $item->preregistration->label_name }}</div>
                                     <div class="cons-show-item-code">{{ $item->preregistration->warehouse_code ?? $item->preregistration->tracking_external ?? 'N/A' }}</div>
                                     <div class="cons-show-item-meta">{{ $item->preregistration->intake_weight_lbs }} lbs</div>
+                                    @if($item->preregistration->status === 'PHOTO_PENDING')
+                                        <div class="cons-show-item-tag">Datos pendientes · el peso ya suma al {{ $unit }}</div>
+                                    @endif
                                     @if($item->scanned_at)
                                         <div class="cons-show-item-tag">✓ Recibido en destino (escaneo)</div>
                                     @endif

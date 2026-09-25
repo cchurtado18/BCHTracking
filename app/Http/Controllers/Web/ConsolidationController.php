@@ -147,7 +147,7 @@ class ConsolidationController extends Controller
         $sackService = $request->validated()['service_type'];
         foreach ($codes as $code) {
             $anyMatch = $this->consolidationService->findAvailableForScan($code, $sackService, true);
-            if ($anyMatch && ! ServiceType::matchesRoute($anyMatch->service_type, $sackService)) {
+            if ($anyMatch && $anyMatch->service_type && ! ServiceType::matchesRoute($anyMatch->service_type, $sackService)) {
                 $sackLabel = ServiceType::routeLabelLower($sackService);
                 $pkgLabel = ServiceType::routeLabelLower($anyMatch->service_type);
 
@@ -361,7 +361,7 @@ class ConsolidationController extends Controller
         }
 
         $anyMatch = $this->consolidationService->findAvailableForScan($code, $consolidation->service_type, true);
-        if ($anyMatch && ! ServiceType::matchesRoute($anyMatch->service_type, $consolidation->service_type)) {
+        if ($anyMatch && $anyMatch->service_type && ! ServiceType::matchesRoute($anyMatch->service_type, $consolidation->service_type)) {
             $sackLabel = ServiceType::routeLabelLower($consolidation->service_type);
             $pkgLabel = ServiceType::routeLabelLower($anyMatch->service_type);
 
@@ -369,7 +369,10 @@ class ConsolidationController extends Controller
                 ->with('error', "El código {$code} corresponde a un paquete {$pkgLabel} en preregistro, no {$sackLabel}.");
         }
 
-        $pre = ($anyMatch && ServiceType::matchesRoute($anyMatch->service_type, $consolidation->service_type))
+        $pre = ($anyMatch && (
+            ! $anyMatch->service_type
+            || ServiceType::matchesRoute($anyMatch->service_type, $consolidation->service_type)
+        ))
             ? $anyMatch
             : null;
 

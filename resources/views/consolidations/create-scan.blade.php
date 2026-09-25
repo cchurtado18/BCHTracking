@@ -83,7 +83,7 @@
             <div class="csscan-list-head">
                 <div>
                     <h2 class="csscan-list-title" id="csscan_list_title">Códigos en el saco</h2>
-                    <p class="csscan-list-sub">Vista previa antes de guardar · peso solo de ítems con preregistro en este servicio</p>
+                    <p class="csscan-list-sub">Vista previa antes de guardar · el peso suma aunque el preregistro aún tenga datos pendientes</p>
                 </div>
                 <div class="csscan-list-head-stats" aria-live="polite">
                     <span id="csscan_count" class="csscan-count">0</span>
@@ -749,11 +749,13 @@
         const st = serviceSelect.value;
         lines.forEach(function(entry) {
             var cached = lookupCache[entry.display];
-            var hit = cached && cached.package && packageRoute(cached.package.service_type) === packageRoute(st)
-                ? cached.package
+            var pkg = cached && cached.found ? cached.package : null;
+            var hit = pkg && (!pkg.service_type || packageRoute(pkg.service_type) === packageRoute(st))
+                ? pkg
                 : null;
             entry.matched = !!hit;
             entry.label = hit ? hit.label : '';
+            entry.incomplete = !!(hit && hit.incomplete);
             entry.weightLbs = hit ? weightFromHit(hit) : 0;
         });
     }
@@ -783,7 +785,9 @@
             const meta = document.createElement('div');
             meta.className = 'csscan-row-meta';
             if (entry.matched) {
-                meta.textContent = entry.label || 'Preregistro';
+                meta.textContent = entry.incomplete
+                    ? ((entry.label && entry.label !== '[PENDIENTE]') ? entry.label : 'Preregistro') + ' · datos pendientes'
+                    : (entry.label || 'Preregistro');
             } else {
                 meta.textContent = 'No aparece en preregistro para este tipo de servicio; se guardará solo el código.';
             }
@@ -797,8 +801,10 @@
             }
             main.appendChild(wEl);
             const badge = document.createElement('div');
-            badge.className = 'csscan-row-badge ' + (entry.matched ? 'ok' : 'warn');
-            badge.textContent = entry.matched ? '✓ En preregistro' : '⚠ Sin preregistro';
+            badge.className = 'csscan-row-badge ' + (entry.matched ? (entry.incomplete ? 'warn' : 'ok') : 'warn');
+            badge.textContent = entry.matched
+                ? (entry.incomplete ? '✓ Peso listo · faltan datos' : '✓ En preregistro')
+                : '⚠ Sin preregistro';
             main.appendChild(badge);
             const actions = document.createElement('div');
             actions.className = 'csscan-row-actions';
@@ -864,6 +870,7 @@
             display: display,
             matched: false,
             label: '',
+            incomplete: false,
             weightLbs: 0
         };
         inflight.add(display);
@@ -893,6 +900,7 @@
             }
             entry.matched = true;
             entry.label = hit.label || '';
+            entry.incomplete = !!hit.incomplete;
             entry.weightLbs = weightFromHit(hit);
             setFeedback('Confirmado en preregistro: ' + display, 'ok');
             render();

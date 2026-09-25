@@ -84,33 +84,21 @@ class ConsolidationUnmatchedLinkTest extends TestCase
             ->assertSee('8.50');
     }
 
-    public function test_completing_photo_pending_links_unmatched_sack_item(): void
+    public function test_photo_pending_with_weight_links_unmatched_sack_item(): void
     {
-        $user = User::factory()->create(['agency_id' => null]);
-        $agency = $this->agency();
         $sack = $this->openSackWithUnmatched('TRK-PHOTO-SACK');
 
         $package = Preregistration::create([
             'intake_type' => 'COURIER',
             'tracking_external' => 'TRK-PHOTO-SACK',
             'label_name' => '[PENDIENTE]',
+            'intake_weight_lbs' => 6,
             'status' => 'PHOTO_PENDING',
         ]);
 
-        $this->assertNull(ConsolidationItem::where('consolidation_id', $sack->id)->value('preregistration_id'));
-
-        $this->actingAs($user)
-            ->put(route('preregistrations.update', $package->id), [
-                'agency_id' => $agency->id,
-                'label_name' => 'Cliente foto',
-                'service_type' => 'AIR',
-                'intake_weight_lbs' => 6,
-                'tracking_external' => 'TRK-PHOTO-SACK',
-            ])
-            ->assertRedirect();
-
         $item = ConsolidationItem::where('consolidation_id', $sack->id)->first();
         $this->assertSame($package->id, (int) $item->preregistration_id);
+        $this->assertSame('PHOTO_PENDING', $package->fresh()->status);
         $this->assertEquals(6.0, (float) app(ConsolidationService::class)->getReport($sack->fresh('items.preregistration'))['total_lbs']);
     }
 

@@ -175,6 +175,103 @@ class ConsolidationScanLookupTest extends TestCase
             ]);
     }
 
+    public function test_scan_lookup_returns_photo_pending_package_weight(): void
+    {
+        $user = $this->centralUser();
+        $agency = $this->agency();
+        $this->package($agency, [
+            'tracking_external' => 'TRK-PENDING-WEIGHT',
+            'warehouse_code' => null,
+            'label_name' => '[PENDIENTE]',
+            'intake_weight_lbs' => 7.25,
+            'status' => 'PHOTO_PENDING',
+            'agency_id' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->getJson(route('consolidations.scan-lookup', [
+                'code' => 'TRK-PENDING-WEIGHT',
+                'service_type' => 'AIR',
+            ]))
+            ->assertOk()
+            ->assertJson([
+                'found' => true,
+                'service_mismatch' => false,
+                'package' => [
+                    'tracking' => 'TRK-PENDING-WEIGHT',
+                    'weight_lbs' => 7.25,
+                    'incomplete' => true,
+                ],
+            ]);
+    }
+
+    public function test_scan_create_includes_photo_pending_weight_in_sack_total(): void
+    {
+        $user = $this->centralUser();
+        $this->package($this->agency(), [
+            'tracking_external' => 'TRK-PENDING-SACK',
+            'warehouse_code' => null,
+            'label_name' => '[PENDIENTE]',
+            'intake_weight_lbs' => 5.5,
+            'status' => 'PHOTO_PENDING',
+            'agency_id' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('consolidations.store-scan'), [
+                'service_type' => 'AIR',
+                'entry_codes' => ['TRK-PENDING-SACK'],
+            ])
+            ->assertRedirect();
+
+        $item = ConsolidationItem::query()->whereHas('preregistration', function ($q) {
+            $q->where('tracking_external', 'TRK-PENDING-SACK');
+        })->first();
+        $this->assertNotNull($item);
+        $this->assertSame('PHOTO_PENDING', $item->preregistration->status);
+        $this->assertEquals(5.5, (float) app(\App\Services\ConsolidationService::class)
+            ->getReport($item->consolidation->fresh('items.preregistration'))['total_lbs']);
+    }
+
+    public function test_open_sack_scan_accepts_photo_pending_and_keeps_fields_pending(): void
+    {
+        $user = $this->centralUser();
+        $package = $this->package($this->agency(), [
+            'tracking_external' => 'TRK-PENDING-OPEN',
+            'warehouse_code' => null,
+            'label_name' => '[PENDIENTE]',
+            'intake_weight_lbs' => 3.75,
+            'status' => 'PHOTO_PENDING',
+            'agency_id' => null,
+        ]);
+        $sack = Consolidation::create([
+            'code' => 'SAC-SCAN-PEND',
+            'service_type' => 'AIR',
+            'status' => 'OPEN',
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('consolidations.scan-item', $sack->id), [
+                'entry_code' => 'TRK-PENDING-OPEN',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('consolidation_items', [
+            'consolidation_id' => $sack->id,
+            'preregistration_id' => $package->id,
+        ]);
+        $this->assertSame('PHOTO_PENDING', $package->fresh()->status);
+        $this->assertSame('[PENDIENTE]', $package->fresh()->label_name);
+        $this->assertEquals(3.75, (float) app(\App\Services\ConsolidationService::class)
+            ->getReport($sack->fresh('items.preregistration'))['total_lbs']);
+
+        $this->actingAs($user)
+            ->get(route('consolidations.show', $sack->id))
+            ->assertOk()
+            ->assertSee('Datos pendientes')
+            ->assertSee('3.75');
+    }
+
     public function test_packages_already_in_a_sack_are_not_returned_by_lookup(): void
     {
         $user = $this->centralUser();
