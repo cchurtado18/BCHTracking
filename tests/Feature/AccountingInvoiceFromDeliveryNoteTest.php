@@ -235,6 +235,32 @@ class AccountingInvoiceFromDeliveryNoteTest extends TestCase
             ->assertRedirect(route('packages.index'));
     }
 
+    public function test_ops_with_accounting_can_see_and_start_new_invoice(): void
+    {
+        $ops = User::factory()->create([
+            'agency_id' => null,
+            'is_admin' => false,
+            'permissions' => [\App\Support\Permission::MODULE_ACCOUNTING],
+        ]);
+        ['note' => $note] = $this->seedNoteWithPackages();
+
+        $this->actingAs($ops)
+            ->get(route('accounting.invoices.index'))
+            ->assertOk()
+            ->assertSee('Nueva factura');
+
+        $this->actingAs($ops)
+            ->get(route('accounting.invoices.create'))
+            ->assertOk()
+            ->assertSee('Nueva factura PrimeTrack');
+
+        $this->actingAs($ops)
+            ->post(route('accounting.invoices.start-create'), [
+                'delivery_note_id' => $note->id,
+            ])
+            ->assertRedirect(route('accounting.invoices.create-from-note', $note));
+    }
+
     public function test_admin_can_start_create_from_invoices_module(): void
     {
         $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);

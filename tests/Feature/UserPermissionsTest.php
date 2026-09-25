@@ -22,6 +22,7 @@ class UserPermissionsTest extends TestCase
         $this->assertFalse($user->hasPermission(Permission::ACTION_DELETE_PREREGISTRATION));
         $this->assertFalse($user->hasPermission(Permission::ACTION_CHANGE_INTAKE_TYPE));
         $this->assertFalse($user->canAccessModule(Permission::MODULE_ACCOUNTING));
+        $this->assertFalse($user->canCreateInvoices());
         $this->assertFalse($user->canAccessModule(Permission::MODULE_DASHBOARD));
     }
 
@@ -119,7 +120,10 @@ class UserPermissionsTest extends TestCase
             ->assertSee('Módulos')
             ->assertSee('Opciones sensibles')
             ->assertSee('Eliminar preregistro')
-            ->assertSee('Cambiar Courier / Drop Off');
+            ->assertSee('Cambiar Courier / Drop Off')
+            ->assertSee('Contabilidad')
+            ->assertDontSee('Crear factura')
+            ->assertDontSee('Nueva factura');
 
         $this->actingAs($admin)
             ->post(route('users.store'), [

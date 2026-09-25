@@ -84,7 +84,7 @@
                 @if($deliveryNote->currentInvoice())
                     <a href="{{ route('accounting.invoices.show', $deliveryNote->currentInvoice()) }}" class="delivery-btn delivery-btn-sm delivery-btn-outline-light">Factura {{ $deliveryNote->currentInvoice()->folio }}</a>
                     <a href="{{ route('accounting.invoices.voucher', $deliveryNote->currentInvoice()) }}" target="_blank" class="delivery-btn delivery-btn-sm delivery-btn-outline-light">Voucher</a>
-                @elseif(auth()->user()?->is_admin && ! $deliveryNote->hasMixedBillTos())
+                @elseif(auth()->user()?->canCreateInvoices() && ! $deliveryNote->hasMixedBillTos())
                     <a href="{{ route('accounting.invoices.create-from-note', $deliveryNote) }}" class="delivery-btn delivery-btn-sm delivery-btn-outline-light">Generar Factura PrimeTrack</a>
                 @endif
             </div>

@@ -158,6 +158,14 @@ class User extends Authenticatable
         return $this->hasPermission($key);
     }
 
+    /**
+     * Crear factura va con el módulo de Contabilidad; no es una acción que se pueda quitar aparte.
+     */
+    public function canCreateInvoices(): bool
+    {
+        return $this->hasPermission(Permission::MODULE_ACCOUNTING);
+    }
+
     public function homePath(): string
     {
         if ($this->isAgencyUser() || $this->canAccessModule(Permission::MODULE_PACKAGES)) {
