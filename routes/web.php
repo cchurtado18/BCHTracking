@@ -230,7 +230,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/scan/retirer-session', [DeliveryController::class, 'storeScanRetirerSession'])->name('scan-retirer-session');
         Route::post('/scan/clear-retirer-session', [DeliveryController::class, 'clearScanRetirerSession'])->name('scan-clear-retirer-session');
         Route::post('/scan', [DeliveryController::class, 'processScan'])->name('process-scan');
-        Route::middleware('admin')->prefix('hojas')->name('hojas.')->group(function () {
+        Route::middleware('permission:action.edit_delivery_note')->prefix('hojas')->name('hojas.')->group(function () {
             Route::get('/{deliveryNote}', [DeliveryController::class, 'editNote'])->name('edit');
             Route::put('/{deliveryNote}', [DeliveryController::class, 'updateNote'])->name('update');
             Route::post('/{deliveryNote}/separar-clientes', [DeliveryController::class, 'splitMixedBillTos'])->name('split-clients');

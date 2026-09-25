@@ -38,6 +38,8 @@ class Permission
 
     public const ACTION_RESET_TO_MIAMI = 'action.reset_to_miami';
 
+    public const ACTION_EDIT_DELIVERY_NOTE = 'action.edit_delivery_note';
+
     /**
      * @return list<array{key: string, label: string, group: string}>
      */
@@ -81,6 +83,11 @@ class Permission
                 'key' => self::ACTION_RESET_TO_MIAMI,
                 'label' => 'Devolver a Miami',
                 'hint' => 'Quitar el paquete del saco y regresarlo a Recibido en Miami.',
+            ],
+            [
+                'key' => self::ACTION_EDIT_DELIVERY_NOTE,
+                'label' => 'Editar hoja de salida',
+                'hint' => 'Corregir quien retira, quitar paquetes o separar una hoja que mezcle clientes.',
             ],
         ];
     }

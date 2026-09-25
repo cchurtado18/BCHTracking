@@ -10,10 +10,12 @@
                 <strong>{{ $mixedNote->code }}</strong>
                 <span class="inv-muted"> · {{ $mixedNames ?: ($mixedNote->agency?->listingAccountLabel() ?? 'Varios clientes') }}</span>
             </div>
+            @if(auth()->user()?->canEditDeliveryNotes())
             <form action="{{ route('salidas.hojas.split-clients', $mixedNote) }}" method="POST" onsubmit="return confirm('¿Separar {{ $mixedNote->code }}? Se creará una hoja nueva por cada cliente distinto.');">
                 @csrf
                 <button type="submit" class="inv-btn inv-btn-primary inv-btn-sm">Separar por cliente</button>
             </form>
+            @endif
         </div>
         @endforeach
     </div>

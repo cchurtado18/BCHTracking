@@ -33,8 +33,9 @@
     $serviceLabels = \App\Support\ServiceType::options();
     $due = $invoice->dueAt();
     $isAdmin = auth()->user()?->is_admin;
+    $canEditNote = auth()->user()?->canEditDeliveryNotes();
     $noteHref = $invoice->deliveryNote
-        ? ($isAdmin
+        ? ($canEditNote
             ? route('salidas.hojas.edit', $invoice->deliveryNote)
             : route('salidas.print-report', ['delivery_note_id' => $invoice->deliveryNote->id]))
         : null;
@@ -66,7 +67,7 @@
             @endif
             @endif
             @if($noteHref)
-            <a href="{{ $noteHref }}" @unless($isAdmin) target="_blank" @endunless class="mb-btn mb-btn-secondary">Ver hoja de salida</a>
+            <a href="{{ $noteHref }}" @unless($canEditNote) target="_blank" @endunless class="mb-btn mb-btn-secondary">Ver hoja de salida</a>
             @endif
         </x-slot:actions>
         <x-slot:strip>
@@ -205,14 +206,14 @@
                             @if($invoice->deliveryNotes->isNotEmpty())
                                 @foreach($invoice->deliveryNotes as $linkedNote)
                                     @php
-                                        $linkedHref = $isAdmin
+                                        $linkedHref = $canEditNote
                                             ? route('salidas.hojas.edit', $linkedNote)
                                             : route('salidas.print-report', ['delivery_note_id' => $linkedNote->id]);
                                     @endphp
-                                    <a href="{{ $linkedHref }}" @unless($isAdmin) target="_blank" @endunless class="inv-inline-link">{{ $linkedNote->code }}</a>@if(! $loop->last), @endif
+                                    <a href="{{ $linkedHref }}" @unless($canEditNote) target="_blank" @endunless class="inv-inline-link">{{ $linkedNote->code }}</a>@if(! $loop->last), @endif
                                 @endforeach
                             @elseif($invoice->deliveryNote && $noteHref)
-                            <a href="{{ $noteHref }}" @unless($isAdmin) target="_blank" @endunless class="inv-inline-link">{{ $invoice->deliveryNote->code }}</a>
+                            <a href="{{ $noteHref }}" @unless($canEditNote) target="_blank" @endunless class="inv-inline-link">{{ $invoice->deliveryNote->code }}</a>
                             @else
                             —
                             @endif

@@ -166,6 +166,11 @@ class User extends Authenticatable
         return $this->hasPermission(Permission::MODULE_ACCOUNTING);
     }
 
+    public function canEditDeliveryNotes(): bool
+    {
+        return $this->hasPermission(Permission::ACTION_EDIT_DELIVERY_NOTE);
+    }
+
     public function homePath(): string
     {
         if ($this->isAgencyUser() || $this->canAccessModule(Permission::MODULE_PACKAGES)) {

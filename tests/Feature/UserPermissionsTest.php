@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Agency;
+use App\Models\Delivery;
+use App\Models\DeliveryNote;
 use App\Models\Preregistration;
 use App\Models\User;
 use App\Support\Permission;
@@ -21,6 +23,8 @@ class UserPermissionsTest extends TestCase
         $this->assertTrue($user->canAccessModule(Permission::MODULE_PREREGISTRATIONS));
         $this->assertFalse($user->hasPermission(Permission::ACTION_DELETE_PREREGISTRATION));
         $this->assertFalse($user->hasPermission(Permission::ACTION_CHANGE_INTAKE_TYPE));
+        $this->assertFalse($user->hasPermission(Permission::ACTION_EDIT_DELIVERY_NOTE));
+        $this->assertFalse($user->canEditDeliveryNotes());
         $this->assertFalse($user->canAccessModule(Permission::MODULE_ACCOUNTING));
         $this->assertFalse($user->canCreateInvoices());
         $this->assertFalse($user->canAccessModule(Permission::MODULE_DASHBOARD));
@@ -110,6 +114,56 @@ class UserPermissionsTest extends TestCase
         $this->assertSoftDeleted('preregistrations', ['id' => $package->id]);
     }
 
+    public function test_ops_without_edit_note_cannot_open_or_see_edit(): void
+    {
+        $user = User::factory()->create(['agency_id' => null, 'is_admin' => false]);
+        $note = $this->createDeliveryNote();
+
+        $this->actingAs($user)
+            ->get(route('salidas.index'))
+            ->assertOk()
+            ->assertDontSee('title="Editar hoja"', false);
+
+        $this->actingAs($user)
+            ->get(route('salidas.hojas.edit', $note))
+            ->assertRedirect(route('packages.index'));
+    }
+
+    public function test_ops_with_edit_note_can_open_and_update(): void
+    {
+        $user = User::factory()->create([
+            'agency_id' => null,
+            'is_admin' => false,
+            'permissions' => array_merge(Permission::operationalDefaults(), [
+                Permission::ACTION_EDIT_DELIVERY_NOTE,
+            ]),
+        ]);
+        $note = $this->createDeliveryNote();
+
+        $this->actingAs($user)
+            ->get(route('salidas.index'))
+            ->assertOk()
+            ->assertSee('title="Editar hoja"', false);
+
+        $this->actingAs($user)
+            ->get(route('salidas.hojas.edit', $note))
+            ->assertOk()
+            ->assertSee('Editar hoja de salida');
+
+        $this->actingAs($user)
+            ->put(route('salidas.hojas.update', $note), [
+                'delivered_to' => 'Retira Permiso',
+                'retirer_id_number' => '',
+                'retirer_phone' => '',
+            ])
+            ->assertRedirect(route('salidas.hojas.edit', $note));
+
+        $this->assertDatabaseHas('deliveries', [
+            'delivery_note_id' => $note->id,
+            'delivered_to' => 'Retira Permiso',
+        ]);
+    }
+
     public function test_admin_can_save_module_and_action_checkboxes(): void
     {
         $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
@@ -121,6 +175,7 @@ class UserPermissionsTest extends TestCase
             ->assertSee('Opciones sensibles')
             ->assertSee('Eliminar preregistro')
             ->assertSee('Cambiar Courier / Drop Off')
+            ->assertSee('Editar hoja de salida')
             ->assertSee('Contabilidad')
             ->assertDontSee('Crear factura')
             ->assertDontSee('Nueva factura');
@@ -318,6 +373,24 @@ class UserPermissionsTest extends TestCase
         ], $ops->permissions);
         $this->assertTrue($ops->hasPermission(Permission::ACTION_DELETE_PREREGISTRATION));
         $this->assertFalse($ops->canAccessModule(Permission::MODULE_PREREGISTRATIONS));
+    }
+
+    private function createDeliveryNote(): DeliveryNote
+    {
+        $package = $this->createPackage('DELIVERED');
+        $note = DeliveryNote::create([
+            'code' => 'SLO-PERM-'.random_int(1000, 9999),
+            'agency_id' => $package->agency_id,
+        ]);
+        Delivery::create([
+            'delivery_note_id' => $note->id,
+            'preregistration_id' => $package->id,
+            'delivered_at' => now(),
+            'delivered_to' => 'Retira Original',
+            'delivery_type' => 'PICKUP',
+        ]);
+
+        return $note;
     }
 
     private function createPackage(string $status = 'RECEIVED_MIAMI'): Preregistration

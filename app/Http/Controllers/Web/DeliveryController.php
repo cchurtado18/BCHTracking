@@ -21,9 +21,9 @@ class DeliveryController extends Controller
 
     private const SESSION_SCAN_RETIRER = 'delivery_scan_retirer';
 
-    private function ensureAdmin(): void
+    private function ensureCanEditDeliveryNote(): void
     {
-        abort_unless(auth()->user()?->is_admin, 403, 'Solo administradores pueden realizar esta acción.');
+        abort_unless(auth()->user()?->canEditDeliveryNotes(), 403, 'No tiene permiso para editar hojas de salida.');
     }
 
     private function denyAgencyDeliveryWrite(): ?\Illuminate\Http\RedirectResponse
@@ -1205,11 +1205,11 @@ class DeliveryController extends Controller
     }
 
     /**
-     * Admin: editar hoja de salida y quitar paquetes escaneados por error.
+     * Editar hoja de salida y quitar paquetes escaneados por error.
      */
     public function editNote(DeliveryNote $deliveryNote)
     {
-        $this->ensureAdmin();
+        $this->ensureCanEditDeliveryNote();
 
         $deliveryNote->load([
             'agency.parent.parent.parent',
@@ -1225,7 +1225,7 @@ class DeliveryController extends Controller
 
     public function updateNote(Request $request, DeliveryNote $deliveryNote)
     {
-        $this->ensureAdmin();
+        $this->ensureCanEditDeliveryNote();
 
         $validated = $request->validate([
             'delivered_to' => 'required|string|max:255',
@@ -1247,7 +1247,7 @@ class DeliveryController extends Controller
 
     public function removeFromNote(DeliveryNote $deliveryNote, Delivery $delivery)
     {
-        $this->ensureAdmin();
+        $this->ensureCanEditDeliveryNote();
 
         $activeInvoice = $deliveryNote->currentInvoice();
         if ($activeInvoice) {
@@ -1290,7 +1290,7 @@ class DeliveryController extends Controller
      */
     public function splitMixedBillTos(DeliveryNote $deliveryNote)
     {
-        $this->ensureAdmin();
+        $this->ensureCanEditDeliveryNote();
 
         $activeInvoice = $deliveryNote->currentInvoice();
         if ($activeInvoice) {
