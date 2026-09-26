@@ -115,36 +115,53 @@
     background: #fff;
     border: 1px solid #e5e7eb;
     border-radius: 0.75rem;
-    padding: 1.05rem 1.2rem;
+    padding: 0.75rem 0.85rem;
     margin-bottom: 1rem;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    overflow-x: auto;
 }
 .preregs-filters-form {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 0.7rem 0.75rem;
+    display: grid;
+    grid-template-columns:
+        minmax(7.5rem, 1.35fr)
+        minmax(5.4rem, 0.7fr)
+        minmax(5.4rem, 0.7fr)
+        minmax(6rem, 0.82fr)
+        minmax(6.6rem, 0.95fr)
+        minmax(5.8rem, 0.82fr)
+        minmax(6.6rem, 0.72fr)
+        minmax(6.6rem, 0.72fr)
+        auto;
+    align-items: end;
+    gap: 0.4rem 0.45rem;
 }
-.preregs-field { display: flex; flex-direction: column; gap: 0.32rem; min-width: 0; }
-.preregs-field-search { flex: 1 1 200px; min-width: 170px; }
-.preregs-field-select { flex: 0 1 135px; min-width: 115px; }
-.preregs-field-date { flex: 0 1 135px; min-width: 125px; }
+.preregs-field { display: flex; flex-direction: column; gap: 0.28rem; min-width: 0; }
+.preregs-field-search,
+.preregs-field-select,
+.preregs-field-select-wide,
+.preregs-field-date { width: 100%; min-width: 0; }
 .preregs-label {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 500;
     color: #6b7280;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .preregs-input, .preregs-select {
     display: block;
     width: 100%;
-    padding: 0.52rem 0.7rem;
-    font-size: 0.875rem;
+    min-width: 0;
+    padding: 0.4rem 0.45rem;
+    font-size: 0.8125rem;
     border: 1px solid #d1d5db;
     border-radius: 0.45rem;
     background: #fff;
     color: #111827;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+.preregs-select { text-overflow: ellipsis; }
+.preregs-input[type="date"] { padding-right: 0.3rem; }
 .preregs-input::placeholder { color: #9ca3af; }
 .preregs-input:focus, .preregs-select:focus {
     outline: none;
@@ -153,19 +170,19 @@
 }
 .preregs-filters-actions {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+    flex-wrap: nowrap;
+    gap: 0.35rem;
     align-items: center;
-    margin-left: auto;
     padding-bottom: 1px;
+    white-space: nowrap;
 }
 .preregs-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem;
-    padding: 0.55rem 1rem;
-    font-size: 0.875rem;
+    gap: 0.3rem;
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8125rem;
     font-weight: 600;
     border-radius: 0.5rem;
     border: 1px solid transparent;
@@ -407,10 +424,12 @@
 }
 @media (max-width: 768px) {
     .preregs-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .preregs-filters-form { display: flex; flex-wrap: wrap; }
     .preregs-field-search,
     .preregs-field-select,
+    .preregs-field-select-wide,
     .preregs-field-date { flex: 1 1 100%; }
-    .preregs-filters-actions { width: 100%; margin-left: 0; }
+    .preregs-filters-actions { width: 100%; }
 }
 @media (max-width: 480px) {
     .preregs-stats { grid-template-columns: 1fr; }
@@ -520,6 +539,26 @@
                     <option value="READY" {{ request('status') == 'READY' ? 'selected' : '' }}>Listo para retiro</option>
                     <option value="DELIVERED" {{ request('status') == 'DELIVERED' ? 'selected' : '' }}>Entregado</option>
                     <option value="CANCELLED" {{ request('status') == 'CANCELLED' ? 'selected' : '' }}>Inactivo</option>
+                </select>
+            </div>
+            <div class="preregs-field preregs-field-select preregs-field-select-wide">
+                <label class="preregs-label" id="consolidation-label">Saco / contenedor</label>
+                <select name="consolidation" id="consolidation" class="preregs-select">
+                    <option value="">Todos</option>
+                    <option
+                        value="pending"
+                        {{ request('consolidation') == 'pending' ? 'selected' : '' }}
+                        data-label-all="No agregados"
+                        data-label-air="Sin saco"
+                        data-label-sea="Sin contenedor"
+                    >No agregados</option>
+                    <option
+                        value="assigned"
+                        {{ request('consolidation') == 'assigned' ? 'selected' : '' }}
+                        data-label-all="Ya agregados"
+                        data-label-air="En saco"
+                        data-label-sea="En contenedor"
+                    >Ya agregados</option>
                 </select>
             </div>
             <div class="preregs-field preregs-field-select">
@@ -681,6 +720,33 @@ document.addEventListener('DOMContentLoaded', function () {
             if (href) window.location.href = href;
         });
     });
+
+    const serviceSelect = document.querySelector('select[name="service_type"]');
+    const consolidationSelect = document.getElementById('consolidation');
+    const consolidationLabel = document.getElementById('consolidation-label');
+    const labels = {
+        '': { title: 'Saco / contenedor' },
+        AIR: { title: 'Saco' },
+        SEA: { title: 'Contenedor' },
+        CFT: { title: 'Contenedor' },
+    };
+
+    function syncConsolidationLabels() {
+        if (!serviceSelect || !consolidationSelect) return;
+        const service = serviceSelect.value || '';
+        const key = service === 'AIR' ? 'air' : (service === 'SEA' || service === 'CFT' ? 'sea' : 'all');
+        if (consolidationLabel) {
+            consolidationLabel.textContent = (labels[service] || labels['']).title;
+        }
+        consolidationSelect.querySelectorAll('option[data-label-all]').forEach(function (option) {
+            option.textContent = option.getAttribute('data-label-' + key) || option.getAttribute('data-label-all');
+        });
+    }
+
+    syncConsolidationLabels();
+    if (serviceSelect) {
+        serviceSelect.addEventListener('change', syncConsolidationLabels);
+    }
 });
 </script>
 @endsection

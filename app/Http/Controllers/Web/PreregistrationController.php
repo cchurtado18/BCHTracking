@@ -11,6 +11,7 @@ use App\Models\PreregistrationPhoto;
 use App\Services\ClientPackageStatusMailer;
 use App\Services\PreregistrationPhotoService;
 use App\Services\WarehouseService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -44,7 +45,7 @@ class PreregistrationController extends Controller
             return redirect()->route('preregistrations.index');
         }
 
-        $filterKeys = ['search', 'service_type', 'intake_type', 'status', 'agency_id', 'date_from', 'date_to'];
+        $filterKeys = ['search', 'service_type', 'intake_type', 'status', 'agency_id', 'date_from', 'date_to', 'consolidation'];
         $stateKeys = array_merge($filterKeys, ['page']);
         if (! $request->hasAny($stateKeys) && session()->has('preregistrations_index_filters')) {
             return redirect()->route('preregistrations.index', session('preregistrations_index_filters'));
@@ -89,6 +90,7 @@ class PreregistrationController extends Controller
         if ($request->filled('date_to')) {
             $query->whereDate('created_at', '<=', $request->date_to);
         }
+        $this->applyConsolidationFilter($query, $request->input('consolidation'));
 
         $preregistrations = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
         $preregistrations->getCollection()->each(function (Preregistration $package) {
@@ -125,6 +127,7 @@ class PreregistrationController extends Controller
         if ($request->filled('date_to')) {
             $statsQuery->whereDate('created_at', '<=', $request->date_to);
         }
+        $this->applyConsolidationFilter($statsQuery, $request->input('consolidation'));
         $statsTotal = $statsQuery->count();
         $statsAir = (clone $statsQuery)->where('service_type', 'AIR')->count();
         $statsSea = (clone $statsQuery)->whereIn('service_type', ['SEA', 'CFT'])->count();
@@ -886,6 +889,20 @@ class PreregistrationController extends Controller
         }
 
         return in_array($preregistration->status, ['PHOTO_PENDING', 'RECEIVED_MIAMI', 'CANCELLED'], true);
+    }
+
+    private function applyConsolidationFilter(Builder $query, ?string $value): void
+    {
+        if ($value === 'pending') {
+            $query->whereDoesntHave('consolidationItem')
+                ->whereIn('status', ['PHOTO_PENDING', 'RECEIVED_MIAMI']);
+
+            return;
+        }
+
+        if ($value === 'assigned') {
+            $query->whereHas('consolidationItem');
+        }
     }
 
     public function label(Request $request, string $id)
