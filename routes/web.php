@@ -29,8 +29,12 @@ use App\Http\Controllers\Web\TrackingController;
 use App\Http\Controllers\Web\UserController;
 use Illuminate\Support\Facades\Route;
 
-// Público: consulta de tracking (sin autenticación)
+// Público: consulta de tracking y prealerta de cliente (sin autenticación)
 Route::get('/tracking', [TrackingController::class, 'index'])->name('tracking.index');
+Route::get('/prealerta-envio', [PrealertController::class, 'publicCreate'])->name('prealerts.public.create');
+Route::post('/prealerta-envio', [PrealertController::class, 'publicStore'])
+    ->middleware('throttle:8,1')
+    ->name('prealerts.public.store');
 
 require __DIR__.'/auth.php';
 
@@ -51,11 +55,13 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('permission:module.agencies')->group(function () {
         Route::resource('agencies', AgencyController::class);
         Route::post('agencies/{id}/toggle', [AgencyController::class, 'toggle'])->name('agencies.toggle');
-        Route::get('agencies/{agency}/acceso/nuevo', [AgencyController::class, 'createAccess'])->name('agencies.users.create');
-        Route::post('agencies/{agency}/acceso', [AgencyController::class, 'storeAccess'])->name('agencies.users.store');
-        Route::get('agencies/{agency}/acceso/{user}', [AgencyController::class, 'editAccess'])->name('agencies.users.edit');
-        Route::put('agencies/{agency}/acceso/{user}', [AgencyController::class, 'updateAccess'])->name('agencies.users.update');
-        Route::post('agencies/{agency}/users/{user}/reset-password', [AgencyController::class, 'resetUserPassword'])->name('agencies.users.reset-password');
+        Route::middleware('permission:action.manage_client_access')->group(function () {
+            Route::get('agencies/{agency}/acceso/nuevo', [AgencyController::class, 'createAccess'])->name('agencies.users.create');
+            Route::post('agencies/{agency}/acceso', [AgencyController::class, 'storeAccess'])->name('agencies.users.store');
+            Route::get('agencies/{agency}/acceso/{user}', [AgencyController::class, 'editAccess'])->name('agencies.users.edit');
+            Route::put('agencies/{agency}/acceso/{user}', [AgencyController::class, 'updateAccess'])->name('agencies.users.update');
+            Route::post('agencies/{agency}/users/{user}/reset-password', [AgencyController::class, 'resetUserPassword'])->name('agencies.users.reset-password');
+        });
         Route::prefix('agencies/{agency_id}/clients')->name('agency-clients.')->group(function () {
             Route::get('/', [AgencyClientController::class, 'index'])->name('index');
             Route::get('/create', [AgencyClientController::class, 'create'])->name('create');
@@ -70,6 +76,10 @@ Route::middleware(['auth'])->group(function () {
     });
     Route::middleware('permission:module.audit')->group(function () {
         Route::get('auditoria', [AuditLogController::class, 'index'])->name('audit.index');
+        Route::middleware('admin')->group(function () {
+            Route::get('auditoria/eliminados', [AuditLogController::class, 'trashed'])->name('audit.trashed');
+            Route::post('auditoria/eliminados/{id}/restore', [AuditLogController::class, 'restore'])->name('audit.preregistrations.restore');
+        });
         Route::get('auditoria/{id}', [AuditLogController::class, 'show'])->name('audit.show');
     });
     Route::middleware('permission:module.alerts')->group(function () {
@@ -100,9 +110,11 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/nueva', [AccountingInvoiceController::class, 'startCreate'])->name('start-create');
             Route::get('/desde-nota/{deliveryNote}', [AccountingInvoiceController::class, 'createFromNote'])->name('create-from-note');
             Route::post('/desde-nota/{deliveryNote}', [AccountingInvoiceController::class, 'storeFromNote'])->name('store-from-note');
-            Route::post('/{invoice}/anular', [AccountingInvoiceController::class, 'void'])->name('void');
-            Route::post('/{invoice}/enviar', [AccountingInvoiceController::class, 'sendEmail'])->name('send');
-            Route::delete('/{invoice}', [AccountingInvoiceController::class, 'destroy'])->name('destroy');
+            Route::middleware('permission:action.send_invoice')->post('/{invoice}/enviar', [AccountingInvoiceController::class, 'sendEmail'])->name('send');
+            Route::middleware('permission:action.void_invoice')->group(function () {
+                Route::post('/{invoice}/anular', [AccountingInvoiceController::class, 'void'])->name('void');
+                Route::delete('/{invoice}', [AccountingInvoiceController::class, 'destroy'])->name('destroy');
+            });
         });
 
         Route::prefix('contabilidad/tarifas')->name('accounting.rates.')->group(function () {
@@ -114,10 +126,12 @@ Route::middleware(['auth'])->group(function () {
 
         Route::prefix('contabilidad/cobros')->name('accounting.payments.')->group(function () {
             Route::get('/', [AccountingPaymentController::class, 'index'])->name('index');
-            Route::get('/nuevo', [AccountingPaymentController::class, 'create'])->name('create');
-            Route::post('/', [AccountingPaymentController::class, 'store'])->name('store');
+            Route::middleware('permission:action.record_payment')->group(function () {
+                Route::get('/nuevo', [AccountingPaymentController::class, 'create'])->name('create');
+                Route::post('/', [AccountingPaymentController::class, 'store'])->name('store');
+                Route::post('/{payment}/cancelar', [AccountingPaymentController::class, 'void'])->name('void');
+            });
             Route::get('/{payment}', [AccountingPaymentController::class, 'show'])->name('show');
-            Route::post('/{payment}/cancelar', [AccountingPaymentController::class, 'void'])->name('void');
         });
 
         Route::prefix('contabilidad/cxc')->name('accounting.receivables.')->group(function () {
@@ -206,6 +220,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/nueva', [PrealertController::class, 'create'])->name('create');
         Route::get('/consultar', [PrealertController::class, 'lookup'])->name('lookup');
         Route::post('/', [PrealertController::class, 'store'])->name('store');
+        Route::patch('/{prealert}/agencia', [PrealertController::class, 'assignAgency'])->name('assign-agency');
         Route::get('/{prealert}', [PrealertController::class, 'show'])->name('show');
         Route::delete('/{prealert}', [PrealertController::class, 'destroy'])->name('destroy');
     });
@@ -230,13 +245,14 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/scan/retirer-session', [DeliveryController::class, 'storeScanRetirerSession'])->name('scan-retirer-session');
         Route::post('/scan/clear-retirer-session', [DeliveryController::class, 'clearScanRetirerSession'])->name('scan-clear-retirer-session');
         Route::post('/scan', [DeliveryController::class, 'processScan'])->name('process-scan');
-        Route::middleware('permission:action.edit_delivery_note')->prefix('hojas')->name('hojas.')->group(function () {
-            Route::get('/{deliveryNote}', [DeliveryController::class, 'editNote'])->name('edit');
-            Route::put('/{deliveryNote}', [DeliveryController::class, 'updateNote'])->name('update');
-            Route::post('/{deliveryNote}/separar-clientes', [DeliveryController::class, 'splitMixedBillTos'])->name('split-clients');
-            Route::delete('/{deliveryNote}/paquetes/{delivery}', [DeliveryController::class, 'removeFromNote'])->name('remove-package');
-        });
         Route::get('/{id}', [DeliveryController::class, 'show'])->name('show');
+    });
+
+    Route::middleware(['not-packages-only', 'permission:action.edit_delivery_note'])->prefix('salidas/hojas')->name('salidas.hojas.')->group(function () {
+        Route::get('/{deliveryNote}', [DeliveryController::class, 'editNote'])->name('edit');
+        Route::put('/{deliveryNote}', [DeliveryController::class, 'updateNote'])->name('update');
+        Route::post('/{deliveryNote}/separar-clientes', [DeliveryController::class, 'splitMixedBillTos'])->name('split-clients');
+        Route::delete('/{deliveryNote}/paquetes/{delivery}', [DeliveryController::class, 'removeFromNote'])->name('remove-package');
     });
 
     Route::redirect('/deliveries', '/salidas', 301);

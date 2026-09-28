@@ -29,7 +29,7 @@
         section="General"
         current="Detalle"
         title="Prealerta"
-        subtitle="{{ $prealert->name }}{{ $prealert->agency ? ' · '.$prealert->agency->listingAccountLabel() : '' }} · {{ $prealert->statusLabel() }}"
+        subtitle="{{ $prealert->name }}{{ $prealert->agencyDisplayLabel() !== '—' ? ' · '.$prealert->agencyDisplayLabel() : '' }} · {{ $prealert->statusLabel() }}"
         back-href="{{ route('prealerts.index') }}"
         back-label="Volver a prealertas"
     >
@@ -124,7 +124,32 @@
                         </div>
                         <div class="prealerts-data-field">
                             <span class="prealerts-data-label">Agencia</span>
-                            <span class="prealerts-data-value">{{ $prealert->agency?->listingAccountLabel() }} ({{ $prealert->agency?->code }})</span>
+                            <span class="prealerts-data-value">
+                                @if($prealert->agency)
+                                    {{ $prealert->agency->listingAccountLabel() }} ({{ $prealert->agency->code }})
+                                @else
+                                    {{ $prealert->agency_name ?: '—' }}
+                                    <span class="prealerts-badge prealerts-badge-pending" style="margin-left: 0.4rem;">Pendiente de asignar</span>
+                                @endif
+                            </span>
+                            @if(($canAssignAgency ?? false) && ($agencies ?? collect())->isNotEmpty())
+                            <form action="{{ route('prealerts.assign-agency', $prealert) }}" method="POST" class="prealerts-assign-form">
+                                @csrf
+                                @method('PATCH')
+                                <label for="agency_id" class="prealerts-data-label">{{ $prealert->agency_id ? 'Cambiar agencia' : 'Asignar agencia del sistema' }}</label>
+                                <div class="prealerts-assign-row">
+                                    <select name="agency_id" id="agency_id" class="prealerts-select" required>
+                                        <option value="">Seleccione agencia</option>
+                                        @foreach($agencies as $agency)
+                                        <option value="{{ $agency->id }}" @selected((int) $prealert->agency_id === (int) $agency->id)>
+                                            {{ $agency->listingAccountLabel() }} ({{ $agency->code }})
+                                        </option>
+                                        @endforeach
+                                    </select>
+                                    <button type="submit" class="prealerts-btn prealerts-btn-primary">Guardar</button>
+                                </div>
+                            </form>
+                            @endif
                         </div>
                         <div class="prealerts-data-field">
                             <span class="prealerts-data-label">Tracking</span>

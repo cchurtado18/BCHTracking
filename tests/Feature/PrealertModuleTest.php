@@ -54,6 +54,201 @@ class PrealertModuleTest extends TestCase
         $this->get(route('prealerts.create'))->assertRedirect(route('login'));
     }
 
+    public function test_home_screen_opens_public_prealert_in_a_new_tab(): void
+    {
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertSee('Prealerta')
+            ->assertSee('Avise el tracking de su paquete')
+            ->assertSee('target="_blank"', false)
+            ->assertSee(route('prealerts.public.create', absolute: false), false);
+    }
+
+    public function test_guest_can_open_and_save_public_prealert(): void
+    {
+        $agencies = $this->createAgencies();
+
+        $this->get(route('prealerts.public.create'))
+            ->assertOk()
+            ->assertSee('Nombre del cliente en el paquete')
+            ->assertSee('Tracking del paquete')
+            ->assertSee('Nombre de su agencia')
+            ->assertSee('name="agency_name"', false)
+            ->assertDontSee('name="agency_id"', false)
+            ->assertDontSee($agencies['subA']->name)
+            ->assertDontSee($agencies['subB']->name)
+            ->assertSee('Notas')
+            ->assertSee('Aéreo')
+            ->assertSee('Marítimo');
+
+        $this->post(route('prealerts.public.store'), [
+            'name' => 'Maria Lopez',
+            'agency_name' => 'Norte Express',
+            'tracking' => 'spxmia012462609040009999',
+            'service_type' => 'AIR',
+            'description' => 'Caja fragil',
+        ])->assertRedirect(route('prealerts.public.create'));
+
+        $this->assertDatabaseHas('prealerts', [
+            'name' => 'MARIA LOPEZ',
+            'agency_id' => null,
+            'agency_name' => 'NORTE EXPRESS',
+            'tracking' => 'SPXMIA012462609040009999',
+            'service_type' => 'AIR',
+            'description' => 'CAJA FRAGIL',
+            'status' => Prealert::STATUS_PENDING,
+            'created_by' => null,
+        ]);
+
+        $this->get(route('prealerts.public.create'))
+            ->assertOk()
+            ->assertSee('¡Prealerta enviada!')
+            ->assertSee('Hemos recibido la información de su paquete.')
+            ->assertSee('SPXMIA012462609040009999')
+            ->assertSee('MARIA LOPEZ')
+            ->assertSee('NORTE EXPRESS')
+            ->assertSee('Aéreo')
+            ->assertSee('CAJA FRAGIL')
+            ->assertSee('Prealertado')
+            ->assertSee('Prealertar otro paquete')
+            ->assertDontSee('Nombre del cliente en el paquete');
+
+        $this->get(route('prealerts.public.create', ['nuevo' => 1]))
+            ->assertRedirect(route('prealerts.public.create'));
+
+        $this->get(route('prealerts.public.create'))
+            ->assertOk()
+            ->assertSee('Nombre del cliente en el paquete')
+            ->assertDontSee('¡Prealerta enviada!');
+
+        $central = User::factory()->create(['agency_id' => null]);
+        $this->actingAs($central)
+            ->get(route('prealerts.index'))
+            ->assertOk()
+            ->assertSee('SPXMIA012462609040009999')
+            ->assertSee('MARIA LOPEZ')
+            ->assertSee('NORTE EXPRESS');
+    }
+
+    public function test_guest_public_prealert_requires_core_fields_but_notes_are_optional(): void
+    {
+        $this->from(route('prealerts.public.create'))
+            ->post(route('prealerts.public.store'), [
+                'name' => '',
+                'agency_name' => '',
+                'tracking' => '',
+                'service_type' => '',
+            ])
+            ->assertRedirect(route('prealerts.public.create'))
+            ->assertSessionHasErrors(['name', 'agency_name', 'tracking', 'service_type']);
+
+        $this->post(route('prealerts.public.store'), [
+            'name' => 'Pedro Ruiz',
+            'agency_name' => 'Mi Agencia',
+            'tracking' => 'SPXMIA012462609040008888',
+            'service_type' => 'SEA',
+        ])->assertRedirect(route('prealerts.public.create'));
+
+        $this->assertDatabaseHas('prealerts', [
+            'name' => 'PEDRO RUIZ',
+            'agency_name' => 'MI AGENCIA',
+            'agency_id' => null,
+            'tracking' => 'SPXMIA012462609040008888',
+            'service_type' => 'SEA',
+            'description' => null,
+        ]);
+    }
+
+    public function test_public_prealert_triggers_warehouse_alert_when_tracking_is_scanned(): void
+    {
+        Storage::fake('public');
+
+        $this->post(route('prealerts.public.store'), [
+            'name' => 'Cliente Publico',
+            'agency_name' => ' holAex ',
+            'tracking' => 'SPXMIA012462609040007777',
+            'service_type' => 'AIR',
+            'description' => 'Notas de prueba',
+        ])->assertRedirect();
+
+        $central = User::factory()->create(['agency_id' => null]);
+        $this->actingAs($central)
+            ->getJson(route('prealerts.lookup', ['tracking' => 'SPXMIA012462609040007777']))
+            ->assertOk()
+            ->assertJson([
+                'found' => true,
+                'prealert' => [
+                    'name' => 'CLIENTE PUBLICO',
+                    'tracking' => 'SPXMIA012462609040007777',
+                    'agency_name' => 'HOLAEX',
+                    'agency_id' => null,
+                ],
+            ]);
+
+        $this->actingAs($central)
+            ->post(route('preregistrations.store-quick-courier'), [
+                'tracking_external' => 'SPXMIA012462609040007777',
+                'intake_weight_lbs' => 3.2,
+                'photos' => [UploadedFile::fake()->image('caja.jpg', 400, 400)],
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame(Prealert::STATUS_MATCHED, Prealert::where('tracking', 'SPXMIA012462609040007777')->value('status'));
+
+        $package = Preregistration::where('tracking_external', 'SPXMIA012462609040007777')->first();
+        $this->actingAs($central)
+            ->get(route('preregistrations.show', $package->id))
+            ->assertOk()
+            ->assertSee('Este paquete ya fue prealertado')
+            ->assertSee('CLIENTE PUBLICO');
+    }
+
+    public function test_central_user_assigns_system_agency_to_public_prealert(): void
+    {
+        $agencies = $this->createAgencies();
+        $this->post(route('prealerts.public.store'), [
+            'name' => 'Cliente Agencia',
+            'agency_name' => 'Norte Express',
+            'tracking' => 'SPXMIA012462609040006666',
+            'service_type' => 'AIR',
+        ])->assertRedirect();
+
+        $prealert = Prealert::where('tracking', 'SPXMIA012462609040006666')->first();
+        $central = User::factory()->create(['agency_id' => null]);
+        $agencyUser = User::factory()->create(['agency_id' => $agencies['subA']->id]);
+
+        $this->actingAs($agencyUser)
+            ->get(route('prealerts.index'))
+            ->assertOk()
+            ->assertDontSee('SPXMIA012462609040006666');
+
+        $this->actingAs($agencyUser)
+            ->patch(route('prealerts.assign-agency', $prealert), [
+                'agency_id' => $agencies['subA']->id,
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($central)
+            ->get(route('prealerts.show', $prealert))
+            ->assertOk()
+            ->assertSee('NORTE EXPRESS')
+            ->assertSee('Asignar agencia del sistema');
+
+        $this->actingAs($central)
+            ->patch(route('prealerts.assign-agency', $prealert), [
+                'agency_id' => $agencies['subA']->id,
+            ])
+            ->assertRedirect(route('prealerts.show', $prealert));
+
+        $this->assertSame($agencies['subA']->id, $prealert->fresh()->agency_id);
+
+        $this->actingAs($agencyUser)
+            ->get(route('prealerts.index'))
+            ->assertOk()
+            ->assertSee('SPXMIA012462609040006666');
+    }
+
     public function test_agency_user_can_open_prealert_module(): void
     {
         $agencies = $this->createAgencies();
@@ -268,7 +463,7 @@ class PrealertModuleTest extends TestCase
             ->get(route('preregistrations.create'))
             ->assertOk()
             ->assertSee('id="prealertNotice"', false)
-            ->assertSee('Este paquete ya fue prealertado');
+            ->assertSee('Alerta: este tracking fue prealertado');
 
         $this->actingAs($user)
             ->get(route('preregistrations.tracking-photo'))

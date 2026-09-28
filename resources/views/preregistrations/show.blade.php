@@ -92,7 +92,7 @@
                 @endif
             @endif
             @if($canDeletePreregistration && in_array($preregistration->status, ['PHOTO_PENDING', 'RECEIVED_MIAMI', 'CANCELLED']))
-            <form action="{{ route('preregistrations.destroy', $preregistration->id) }}" method="POST" onsubmit="return confirm('¿Eliminar este preregistro y todas sus fotos? Esta acción no se puede deshacer.');">
+            <form action="{{ route('preregistrations.destroy', $preregistration->id) }}" method="POST" onsubmit="return confirm('¿Eliminar este preregistro? Desaparecerá de la lista. Un administrador puede recuperarlo desde Auditoría durante 7 días.');">
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="mb-btn mb-btn-danger">Eliminar</button>

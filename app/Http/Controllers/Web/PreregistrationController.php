@@ -974,7 +974,7 @@ class PreregistrationController extends Controller
                 ->with('error', 'No tiene permiso para eliminar preregistros.');
         }
 
-        $preregistration = Preregistration::with('photos')->findOrFail($id);
+        $preregistration = Preregistration::findOrFail($id);
 
         if (! in_array($preregistration->status, ['PHOTO_PENDING', 'RECEIVED_MIAMI', 'CANCELLED'], true)) {
             return redirect()->route('preregistrations.index', session('preregistrations_index_filters', []))
@@ -991,10 +991,6 @@ class PreregistrationController extends Controller
         if ($preregistration->delivery()->exists()) {
             return redirect()->route('preregistrations.index', session('preregistrations_index_filters', []))
                 ->with('error', 'No se puede eliminar: el preregistro ya tiene entrega.');
-        }
-
-        foreach ($preregistration->photos as $photo) {
-            $this->photoService->deletePhoto($photo);
         }
 
         $preregistration->delete();

@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
         $schedule->command('alerts:dispatch')->everyFifteenMinutes()->withoutOverlapping(10);
+        $schedule->command('preregistrations:purge-deleted')->daily();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([

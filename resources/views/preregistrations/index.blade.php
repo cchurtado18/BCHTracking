@@ -678,7 +678,7 @@
                                 </a>
                                 @endif
                                 @if(auth()->user()?->hasPermission(\App\Support\Permission::ACTION_DELETE_PREREGISTRATION) && in_array($preregistration->status, ['PHOTO_PENDING', 'RECEIVED_MIAMI', 'CANCELLED']))
-                                <form action="{{ route('preregistrations.destroy', $preregistration->id) }}" method="POST" class="preregs-form-inline" onsubmit="return confirm('¿Eliminar este preregistro y todas sus fotos?');">
+                                <form action="{{ route('preregistrations.destroy', $preregistration->id) }}" method="POST" class="preregs-form-inline" onsubmit="return confirm('¿Eliminar este preregistro? Desaparecerá de la lista. Un administrador puede recuperarlo desde Auditoría durante 7 días.');">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="preregs-icon-btn preregs-icon-btn--danger" title="Eliminar" aria-label="Eliminar">

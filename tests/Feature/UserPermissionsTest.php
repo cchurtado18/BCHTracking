@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AccountingInvoice;
 use App\Models\Agency;
 use App\Models\Delivery;
 use App\Models\DeliveryNote;
@@ -25,6 +26,10 @@ class UserPermissionsTest extends TestCase
         $this->assertFalse($user->hasPermission(Permission::ACTION_CHANGE_INTAKE_TYPE));
         $this->assertFalse($user->hasPermission(Permission::ACTION_EDIT_DELIVERY_NOTE));
         $this->assertFalse($user->canEditDeliveryNotes());
+        $this->assertFalse($user->canSendInvoices());
+        $this->assertFalse($user->canRecordPayments());
+        $this->assertFalse($user->canVoidInvoices());
+        $this->assertFalse($user->canManageClientAccess());
         $this->assertFalse($user->canAccessModule(Permission::MODULE_ACCOUNTING));
         $this->assertFalse($user->canCreateInvoices());
         $this->assertFalse($user->canAccessModule(Permission::MODULE_DASHBOARD));
@@ -164,6 +169,142 @@ class UserPermissionsTest extends TestCase
         ]);
     }
 
+    public function test_edit_note_permission_opens_the_form_without_salidas_module(): void
+    {
+        $user = User::factory()->create([
+            'agency_id' => null,
+            'is_admin' => false,
+            'permissions' => [
+                Permission::MODULE_PACKAGES,
+                Permission::ACTION_EDIT_DELIVERY_NOTE,
+            ],
+        ]);
+        $note = $this->createDeliveryNote();
+
+        $this->assertTrue($user->canEditDeliveryNotes());
+        $this->assertTrue($user->canAccessModule(Permission::MODULE_DELIVERIES));
+
+        $this->actingAs($user)
+            ->get(route('salidas.hojas.edit', $note))
+            ->assertOk()
+            ->assertSee('Editar hoja de salida');
+    }
+
+    public function test_ops_with_accounting_cannot_send_void_or_charge_without_actions(): void
+    {
+        $user = User::factory()->create([
+            'agency_id' => null,
+            'is_admin' => false,
+            'permissions' => array_merge(Permission::operationalDefaults(), [
+                Permission::MODULE_ACCOUNTING,
+            ]),
+        ]);
+        $invoice = $this->createIssuedInvoice();
+
+        $this->actingAs($user)
+            ->get(route('accounting.invoices.show', $invoice))
+            ->assertOk()
+            ->assertDontSee('Enviar al cliente')
+            ->assertDontSee('Anular factura')
+            ->assertDontSee('Registrar cobro');
+
+        $this->actingAs($user)
+            ->post(route('accounting.invoices.send', $invoice))
+            ->assertRedirect(route('packages.index'));
+
+        $this->actingAs($user)
+            ->post(route('accounting.invoices.void', $invoice), [
+                'void_reason' => 'Error de prueba xx',
+            ])
+            ->assertRedirect(route('packages.index'));
+
+        $this->actingAs($user)
+            ->get(route('accounting.payments.create'))
+            ->assertRedirect(route('packages.index'));
+    }
+
+    public function test_ops_with_invoice_actions_can_see_send_void_and_payment(): void
+    {
+        $user = User::factory()->create([
+            'agency_id' => null,
+            'is_admin' => false,
+            'permissions' => array_merge(Permission::operationalDefaults(), [
+                Permission::MODULE_ACCOUNTING,
+                Permission::ACTION_SEND_INVOICE,
+                Permission::ACTION_RECORD_PAYMENT,
+                Permission::ACTION_VOID_INVOICE,
+            ]),
+        ]);
+        $invoice = $this->createIssuedInvoice();
+
+        $this->actingAs($user)
+            ->get(route('accounting.invoices.show', $invoice))
+            ->assertOk()
+            ->assertSee('Enviar al cliente')
+            ->assertSee('Anular factura')
+            ->assertSee('Registrar cobro');
+
+        $this->actingAs($user)
+            ->get(route('accounting.payments.create'))
+            ->assertOk();
+    }
+
+    public function test_ops_without_client_access_cannot_manage_portal_login(): void
+    {
+        $user = User::factory()->create([
+            'agency_id' => null,
+            'is_admin' => false,
+            'permissions' => array_merge(Permission::operationalDefaults(), [
+                Permission::MODULE_AGENCIES,
+            ]),
+        ]);
+        $agency = Agency::create([
+            'name' => 'Cliente Sin Acceso',
+            'code' => 'P'.random_int(1000, 9999),
+            'phone' => '555',
+            'is_active' => true,
+            'is_main' => false,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('agencies.show', $agency))
+            ->assertOk()
+            ->assertDontSee('Crear acceso del cliente');
+
+        $this->actingAs($user)
+            ->get(route('agencies.users.create', $agency))
+            ->assertRedirect(route('packages.index'));
+    }
+
+    public function test_ops_with_client_access_can_open_portal_form(): void
+    {
+        $user = User::factory()->create([
+            'agency_id' => null,
+            'is_admin' => false,
+            'permissions' => array_merge(Permission::operationalDefaults(), [
+                Permission::MODULE_AGENCIES,
+                Permission::ACTION_MANAGE_CLIENT_ACCESS,
+            ]),
+        ]);
+        $agency = Agency::create([
+            'name' => 'Cliente Con Acceso',
+            'code' => 'Q'.random_int(1000, 9999),
+            'phone' => '555',
+            'is_active' => true,
+            'is_main' => false,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('agencies.show', $agency))
+            ->assertOk()
+            ->assertSee('Crear acceso del cliente');
+
+        $this->actingAs($user)
+            ->get(route('agencies.users.create', $agency))
+            ->assertOk()
+            ->assertSee('Crear acceso del cliente');
+    }
+
     public function test_admin_can_save_module_and_action_checkboxes(): void
     {
         $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
@@ -176,6 +317,10 @@ class UserPermissionsTest extends TestCase
             ->assertSee('Eliminar preregistro')
             ->assertSee('Cambiar Courier / Drop Off')
             ->assertSee('Editar hoja de salida')
+            ->assertSee('Enviar factura')
+            ->assertSee('Registrar cobro')
+            ->assertSee('Anular factura')
+            ->assertSee('Acceso del cliente')
             ->assertSee('Contabilidad')
             ->assertDontSee('Crear factura')
             ->assertDontSee('Nueva factura');
@@ -373,6 +518,23 @@ class UserPermissionsTest extends TestCase
         ], $ops->permissions);
         $this->assertTrue($ops->hasPermission(Permission::ACTION_DELETE_PREREGISTRATION));
         $this->assertFalse($ops->canAccessModule(Permission::MODULE_PREREGISTRATIONS));
+    }
+
+    private function createIssuedInvoice(): AccountingInvoice
+    {
+        $package = $this->createPackage('DELIVERED');
+
+        return AccountingInvoice::create([
+            'folio' => 'FP-PERM-'.random_int(1000, 9999),
+            'agency_id' => $package->agency_id,
+            'status' => 'issued',
+            'issued_at' => now()->toDateString(),
+            'total_lbs' => 5,
+            'total_usd' => 20,
+            'total_cor' => 730,
+            'exchange_rate' => 36.5,
+            'amount_paid' => 0,
+        ]);
     }
 
     private function createDeliveryNote(): DeliveryNote

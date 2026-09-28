@@ -32,8 +32,10 @@
     };
     $serviceLabels = \App\Support\ServiceType::options();
     $due = $invoice->dueAt();
-    $isAdmin = auth()->user()?->is_admin;
     $canEditNote = auth()->user()?->canEditDeliveryNotes();
+    $canSendInvoice = auth()->user()?->canSendInvoices();
+    $canRecordPayment = auth()->user()?->canRecordPayments();
+    $canVoidInvoice = auth()->user()?->canVoidInvoices();
     $noteHref = $invoice->deliveryNote
         ? ($canEditNote
             ? route('salidas.hojas.edit', $invoice->deliveryNote)
@@ -56,14 +58,14 @@
             @if(! $invoice->isVoid())
             <a href="{{ route('accounting.invoices.voucher', $invoice) }}" target="_blank" class="mb-btn mb-btn-secondary">Imprimir voucher</a>
             <a href="{{ route('accounting.invoices.pdf', $invoice) }}" class="mb-btn mb-btn-secondary">Descargar PDF</a>
-            @if($isAdmin)
+            @if($canSendInvoice)
             <form action="{{ route('accounting.invoices.send', $invoice) }}" method="POST" onsubmit="return confirm('¿Enviar la factura {{ addslashes($invoice->folio) }} a {{ addslashes($sendEmail ?: '—') }}?');">
                 @csrf
                 <button type="submit" class="mb-btn mb-btn-primary" @disabled(! $sendEmail) title="{{ $sendEmail ? 'Enviar a '.$sendEmail : 'Sin correo registrado' }}">Enviar al cliente</button>
             </form>
-            @if($balance > 0)
-            <a href="{{ route('accounting.payments.create', ['invoice_id' => $invoice->id]) }}" class="mb-btn mb-btn-secondary">Registrar cobro</a>
             @endif
+            @if($canRecordPayment && $balance > 0)
+            <a href="{{ route('accounting.payments.create', ['invoice_id' => $invoice->id]) }}" class="mb-btn mb-btn-secondary">Registrar cobro</a>
             @endif
             @endif
             @if($noteHref)
@@ -82,7 +84,7 @@
             @if($due)
             <span class="mb-pill {{ $invoice->arStatus() === 'overdue' ? 'mb-pill--warn' : '' }}">Vence {{ $due->format('d/m/Y') }}</span>
             @endif
-            @if($isAdmin)
+            @if($canSendInvoice)
             @if($invoice->emailed_at)
             <span class="mb-pill mb-pill--ok">Enviada {{ $invoice->emailed_at->timezone($tz)->format('d/m/Y H:i') }}</span>
             @elseif(! $invoice->isVoid())
@@ -174,7 +176,7 @@
                         </span>
                         <h2 class="inv-section-title">Cliente y emisión</h2>
                     </div>
-                    @if($isAdmin && $invoice->agency)
+                    @if(auth()->user()?->canCreateInvoices() && $invoice->agency)
                     <a href="{{ route('accounting.receivables.show', $invoice->agency) }}" class="inv-ghost-link">Estado de cuenta</a>
                     @endif
                 </div>
@@ -291,7 +293,7 @@
                 </div>
             </div>
 
-            @if($isAdmin && ($invoice->canVoid() || ($invoice->isVoid() && $invoice->canDelete()) || ((float) $invoice->amount_paid > 0 && ! $invoice->isVoid() && ! $invoice->canVoid())))
+            @if($canVoidInvoice && ($invoice->canVoid() || ($invoice->isVoid() && $invoice->canDelete()) || ((float) $invoice->amount_paid > 0 && ! $invoice->isVoid() && ! $invoice->canVoid())))
             <div class="inv-card" id="anular">
                 <div class="inv-table-head">
                     <div class="inv-table-head-left">

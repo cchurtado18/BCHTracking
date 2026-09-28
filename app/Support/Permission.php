@@ -40,6 +40,14 @@ class Permission
 
     public const ACTION_EDIT_DELIVERY_NOTE = 'action.edit_delivery_note';
 
+    public const ACTION_SEND_INVOICE = 'action.send_invoice';
+
+    public const ACTION_RECORD_PAYMENT = 'action.record_payment';
+
+    public const ACTION_VOID_INVOICE = 'action.void_invoice';
+
+    public const ACTION_MANAGE_CLIENT_ACCESS = 'action.manage_client_access';
+
     /**
      * @return list<array{key: string, label: string, group: string}>
      */
@@ -72,7 +80,7 @@ class Permission
             [
                 'key' => self::ACTION_DELETE_PREREGISTRATION,
                 'label' => 'Eliminar preregistro',
-                'hint' => 'Borrar un paquete pendiente o recibido en Miami y sus fotos.',
+                'hint' => 'Quitar de la lista un paquete pendiente o recibido en Miami. Un administrador puede recuperarlo desde Auditoría unos días.',
             ],
             [
                 'key' => self::ACTION_CHANGE_INTAKE_TYPE,
@@ -88,6 +96,26 @@ class Permission
                 'key' => self::ACTION_EDIT_DELIVERY_NOTE,
                 'label' => 'Editar hoja de salida',
                 'hint' => 'Corregir quien retira, quitar paquetes o separar una hoja que mezcle clientes.',
+            ],
+            [
+                'key' => self::ACTION_SEND_INVOICE,
+                'label' => 'Enviar factura',
+                'hint' => 'Mandar o reenviar el comprobante al correo de facturación del cliente.',
+            ],
+            [
+                'key' => self::ACTION_RECORD_PAYMENT,
+                'label' => 'Registrar cobro',
+                'hint' => 'Registrar un pago o cancelar un cobro ya aplicado.',
+            ],
+            [
+                'key' => self::ACTION_VOID_INVOICE,
+                'label' => 'Anular factura',
+                'hint' => 'Anular una factura emitida, ver anuladas y eliminar el registro anulado.',
+            ],
+            [
+                'key' => self::ACTION_MANAGE_CLIENT_ACCESS,
+                'label' => 'Acceso del cliente',
+                'hint' => 'Crear, editar o restablecer la contraseña del portal del cliente.',
             ],
         ];
     }

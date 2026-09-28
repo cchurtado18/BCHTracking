@@ -36,7 +36,7 @@ class PreregistrationPhotoDedupeTest extends TestCase
         $this->assertSame(1, $package->photos()->count());
     }
 
-    public function test_pending_preregistration_can_be_deleted_with_its_photos(): void
+    public function test_pending_preregistration_soft_delete_keeps_photos_for_restore(): void
     {
         Storage::fake('public');
         $user = User::factory()->create([
@@ -55,9 +55,10 @@ class PreregistrationPhotoDedupeTest extends TestCase
             ->assertRedirect(route('preregistrations.index'));
 
         $this->assertSoftDeleted('preregistrations', ['id' => $package->id]);
-        $this->assertDatabaseMissing('preregistration_photos', ['preregistration_id' => $package->id]);
-        Storage::disk('public')->assertMissing($first->path);
-        Storage::disk('public')->assertMissing($second->path);
+        $this->assertDatabaseHas('preregistration_photos', ['id' => $first->id, 'preregistration_id' => $package->id]);
+        $this->assertDatabaseHas('preregistration_photos', ['id' => $second->id, 'preregistration_id' => $package->id]);
+        Storage::disk('public')->assertExists($first->path);
+        Storage::disk('public')->assertExists($second->path);
     }
 
     public function test_in_process_preregistration_cannot_be_deleted(): void

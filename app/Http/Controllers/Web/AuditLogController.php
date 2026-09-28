@@ -13,14 +13,16 @@ use App\Models\AgencyClient;
 use App\Models\AuditLog;
 use App\Models\Preregistration;
 use App\Models\User;
+use App\Services\PreregistrationTrashService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class AuditLogController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, PreregistrationTrashService $trash): View
     {
         if (auth()->user() && auth()->user()->isAgencyUser()) {
             abort(403, 'No tiene acceso al módulo de auditoría.');
@@ -41,6 +43,9 @@ class AuditLogController extends Controller
         $statsCreated = (clone $statsQuery)->where('action', 'created')->count();
         $statsUpdated = (clone $statsQuery)->where('action', 'updated')->count();
         $statsDeleted = (clone $statsQuery)->whereIn('action', ['deleted', 'invoice_deleted', 'expense_deleted'])->count();
+        $restorableCount = auth()->user()?->is_admin
+            ? $trash->restorableQuery()->count()
+            : 0;
 
         return view('audit.index', [
             'logs' => $logs,
@@ -54,6 +59,7 @@ class AuditLogController extends Controller
             'statsCreated' => $statsCreated,
             'statsUpdated' => $statsUpdated,
             'statsDeleted' => $statsDeleted,
+            'restorableCount' => $restorableCount,
         ]);
     }
 
@@ -91,6 +97,37 @@ class AuditLogController extends Controller
             'categoryNames',
             'recordUrl'
         ));
+    }
+
+    public function trashed(PreregistrationTrashService $trash)
+    {
+        $trash->purgeExpired();
+
+        $packages = $trash->restorableQuery()
+            ->with(['photos', 'agency.parent'])
+            ->orderByDesc('deleted_at')
+            ->paginate(30);
+
+        return view('audit.trashed', [
+            'packages' => $packages,
+            'retentionDays' => PreregistrationTrashService::RETENTION_DAYS,
+            'trash' => $trash,
+        ]);
+    }
+
+    public function restore(string $id, PreregistrationTrashService $trash): RedirectResponse
+    {
+        $package = Preregistration::onlyTrashed()->findOrFail($id);
+
+        try {
+            $trash->restore($package);
+        } catch (\RuntimeException $e) {
+            return redirect()->route('audit.trashed')
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('preregistrations.show', $package->id)
+            ->with('success', 'Preregistro recuperado.');
     }
 
     private function applyFilters(Builder $query, Request $request): void

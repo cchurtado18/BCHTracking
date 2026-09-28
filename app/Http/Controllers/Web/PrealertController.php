@@ -41,7 +41,8 @@ class PrealertController extends Controller
             $query->where(function ($q) use ($term) {
                 $q->where('tracking', 'like', $term)
                     ->orWhere('name', 'like', $term)
-                    ->orWhere('description', 'like', $term);
+                    ->orWhere('description', 'like', $term)
+                    ->orWhere('agency_name', 'like', $term);
             });
         }
 
@@ -83,23 +84,26 @@ class PrealertController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function publicCreate(Request $request): View|RedirectResponse
     {
-        if ($request->filled('tracking')) {
-            $request->merge(['tracking' => Prealert::normalizeTracking($request->input('tracking'))]);
-        }
-        if ($request->filled('name')) {
-            $request->merge(['name' => Prealert::toUpper($request->input('name'))]);
-        }
-        if ($request->filled('description')) {
-            $request->merge(['description' => Prealert::toUpper($request->input('description'))]);
+        if ($request->boolean('nuevo')) {
+            session()->forget('public_prealert_receipt');
+
+            return redirect()->route('prealerts.public.create');
         }
 
-        $agencyIds = $this->agenciesForForm()->pluck('id')->all();
+        return view('prealerts.public', [
+            'receipt' => session('public_prealert_receipt'),
+        ]);
+    }
+
+    public function publicStore(Request $request): RedirectResponse
+    {
+        $this->normalizePrealertText($request);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
-            'agency_id' => ['required', 'integer', Rule::in($agencyIds)],
+            'agency_name' => ['required', 'string', 'max:120'],
             'tracking' => [
                 'required',
                 'string',
@@ -111,16 +115,43 @@ class PrealertController extends Controller
             'service_type' => ['required', ServiceType::routeRule()],
             'description' => ['nullable', 'string', 'max:500'],
         ], [
-            'name.required' => 'Escriba el nombre.',
-            'agency_id.required' => 'Seleccione la agencia.',
-            'agency_id.in' => 'No tiene permiso para esa agencia.',
-            'tracking.required' => 'Escriba el tracking.',
+            'name.required' => 'Escriba el nombre del cliente en el paquete.',
+            'agency_name.required' => 'Escriba el nombre de su agencia.',
+            'tracking.required' => 'Escriba el tracking del paquete.',
             'tracking.min' => 'El tracking debe tener al menos 8 caracteres.',
             'tracking.regex' => 'El tracking solo puede llevar letras y números.',
             'tracking.unique' => 'Este tracking ya tiene una prealerta.',
             'service_type.required' => 'Seleccione si el servicio es aéreo o marítimo.',
             'service_type.in' => 'Seleccione un servicio válido.',
         ]);
+
+        $prealert = Prealert::create([
+            'name' => $data['name'],
+            'agency_id' => null,
+            'agency_name' => $data['agency_name'],
+            'tracking' => $data['tracking'],
+            'service_type' => ServiceType::normalize($data['service_type']),
+            'description' => filled($data['description'] ?? null) ? $data['description'] : null,
+            'status' => Prealert::STATUS_PENDING,
+            'created_by' => $request->user()?->id,
+        ]);
+
+        session(['public_prealert_receipt' => [
+            'tracking' => $prealert->tracking,
+            'name' => $prealert->name,
+            'agency_name' => $prealert->agency_name,
+            'service_label' => ServiceType::label($prealert->service_type),
+            'notes' => $prealert->description,
+            'status' => 'Prealertado',
+        ]]);
+
+        return redirect()->route('prealerts.public.create');
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $agencyIds = $this->agenciesForForm()->pluck('id')->all();
+        $data = $this->validatedPrealertPayload($request, $agencyIds);
 
         $this->ensureUserCanAccessAgencyId((int) $data['agency_id']);
 
@@ -129,7 +160,7 @@ class PrealertController extends Controller
             'agency_id' => (int) $data['agency_id'],
             'tracking' => $data['tracking'],
             'service_type' => ServiceType::normalize($data['service_type']),
-            'description' => $data['description'] ?? null,
+            'description' => filled($data['description'] ?? null) ? $data['description'] : null,
             'status' => Prealert::STATUS_PENDING,
             'created_by' => $request->user()->id,
         ]);
@@ -158,18 +189,44 @@ class PrealertController extends Controller
 
     public function show(Prealert $prealert): View
     {
-        $this->ensureUserCanAccessAgencyId((int) $prealert->agency_id);
+        $this->ensureUserCanAccessAgencyId($prealert->agency_id ? (int) $prealert->agency_id : null);
         $prealert->load(['agency', 'creator:id,name', 'preregistration:id,warehouse_code,tracking_external,status']);
+        $isClientView = (bool) auth()->user()?->isAgencyUser();
 
         return view('prealerts.show', [
             'prealert' => $prealert,
-            'isClientView' => (bool) auth()->user()?->isAgencyUser(),
+            'isClientView' => $isClientView,
+            'canAssignAgency' => ! $isClientView && $this->userAllowedAgencyIds() === null,
+            'agencies' => ! $isClientView ? $this->agenciesForForm() : collect(),
         ]);
+    }
+
+    public function assignAgency(Request $request, Prealert $prealert): RedirectResponse
+    {
+        abort_unless($this->userAllowedAgencyIds() === null, 403, 'No autorizado.');
+
+        $agencyIds = $this->agenciesForForm()->pluck('id')->all();
+        $data = $request->validate([
+            'agency_id' => ['required', 'integer', Rule::in($agencyIds)],
+        ], [
+            'agency_id.required' => 'Seleccione la agencia.',
+            'agency_id.in' => 'Seleccione una agencia válida.',
+        ]);
+
+        $prealert->update(['agency_id' => (int) $data['agency_id']]);
+        $prealert->load('preregistration');
+        if ($prealert->preregistration && ! $prealert->preregistration->agency_id) {
+            $prealert->preregistration->update(['agency_id' => (int) $data['agency_id']]);
+        }
+
+        return redirect()
+            ->route('prealerts.show', $prealert)
+            ->with('success', 'Agencia asignada.');
     }
 
     public function destroy(Prealert $prealert): RedirectResponse
     {
-        $this->ensureUserCanAccessAgencyId((int) $prealert->agency_id);
+        $this->ensureUserCanAccessAgencyId($prealert->agency_id ? (int) $prealert->agency_id : null);
 
         if ($prealert->status === Prealert::STATUS_MATCHED) {
             return redirect()
@@ -196,5 +253,56 @@ class PrealertController extends Controller
         }
 
         return $query->get(['id', 'code', 'name', 'account_type', 'is_main', 'parent_agency_id']);
+    }
+
+    private function normalizePrealertText(Request $request): void
+    {
+        if ($request->filled('tracking')) {
+            $request->merge(['tracking' => Prealert::normalizeTracking($request->input('tracking'))]);
+        }
+        if ($request->filled('name')) {
+            $request->merge(['name' => Prealert::toUpper($request->input('name'))]);
+        }
+        if ($request->filled('agency_name')) {
+            $request->merge(['agency_name' => Prealert::toUpper($request->input('agency_name'))]);
+        }
+        if ($request->filled('description')) {
+            $request->merge(['description' => Prealert::toUpper($request->input('description'))]);
+        }
+    }
+
+    /**
+     * @param  list<int>  $agencyIds
+     * @param  array<string, string>  $extraMessages
+     * @return array<string, mixed>
+     */
+    private function validatedPrealertPayload(Request $request, array $agencyIds, array $extraMessages = []): array
+    {
+        $this->normalizePrealertText($request);
+
+        return $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'agency_id' => ['required', 'integer', Rule::in($agencyIds)],
+            'tracking' => [
+                'required',
+                'string',
+                'min:8',
+                'max:48',
+                'regex:/^[A-Z0-9]+$/',
+                Rule::unique('prealerts', 'tracking'),
+            ],
+            'service_type' => ['required', ServiceType::routeRule()],
+            'description' => ['nullable', 'string', 'max:500'],
+        ], array_merge([
+            'name.required' => 'Escriba el nombre del cliente en el paquete.',
+            'agency_id.required' => 'Seleccione la agencia.',
+            'agency_id.in' => 'No tiene permiso para esa agencia.',
+            'tracking.required' => 'Escriba el tracking del paquete.',
+            'tracking.min' => 'El tracking debe tener al menos 8 caracteres.',
+            'tracking.regex' => 'El tracking solo puede llevar letras y números.',
+            'tracking.unique' => 'Este tracking ya tiene una prealerta.',
+            'service_type.required' => 'Seleccione si el servicio es aéreo o marítimo.',
+            'service_type.in' => 'Seleccione un servicio válido.',
+        ], $extraMessages));
     }
 }

@@ -28,7 +28,9 @@
             <a href="{{ route('agencies.show', $agency) }}" class="mb-btn mb-btn-secondary">Ver cliente</a>
             <a href="{{ route('accounting.credit-notes.create', ['agency_id' => $agency->id]) }}" class="mb-btn mb-btn-secondary">Nota de crédito</a>
             <button type="button" class="mb-btn mb-btn-secondary" onclick="window.print()">Imprimir</button>
+            @if(auth()->user()?->canRecordPayments())
             <a href="{{ route('accounting.payments.create', ['agency_id' => $agency->id]) }}" class="mb-btn mb-btn-primary">Registrar cobro</a>
+            @endif
         </x-slot:actions>
         <x-slot:strip>
             <span class="mb-strip-label">Cliente</span>
@@ -256,7 +258,9 @@
                     <tr>
                         <td colspan="6" class="st-empty">
                             Sin cobros registrados.
+                            @if(auth()->user()?->canRecordPayments())
                             <a href="{{ route('accounting.payments.create', ['agency_id' => $agency->id]) }}" class="st-link no-print">Registrar el primero</a>
+                            @endif
                         </td>
                     </tr>
                     @endforelse

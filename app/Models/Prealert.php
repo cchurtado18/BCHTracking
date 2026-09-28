@@ -16,6 +16,7 @@ class Prealert extends Model
     protected $fillable = [
         'name',
         'agency_id',
+        'agency_name',
         'tracking',
         'service_type',
         'description',
@@ -75,7 +76,7 @@ class Prealert extends Model
             'service_type' => $this->service_type,
             'service_label' => \App\Support\ServiceType::label($this->service_type),
             'agency_id' => $this->agency_id,
-            'agency_name' => $this->agency?->listingAccountLabel(),
+            'agency_name' => $this->agencyDisplayLabel() !== '—' ? $this->agencyDisplayLabel() : null,
             'agency_code' => $this->agency?->code,
         ];
     }
@@ -127,6 +128,17 @@ class Prealert extends Model
         return $prealert;
     }
 
+    public function agencyDisplayLabel(): string
+    {
+        if ($this->agency) {
+            return $this->agency->listingAccountLabel();
+        }
+
+        $typed = trim((string) $this->agency_name);
+
+        return $typed !== '' ? $typed : '—';
+    }
+
     public function statusLabel(): string
     {
         return match ($this->status) {
@@ -162,6 +174,16 @@ class Prealert extends Model
     }
 
     protected function getDescriptionAttribute(?string $value): ?string
+    {
+        return self::toUpper($value);
+    }
+
+    protected function setAgencyNameAttribute(?string $value): void
+    {
+        $this->attributes['agency_name'] = self::toUpper($value);
+    }
+
+    protected function getAgencyNameAttribute(?string $value): ?string
     {
         return self::toUpper($value);
     }

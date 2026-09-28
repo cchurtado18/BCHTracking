@@ -543,18 +543,14 @@ class AccountingInvoiceController extends Controller
     private function applyInvoiceFilters($query, Request $request): void
     {
         $isClient = auth()->user()?->isAgencyUser();
+        $canSeeVoid = ! $isClient && (bool) auth()->user()?->canVoidInvoices();
 
-        if ($isClient || ($request->input('status') !== 'void' && ! $request->boolean('include_void'))) {
+        if (! $canSeeVoid || ($request->input('status') !== 'void' && ! $request->boolean('include_void'))) {
             $query->where('status', '!=', 'void');
         }
 
         if ($request->filled('status') && ! ($isClient && $request->input('status') === 'void')) {
             $query->where('status', $request->input('status'));
-        }
-
-        if ($request->filled('client')) {
-            $name = trim((string) $request->client);
-            $query->whereHas('agency', fn ($q) => $q->where('name', 'like', "%{$name}%"));
         }
 
         if ($issuedAt = QueryDate::parse($request, 'issued_at')) {
@@ -566,13 +562,20 @@ class AccountingInvoiceController extends Controller
             $query->whereIn('agency_id', $allowed);
         }
 
-        if ($request->filled('search')) {
-            $s = trim((string) $request->search);
-            $query->where(function ($q) use ($s) {
-                $q->where('folio', 'like', "%{$s}%")
-                    ->orWhereHas('deliveryNote', fn ($dq) => $dq->where('code', 'like', "%{$s}%"))
-                    ->orWhereHas('deliveryNotes', fn ($dq) => $dq->where('code', 'like', "%{$s}%"))
-                    ->orWhereHas('agency', fn ($aq) => $aq->where('name', 'like', "%{$s}%"));
+        $term = trim((string) ($request->filled('search')
+            ? $request->input('search')
+            : $request->input('client', '')));
+
+        if ($term !== '') {
+            $like = '%'.$term.'%';
+            $query->where(function ($q) use ($like) {
+                $q->where('folio', 'like', $like)
+                    ->orWhereHas('deliveryNote', fn ($dq) => $dq->where('code', 'like', $like))
+                    ->orWhereHas('deliveryNotes', fn ($dq) => $dq->where('code', 'like', $like))
+                    ->orWhereHas('agency', function ($aq) use ($like) {
+                        $aq->where('name', 'like', $like)
+                            ->orWhere('code', 'like', $like);
+                    });
             });
         }
     }

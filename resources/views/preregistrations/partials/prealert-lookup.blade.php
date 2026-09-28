@@ -47,7 +47,7 @@ window.skylinkRenderPrealertNotice = function (host, data) {
         return;
     }
     var agency = [data.agency_code, data.agency_name].filter(Boolean).join(' · ');
-    host.innerHTML = '<p class="prealert-notice-title">Este paquete ya fue prealertado</p>'
+    host.innerHTML = '<p class="prealert-notice-title">Alerta: este tracking fue prealertado</p>'
         + '<p class="prealert-notice-meta"><strong>' + window.skylinkEscapeHtml(data.name || '') + '</strong>'
         + (data.service_label ? ' · ' + window.skylinkEscapeHtml(data.service_label) : '')
         + (agency ? ' · ' + window.skylinkEscapeHtml(agency) : '')

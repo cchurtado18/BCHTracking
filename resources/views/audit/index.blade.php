@@ -16,7 +16,9 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6M7.5 3.75h9a1.5 1.5 0 0 1 1.5 1.5v13.5a1.5 1.5 0 0 1-1.5 1.5h-9a1.5 1.5 0 0 1-1.5-1.5V5.25a1.5 1.5 0 0 1 1.5-1.5Z"/></svg>
         </x-slot:icon>
         <x-slot:actions>
-            <span class="mb-btn mb-btn-secondary">{{ number_format($logs->total()) }} {{ $logs->total() === 1 ? 'evento' : 'eventos' }}</span>
+            @if(auth()->user()?->is_admin)
+            <a href="{{ route('audit.trashed') }}" class="mb-btn mb-btn-secondary">Eliminados</a>
+            @endif
         </x-slot:actions>
     </x-module-banner>
 
@@ -36,11 +38,19 @@
             <span class="cx-kpi-value">{{ number_format($statsUpdated ?? 0) }}</span>
             <span class="cx-kpi-note">Cambios de datos</span>
         </div>
+        @if(auth()->user()?->is_admin)
+        <a href="{{ route('audit.trashed') }}" class="cx-kpi-card cx-kpi-card-link">
+            <span class="cx-kpi-label">Eliminados</span>
+            <span class="cx-kpi-value">{{ number_format($restorableCount ?? 0) }}</span>
+            <span class="cx-kpi-note">Preregistros para recuperar</span>
+        </a>
+        @else
         <div class="cx-kpi-card">
             <span class="cx-kpi-label">Eliminados</span>
             <span class="cx-kpi-value">{{ number_format($statsDeleted ?? 0) }}</span>
             <span class="cx-kpi-note">Bajas o anulaciones</span>
         </div>
+        @endif
     </div>
 
     <div class="cx-card cx-filters-card">
@@ -162,6 +172,8 @@
 .cx-page { --cx-navy:#0A2D6F; --cx-blue:#1E4FA8; --cx-line:#E8EEF8; --cx-soft:#F4F8FD; padding:1.15rem 0 2.25rem; max-width:96rem; margin:0 auto; width:100%; }
 .cx-kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0.75rem; margin-bottom:1.15rem; }
 .cx-kpi-card { background:#fff; border:1px solid var(--cx-line); border-radius:0.85rem; padding:0.9rem 1.05rem; box-shadow:0 2px 8px rgba(15,23,42,0.04); display:flex; flex-direction:column; gap:0.28rem; }
+.cx-kpi-card-link { text-decoration:none; color:inherit; transition:border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease; }
+.cx-kpi-card-link:hover { border-color:#1E4FA8; box-shadow:0 6px 14px rgba(10,45,111,0.12); transform:translateY(-1px); color:inherit; }
 .cx-kpi-label { font-size:0.66rem; font-weight:800; text-transform:uppercase; letter-spacing:0.07em; color:#94a3b8; }
 .cx-kpi-value { font-size:1.35rem; font-weight:800; letter-spacing:-0.02em; }
 .cx-kpi-note { font-size:0.7rem; color:#94a3b8; }

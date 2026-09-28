@@ -141,7 +141,7 @@
                         <span class="prealerts-name" title="{{ $prealert->name }}">{{ $prealert->name }}</span>
                     </td>
                     <td>
-                        <span class="prealerts-agency" title="{{ $prealert->agency?->listingAccountLabel() }}">{{ $prealert->agency?->listingAccountLabel() ?: '—' }}</span>
+                        <span class="prealerts-agency" title="{{ $prealert->agencyDisplayLabel() }}">{{ $prealert->agencyDisplayLabel() }}</span>
                     </td>
                     <td>
                         <span class="prealerts-badge prealerts-badge-{{ strtolower($prealert->service_type ?? '') }}">

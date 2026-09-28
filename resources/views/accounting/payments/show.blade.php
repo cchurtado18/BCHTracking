@@ -95,7 +95,7 @@
     </div>
     @endif
 
-    @if(! $payment->isVoid())
+    @if(! $payment->isVoid() && auth()->user()?->canRecordPayments())
     <div class="cb-card cb-void-card">
         <div class="cb-section-head">
             <h2 class="cb-section-title">Cancelar cobro</h2>

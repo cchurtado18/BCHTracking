@@ -155,6 +155,10 @@ class User extends Authenticatable
             };
         }
 
+        if ($key === Permission::MODULE_DELIVERIES && $this->hasPermission(Permission::ACTION_EDIT_DELIVERY_NOTE)) {
+            return true;
+        }
+
         return $this->hasPermission($key);
     }
 
@@ -169,6 +173,26 @@ class User extends Authenticatable
     public function canEditDeliveryNotes(): bool
     {
         return $this->hasPermission(Permission::ACTION_EDIT_DELIVERY_NOTE);
+    }
+
+    public function canSendInvoices(): bool
+    {
+        return $this->hasPermission(Permission::ACTION_SEND_INVOICE);
+    }
+
+    public function canRecordPayments(): bool
+    {
+        return $this->hasPermission(Permission::ACTION_RECORD_PAYMENT);
+    }
+
+    public function canVoidInvoices(): bool
+    {
+        return $this->hasPermission(Permission::ACTION_VOID_INVOICE);
+    }
+
+    public function canManageClientAccess(): bool
+    {
+        return $this->hasPermission(Permission::ACTION_MANAGE_CLIENT_ACCESS);
     }
 
     public function homePath(): string

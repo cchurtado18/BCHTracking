@@ -325,7 +325,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
             return;
         }
         var agency = [data.agency_code, data.agency_name].filter(Boolean).join(' · ');
-        prealertEl.textContent = 'Prealertado: ' + (data.name || codeFromData(data))
+        prealertEl.textContent = 'Alerta: este tracking fue prealertado · ' + (data.name || codeFromData(data))
             + (data.service_label ? ' · ' + data.service_label : '')
             + (agency ? ' · ' + agency : '');
         prealertEl.hidden = false;

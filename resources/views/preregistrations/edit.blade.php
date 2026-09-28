@@ -18,7 +18,7 @@
         <x-slot:actions>
             <a href="{{ route('preregistrations.index') }}" class="mb-btn mb-btn-secondary">Lista de preregistros</a>
             @if(auth()->user()?->hasPermission(\App\Support\Permission::ACTION_DELETE_PREREGISTRATION) && $preregistration->status === 'PHOTO_PENDING')
-            <form action="{{ route('preregistrations.destroy', $preregistration->id) }}" method="POST" onsubmit="return confirm('¿Eliminar este preregistro y todas sus fotos? Esta acción no se puede deshacer.');">
+            <form action="{{ route('preregistrations.destroy', $preregistration->id) }}" method="POST" onsubmit="return confirm('¿Eliminar este preregistro? Desaparecerá de la lista. Un administrador puede recuperarlo desde Auditoría durante 7 días.');">
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="mb-btn mb-btn-danger">Eliminar preregistro</button>
@@ -239,7 +239,7 @@
                     <a href="{{ route('preregistrations.show', $preregistration->id) }}" class="preregs-btn preregs-btn-secondary preregs-photo-empty-btn">Ir al detalle</a>
                 </div>
                 @if(auth()->user()?->hasPermission(\App\Support\Permission::ACTION_DELETE_PREREGISTRATION) && $preregistration->status === 'PHOTO_PENDING')
-                <form method="POST" action="{{ route('preregistrations.destroy', $preregistration->id) }}" class="preregs-photo-delete-form" onsubmit="return confirm('¿Eliminar este preregistro y todas sus fotos? Esta acción no se puede deshacer.');">
+                <form method="POST" action="{{ route('preregistrations.destroy', $preregistration->id) }}" class="preregs-photo-delete-form" onsubmit="return confirm('¿Eliminar este preregistro? Desaparecerá de la lista. Un administrador puede recuperarlo desde Auditoría durante 7 días.');">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="preregs-photo-delete-action">
@@ -284,7 +284,7 @@
                     @endforeach
                 </div>
                 @if(auth()->user()?->hasPermission(\App\Support\Permission::ACTION_DELETE_PREREGISTRATION) && $preregistration->status === 'PHOTO_PENDING')
-                <form method="POST" action="{{ route('preregistrations.destroy', $preregistration->id) }}" class="preregs-photo-delete-form" onsubmit="return confirm('¿Eliminar este preregistro y todas sus fotos? Esta acción no se puede deshacer.');">
+                <form method="POST" action="{{ route('preregistrations.destroy', $preregistration->id) }}" class="preregs-photo-delete-form" onsubmit="return confirm('¿Eliminar este preregistro? Desaparecerá de la lista. Un administrador puede recuperarlo desde Auditoría durante 7 días.');">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="preregs-photo-delete-action">

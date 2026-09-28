@@ -232,6 +232,9 @@
 .prealerts-fields { display: grid; grid-template-columns: 1fr; gap: 1rem 1.5rem; }
 @media (min-width: 640px) { .prealerts-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .prealerts-data-field { display: flex; flex-direction: column; gap: 0.22rem; min-width: 0; }
+.prealerts-assign-form { margin-top: 0.7rem; }
+.prealerts-assign-row { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
+.prealerts-assign-row .prealerts-select { flex: 1 1 12rem; min-width: 0; }
 .prealerts-data-field--full { grid-column: 1 / -1; }
 .prealerts-data-label { font-size: 0.66rem; font-weight: 700; color: #94a3b8; letter-spacing: 0.07em; text-transform: uppercase; }
 .prealerts-data-value { font-size: 0.92rem; font-weight: 650; color: #0f172a; word-break: break-word; }

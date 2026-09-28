@@ -261,6 +261,77 @@ class AccountingInvoiceFromDeliveryNoteTest extends TestCase
             ->assertRedirect(route('accounting.invoices.create-from-note', $note));
     }
 
+    public function test_invoice_index_search_matches_note_client_folio_and_code(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        ['note' => $note, 'agency' => $agency] = $this->seedNoteWithPackages();
+
+        $this->actingAs($admin)->post(route('accounting.invoices.store-from-note', $note), [
+            'rate_air' => 1,
+            'rate_sea' => 1,
+            'exchange_rate' => 36,
+        ])->assertRedirect();
+
+        $match = AccountingInvoice::query()->where('agency_id', $agency->id)->first();
+        $this->assertNotNull($match);
+
+        $otherAgency = Agency::create([
+            'name' => 'Otra Agencia Busqueda',
+            'code' => 'Z777',
+            'phone' => '1111-0000',
+            'department' => 'Managua',
+            'is_active' => true,
+            'is_main' => false,
+        ]);
+        $otherNote = DeliveryNote::create([
+            'code' => 'SLO-7777',
+            'agency_id' => $otherAgency->id,
+        ]);
+        $otherInvoice = AccountingInvoice::create([
+            'folio' => 'FP-OTHER-SEARCH',
+            'delivery_note_id' => $otherNote->id,
+            'agency_id' => $otherAgency->id,
+            'status' => 'issued',
+            'issued_at' => now()->toDateString(),
+            'total_lbs' => 1,
+            'total_usd' => 10,
+            'total_cor' => 360,
+            'exchange_rate' => 36,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.index'))
+            ->assertOk()
+            ->assertSee('name="search"', false)
+            ->assertSee('Hoja, cliente, folio o código')
+            ->assertSee($match->folio)
+            ->assertSee($otherInvoice->folio);
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.index', ['search' => 'SLO-9501']))
+            ->assertOk()
+            ->assertSee($match->folio)
+            ->assertDontSee($otherInvoice->folio);
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.index', ['search' => 'Factura Test']))
+            ->assertOk()
+            ->assertSee($match->folio)
+            ->assertDontSee($otherInvoice->folio);
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.index', ['search' => $match->folio]))
+            ->assertOk()
+            ->assertSee($match->folio)
+            ->assertDontSee($otherInvoice->folio);
+
+        $this->actingAs($admin)
+            ->get(route('accounting.invoices.index', ['search' => 'F901']))
+            ->assertOk()
+            ->assertSee($match->folio)
+            ->assertDontSee($otherInvoice->folio);
+    }
+
     public function test_admin_can_start_create_from_invoices_module(): void
     {
         $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);

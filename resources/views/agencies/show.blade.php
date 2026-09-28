@@ -108,13 +108,13 @@
                             <div class="agency-user-head">
                                 <span><strong>Correo:</strong> <span class="agency-code">{{ $agencyUser->email }}</span> <span class="agency-muted">({{ $agencyUser->name }})</span></span>
                                 @auth
-                                @if(auth()->user()->is_admin)
+                                @if(auth()->user()->canManageClientAccess())
                                 <a href="{{ route('agencies.users.edit', [$agency, $agencyUser]) }}" class="agency-link">Editar acceso</a>
                                 @endif
                                 @endauth
                             </div>
                             @auth
-                            @if(auth()->user()->is_admin)
+                            @if(auth()->user()->canManageClientAccess())
                             <form action="{{ route('agencies.users.reset-password', [$agency->id, $agencyUser->id]) }}" method="POST" class="agency-reset-form">
                                 @csrf
                                 <p class="agency-reset-label">Restablecer contraseña (si la olvidó)</p>
@@ -129,14 +129,14 @@
                         </li>
                         @endforeach
                     </ul>
-                    @if(!auth()->user() || !auth()->user()->is_admin)
+                    @if(!auth()->user()?->canManageClientAccess())
                     <p class="agency-alert agency-alert-amber">La contraseña no se muestra por seguridad. Si la olvidaron, use «¿Olvidó su contraseña?» en la pantalla de login.</p>
                     @endif
                 </div>
                 @else
                 <div class="agency-users-block">
                     <p class="agency-muted">Esta cuenta no tiene acceso al panel.</p>
-                    @if(auth()->user()?->is_admin)
+                    @if(auth()->user()?->canManageClientAccess())
                     <a href="{{ route('agencies.users.create', $agency) }}" class="agency-link">Crear acceso del cliente</a>
                     @endif
                 </div>

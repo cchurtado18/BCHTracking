@@ -12,8 +12,9 @@
         default => 'inv-status--gray',
     };
     $serviceLabels = \App\Support\ServiceType::options();
-    $isAdmin = auth()->user()?->is_admin;
     $canCreateInvoice = auth()->user()?->canCreateInvoices();
+    $canSendInvoice = auth()->user()?->canSendInvoices();
+    $canVoidInvoice = auth()->user()?->canVoidInvoices();
     $isClientView = auth()->user()?->isAgencyUser();
 @endphp
 <div class="inv-page">
@@ -68,12 +69,18 @@
 
     <div class="inv-card inv-filters-card">
         <form method="GET" action="{{ route('accounting.invoices.index') }}" class="inv-filters-form">
-            @unless($isClientView)
-            <div class="inv-field">
-                <label class="inv-label" for="client">Cliente</label>
-                <input type="text" name="client" id="client" class="inv-input" value="{{ request('client') }}" placeholder="Buscar cliente…">
+            <div class="inv-field inv-field-search">
+                <label class="inv-label" for="search">Buscar</label>
+                <input
+                    type="search"
+                    name="search"
+                    id="search"
+                    class="inv-input"
+                    value="{{ request('search', request('client')) }}"
+                    placeholder="Hoja, cliente, folio o código…"
+                    autocomplete="off"
+                >
             </div>
-            @endunless
             <div class="inv-field">
                 <label class="inv-label" for="issued_at">Fecha</label>
                 <input type="date" name="issued_at" id="issued_at" class="inv-input" value="{{ request('issued_at') }}">
@@ -83,11 +90,13 @@
                 <select name="status" id="status" class="inv-input">
                     <option value="">Todos</option>
                     @foreach(['issued'=>'Pendiente','partially_paid'=>'Parcial','paid'=>'Pagado','void'=>'Anulada'] as $val => $label)
+                    @if($val !== 'void' || $canVoidInvoice)
                     <option value="{{ $val }}" @selected(request('status') === $val)>{{ $label }}</option>
+                    @endif
                     @endforeach
                 </select>
             </div>
-            @if($isAdmin)
+            @if($canVoidInvoice)
             <label class="inv-check">
                 <input type="checkbox" name="include_void" value="1" @checked(request()->boolean('include_void'))>
                 Incluir anuladas
@@ -180,7 +189,7 @@
                             <a href="{{ route('accounting.invoices.pdf', $invoice) }}" class="inv-icon-btn" title="Descargar voucher PDF">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
                             </a>
-                            @if($isAdmin)
+                            @if($canSendInvoice)
                             <form action="{{ route('accounting.invoices.send', $invoice) }}" method="POST" class="inv-form-inline" onsubmit="return confirm('¿Enviar la factura {{ addslashes($invoice->folio) }} a {{ addslashes($email ?: '—') }}?');">
                                 @csrf
                                 <button type="submit" class="inv-icon-btn {{ $email ? '' : 'is-disabled' }} {{ $invoice->emailed_at ? 'is-sent' : '' }}" title="{{ $email ? ($invoice->emailed_at ? 'Reenviar a '.$email : 'Enviar a '.$email) : 'Sin correo registrado' }}" @disabled(! $email)>
@@ -331,6 +340,7 @@
 .inv-filters-card { padding: 0.9rem 1.1rem; overflow: visible; }
 .inv-filters-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.7rem; }
 .inv-field { display: flex; flex-direction: column; gap: 0.28rem; min-width: 9rem; flex: 1; max-width: 16rem; }
+.inv-field-search { min-width: 16rem; max-width: 28rem; flex: 2; }
 .inv-label { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: #94a3b8; }
 .inv-input {
     padding: 0.52rem 0.7rem;
@@ -494,6 +504,7 @@
 @media (max-width: 768px) {
     .inv-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .inv-field { max-width: none; }
+    .inv-field-search { max-width: none; }
 }
 </style>
 @endsection

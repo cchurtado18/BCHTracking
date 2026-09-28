@@ -6,7 +6,7 @@
         <div id="guest-choice" class="guest-choice" style="{{ $showForm ? 'display: none;' : '' }}">
             <p class="pt-kicker">Bienvenido</p>
             <h1 class="pt-heading">¿Qué desea hacer?</h1>
-            <p class="pt-lead">Elija cómo entrar. El rastreo no requiere cuenta.</p>
+            <p class="pt-lead">Elija cómo entrar. El rastreo y la prealerta no requieren cuenta.</p>
             <div class="guest-choice-grid">
                 <button type="button" id="btn-show-login" class="guest-choice-card guest-choice-login">
                     <span class="guest-choice-icon" aria-hidden="true">
@@ -15,6 +15,13 @@
                     <span class="guest-choice-title">Iniciar sesión</span>
                     <span class="guest-choice-desc">Clientes, subagencias y personal. Use el correo de la cuenta.</span>
                 </button>
+                <a href="{{ route('prealerts.public.create') }}" target="_blank" rel="noopener noreferrer" class="guest-choice-card guest-choice-prealert">
+                    <span class="guest-choice-icon" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" /></svg>
+                    </span>
+                    <span class="guest-choice-title">Prealerta</span>
+                    <span class="guest-choice-desc">Avise el tracking de su paquete antes de que llegue a bodega</span>
+                </a>
                 <a href="{{ route('tracking.index') }}" class="guest-choice-card guest-choice-tracking">
                     <span class="guest-choice-icon" aria-hidden="true">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
@@ -92,6 +99,7 @@
         }
         .guest-choice-icon svg { width: 1.35rem; height: 1.35rem; }
         .guest-choice-tracking .guest-choice-icon { background: #EAF4FF; color: #1E4FA8; }
+        .guest-choice-prealert .guest-choice-icon { background: #FEF3C7; color: #B45309; }
         .guest-choice-title { font-size: 1.05rem; font-weight: 800; color: #0f172a; display: block; margin-bottom: 0.2rem; }
         .guest-choice-desc { font-size: 0.82rem; color: #5E6168; line-height: 1.4; }
         .guest-back-btn {
