@@ -11,7 +11,12 @@ use App\Models\AccountingPayment;
 use App\Models\Agency;
 use App\Models\AgencyClient;
 use App\Models\AuditLog;
+use App\Models\Consolidation;
+use App\Models\Delivery;
+use App\Models\DeliveryNote;
+use App\Models\Prealert;
 use App\Models\Preregistration;
+use App\Models\ReceiptNote;
 use App\Models\User;
 use App\Services\PreregistrationTrashService;
 use Illuminate\Database\Eloquent\Builder;
@@ -42,7 +47,7 @@ class AuditLogController extends Controller
         $statsTotal = $statsQuery->count();
         $statsCreated = (clone $statsQuery)->where('action', 'created')->count();
         $statsUpdated = (clone $statsQuery)->where('action', 'updated')->count();
-        $statsDeleted = (clone $statsQuery)->whereIn('action', ['deleted', 'invoice_deleted', 'expense_deleted'])->count();
+        $statsDeleted = (clone $statsQuery)->whereIn('action', ['deleted', 'invoice_deleted', 'expense_deleted', 'force_deleted'])->count();
         $restorableCount = auth()->user()?->is_admin
             ? $trash->restorableQuery()->count()
             : 0;
@@ -76,6 +81,33 @@ class AuditLogController extends Controller
         $recordUrl = match ($log->auditable_type) {
             'preregistration' => Preregistration::query()->whereKey($log->auditable_id)->exists()
                 ? route('packages.show', $log->auditable_id)
+                : null,
+            'delivery_note' => DeliveryNote::query()->whereKey($log->auditable_id)->exists()
+                ? route('salidas.hojas.edit', $log->auditable_id)
+                : null,
+            'delivery' => ($delivery = Delivery::query()->with('deliveryNote')->find($log->auditable_id))
+                ? route('salidas.hojas.edit', $delivery->delivery_note_id)
+                : null,
+            'receipt_note' => ReceiptNote::query()->whereKey($log->auditable_id)->exists()
+                ? route('receipt-notes.batch', ['receipt_note_id' => $log->auditable_id])
+                : null,
+            'prealert' => Prealert::query()->whereKey($log->auditable_id)->exists()
+                ? route('prealerts.show', $log->auditable_id)
+                : null,
+            'consolidation', 'consolidation_item' => Consolidation::query()->whereKey(
+                $log->auditable_type === 'consolidation_item'
+                    ? ($log->snapshotGet('consolidation_id') ?? 0)
+                    : $log->auditable_id
+            )->exists()
+                ? route('consolidations.show', $log->auditable_type === 'consolidation_item'
+                    ? $log->snapshotGet('consolidation_id')
+                    : $log->auditable_id)
+                : null,
+            'agency' => Agency::query()->whereKey($log->auditable_id)->exists()
+                ? route('agencies.show', $log->auditable_id)
+                : null,
+            'user' => User::query()->whereKey($log->auditable_id)->exists()
+                ? route('users.edit', $log->auditable_id)
                 : null,
             'accounting_invoice' => AccountingInvoice::query()->whereKey($log->auditable_id)->exists()
                 ? route('accounting.invoices.show', $log->auditable_id)
@@ -173,7 +205,29 @@ class AuditLogController extends Controller
             ->limit(200)
             ->pluck('id');
 
-        $query->where(function (Builder $q) use ($like, $packageIds, $invoiceIds, $creditIds) {
+        $noteIds = DeliveryNote::query()
+            ->where('code', 'like', $like)
+            ->limit(200)
+            ->pluck('id');
+
+        $receiptIds = ReceiptNote::query()
+            ->where('code', 'like', $like)
+            ->limit(200)
+            ->pluck('id');
+
+        $consolidationIds = Consolidation::query()
+            ->where('code', 'like', $like)
+            ->limit(200)
+            ->pluck('id');
+
+        $prealertIds = Prealert::query()
+            ->where(function (Builder $q) use ($like) {
+                $q->where('tracking', 'like', $like)->orWhere('name', 'like', $like);
+            })
+            ->limit(200)
+            ->pluck('id');
+
+        $query->where(function (Builder $q) use ($like, $packageIds, $invoiceIds, $creditIds, $noteIds, $receiptIds, $consolidationIds, $prealertIds) {
             $q->where('summary', 'like', $like)
                 ->orWhere('old_values', 'like', $like)
                 ->orWhere('new_values', 'like', $like)
@@ -198,6 +252,30 @@ class AuditLogController extends Controller
                 $q->orWhere(function (Builder $related) use ($creditIds) {
                     $related->where('auditable_type', 'accounting_credit_note')
                         ->whereIn('auditable_id', $creditIds);
+                });
+            }
+            if ($noteIds->isNotEmpty()) {
+                $q->orWhere(function (Builder $related) use ($noteIds) {
+                    $related->where('auditable_type', 'delivery_note')
+                        ->whereIn('auditable_id', $noteIds);
+                });
+            }
+            if ($receiptIds->isNotEmpty()) {
+                $q->orWhere(function (Builder $related) use ($receiptIds) {
+                    $related->where('auditable_type', 'receipt_note')
+                        ->whereIn('auditable_id', $receiptIds);
+                });
+            }
+            if ($consolidationIds->isNotEmpty()) {
+                $q->orWhere(function (Builder $related) use ($consolidationIds) {
+                    $related->where('auditable_type', 'consolidation')
+                        ->whereIn('auditable_id', $consolidationIds);
+                });
+            }
+            if ($prealertIds->isNotEmpty()) {
+                $q->orWhere(function (Builder $related) use ($prealertIds) {
+                    $related->where('auditable_type', 'prealert')
+                        ->whereIn('auditable_id', $prealertIds);
                 });
             }
         });
@@ -247,6 +325,56 @@ class AuditLogController extends Controller
                 ->keyBy('id')
             : collect();
 
+        $notes = ($idsByType->get('delivery_note')?->isNotEmpty() ?? false)
+            ? DeliveryNote::query()
+                ->whereIn('id', $idsByType->get('delivery_note'))
+                ->get(['id', 'code', 'agency_id'])
+                ->keyBy('id')
+            : collect();
+
+        $deliveries = ($idsByType->get('delivery')?->isNotEmpty() ?? false)
+            ? Delivery::query()
+                ->with(['deliveryNote:id,code,agency_id', 'preregistration:id,warehouse_code,tracking_external,label_name,agency_id'])
+                ->whereIn('id', $idsByType->get('delivery'))
+                ->get()
+                ->keyBy('id')
+            : collect();
+
+        $receipts = ($idsByType->get('receipt_note')?->isNotEmpty() ?? false)
+            ? ReceiptNote::query()
+                ->whereIn('id', $idsByType->get('receipt_note'))
+                ->get(['id', 'code', 'agency_id'])
+                ->keyBy('id')
+            : collect();
+
+        $prealerts = ($idsByType->get('prealert')?->isNotEmpty() ?? false)
+            ? Prealert::query()
+                ->whereIn('id', $idsByType->get('prealert'))
+                ->get(['id', 'tracking', 'name', 'agency_id', 'status'])
+                ->keyBy('id')
+            : collect();
+
+        $consolidations = ($idsByType->get('consolidation')?->isNotEmpty() ?? false)
+            ? Consolidation::query()
+                ->whereIn('id', $idsByType->get('consolidation'))
+                ->get(['id', 'code', 'service_type', 'status'])
+                ->keyBy('id')
+            : collect();
+
+        $agencies = ($idsByType->get('agency')?->isNotEmpty() ?? false)
+            ? Agency::query()
+                ->whereIn('id', $idsByType->get('agency'))
+                ->get(['id', 'code', 'name'])
+                ->keyBy('id')
+            : collect();
+
+        $auditUsers = ($idsByType->get('user')?->isNotEmpty() ?? false)
+            ? User::query()
+                ->whereIn('id', $idsByType->get('user'))
+                ->get(['id', 'name', 'email', 'agency_id'])
+                ->keyBy('id')
+            : collect();
+
         foreach ($logs as $log) {
             $log->liveContext = match ($log->auditable_type) {
                 'preregistration' => $this->packageContext($packages->get($log->auditable_id)),
@@ -254,6 +382,30 @@ class AuditLogController extends Controller
                 'accounting_payment' => $this->paymentContext($payments->get($log->auditable_id)),
                 'accounting_credit_note' => $this->creditContext($credits->get($log->auditable_id)),
                 'accounting_expense' => $this->expenseContext($expenses->get($log->auditable_id)),
+                'delivery_note' => ($row = $notes->get($log->auditable_id))
+                    ? ['code' => $row->code, 'agency_id' => $row->agency_id]
+                    : null,
+                'delivery' => ($row = $deliveries->get($log->auditable_id))
+                    ? [
+                        'code' => $row->deliveryNote?->code ?: $row->preregistration?->warehouse_code,
+                        'agency_id' => $row->deliveryNote?->agency_id ?? $row->preregistration?->agency_id,
+                    ]
+                    : null,
+                'receipt_note' => ($row = $receipts->get($log->auditable_id))
+                    ? ['code' => $row->code, 'agency_id' => $row->agency_id]
+                    : null,
+                'prealert' => ($row = $prealerts->get($log->auditable_id))
+                    ? ['code' => $row->tracking, 'agency_id' => $row->agency_id]
+                    : null,
+                'consolidation' => ($row = $consolidations->get($log->auditable_id))
+                    ? ['code' => $row->code, 'status' => $row->status]
+                    : null,
+                'agency' => ($row = $agencies->get($log->auditable_id))
+                    ? ['code' => $row->code ?: $row->name, 'agency_id' => $row->id]
+                    : null,
+                'user' => ($row = $auditUsers->get($log->auditable_id))
+                    ? ['code' => $row->email, 'agency_id' => $row->agency_id]
+                    : null,
                 default => null,
             };
         }

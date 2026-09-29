@@ -11,7 +11,7 @@
         section="Operaciones"
         current="Editar hoja"
         title="Editar hoja de salida"
-        subtitle="Solo administradores · {{ $deliveryNote->code }}. Corrija quién retiró o quite paquetes escaneados por error."
+        subtitle="{{ $deliveryNote->code }}. Puede corregir quién retiró. Si un paquete se escaneó de más, puede quitarlo; la hoja debe conservar al menos uno para facturar."
         back-href="{{ route('salidas.index', session('deliveries_index_filters', [])) }}"
         back-label="Volver a Salidas"
     >
@@ -126,8 +126,10 @@
                         <td class="delivery-actions">
                             @if($deliveryNote->currentInvoice())
                             <span class="delivery-muted">Facturada</span>
+                            @elseif($deliveryNote->deliveries->count() <= 1)
+                            <span class="delivery-muted" title="La hoja debe conservar al menos un paquete para facturar.">Último de la hoja</span>
                             @else
-                            <form action="{{ route('salidas.hojas.remove-package', [$deliveryNote, $delivery]) }}" method="POST" class="delivery-remove-form" onsubmit="return confirm('¿Quitar este paquete de la hoja? Volverá a «Listo para retiro».');">
+                            <form action="{{ route('salidas.hojas.remove-package', [$deliveryNote, $delivery]) }}" method="POST" class="delivery-remove-form" onsubmit="return confirm('¿Quitar este paquete de la hoja? Volverá a «Listo para retiro». La hoja se conserva.');">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="delivery-btn delivery-btn-sm delivery-btn-danger">Quitar</button>

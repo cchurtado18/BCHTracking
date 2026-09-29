@@ -707,6 +707,77 @@ class AccountingInvoiceFromDeliveryNoteTest extends TestCase
         $this->assertDatabaseHas('deliveries', ['id' => $delivery->id]);
     }
 
+    public function test_cannot_remove_last_package_or_delete_delivery_note(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        $agency = Agency::create([
+            'name' => 'Cliente Hoja Unica',
+            'code' => 'H101',
+            'phone' => '2222-0000',
+            'is_active' => true,
+            'is_main' => false,
+        ]);
+        $package = Preregistration::create([
+            'intake_type' => 'COURIER',
+            'tracking_external' => 'TRK-LAST-1',
+            'warehouse_code' => '880101',
+            'label_name' => 'Paquete unico',
+            'service_type' => 'AIR',
+            'intake_weight_lbs' => 2,
+            'status' => 'DELIVERED',
+            'agency_id' => $agency->id,
+            'ready_at' => now()->subDay(),
+        ]);
+        $note = DeliveryNote::create([
+            'code' => 'SLO-8801',
+            'agency_id' => $agency->id,
+        ]);
+        $delivery = Delivery::create([
+            'delivery_note_id' => $note->id,
+            'preregistration_id' => $package->id,
+            'delivered_at' => now(),
+            'delivered_to' => 'Cliente Firma',
+            'delivery_type' => 'PICKUP',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('salidas.hojas.edit', $note))
+            ->assertOk()
+            ->assertSee('Último de la hoja')
+            ->assertDontSee('>Quitar<', false);
+
+        $this->actingAs($admin)
+            ->from(route('salidas.hojas.edit', $note))
+            ->delete(route('salidas.hojas.remove-package', [$note, $delivery]))
+            ->assertRedirect(route('salidas.hojas.edit', $note))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('delivery_notes', ['id' => $note->id, 'code' => 'SLO-8801']);
+        $this->assertDatabaseHas('deliveries', ['id' => $delivery->id]);
+        $this->assertSame('DELIVERED', $package->fresh()->status);
+    }
+
+    public function test_removing_extra_package_keeps_the_delivery_note(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        ['note' => $note] = $this->seedNoteWithPackages();
+        $deliveries = Delivery::query()->where('delivery_note_id', $note->id)->orderBy('id')->get();
+        $this->assertCount(2, $deliveries);
+        $extra = $deliveries->first();
+        $kept = $deliveries->last();
+
+        $this->actingAs($admin)
+            ->delete(route('salidas.hojas.remove-package', [$note, $extra]))
+            ->assertRedirect(route('salidas.hojas.edit', $note))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('delivery_notes', ['id' => $note->id]);
+        $this->assertDatabaseMissing('deliveries', ['id' => $extra->id]);
+        $this->assertDatabaseHas('deliveries', ['id' => $kept->id, 'delivery_note_id' => $note->id]);
+        $this->assertSame('READY', Preregistration::find($extra->preregistration_id)?->status);
+        $this->assertSame('DELIVERED', Preregistration::find($kept->preregistration_id)?->status);
+    }
+
     public function test_cannot_delete_client_with_invoice_history(): void
     {
         $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);

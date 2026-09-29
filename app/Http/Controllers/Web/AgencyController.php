@@ -490,7 +490,9 @@ class AgencyController extends Controller
         }
 
         DB::transaction(function () use ($agency) {
-            $agency->users()->delete();
+            foreach ($agency->users()->get() as $user) {
+                $user->delete();
+            }
             if ($agency->logo_path) {
                 Storage::disk('public')->delete($agency->logo_path);
             }

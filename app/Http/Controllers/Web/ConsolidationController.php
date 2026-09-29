@@ -17,14 +17,13 @@ use Illuminate\Support\Facades\DB;
 
 class ConsolidationController extends Controller
 {
-    public function __construct(protected ConsolidationService $consolidationService)
-    {
-    }
+    public function __construct(protected ConsolidationService $consolidationService) {}
 
     public function index(Request $request)
     {
         if ($request->has('clear_filters')) {
             session()->forget('consolidations_index_filters');
+
             return redirect()->route('consolidations.index');
         }
 
@@ -200,6 +199,7 @@ class ConsolidationController extends Controller
     {
         $consolidation = $this->loadResolvedConsolidation($id);
         $report = $this->consolidationService->getReport($consolidation);
+
         return view('consolidations.label', compact('consolidation', 'report'));
     }
 
@@ -247,6 +247,7 @@ class ConsolidationController extends Controller
     public function edit(string $id)
     {
         $consolidation = Consolidation::findOrFail($id);
+
         return view('consolidations.edit', compact('consolidation'));
     }
 
@@ -280,7 +281,7 @@ class ConsolidationController extends Controller
             return redirect()->route('consolidations.index')->with('error', 'Solo se pueden eliminar '.$consolidation->unitNoun(true).' abiertos.');
         }
         $unit = $consolidation->unitNounTitle();
-        $consolidation->items()->delete();
+        $consolidation->load(['items.preregistration']);
         $consolidation->delete();
 
         return redirect()->route('consolidations.index')->with('success', $unit.' eliminado.');
@@ -294,7 +295,7 @@ class ConsolidationController extends Controller
         }
         $preregId = $request->input('preregistration_id');
         $pre = Preregistration::find($preregId);
-        if (!$pre) {
+        if (! $pre) {
             return back()->with('error', 'Preregistro no encontrado.');
         }
         if ($pre->status !== 'RECEIVED_MIAMI') {
@@ -310,6 +311,7 @@ class ConsolidationController extends Controller
             'consolidation_id' => $consolidation->id,
             'preregistration_id' => $pre->id,
         ]);
+
         return back()->with('success', 'Item agregado.');
     }
 
@@ -447,6 +449,7 @@ class ConsolidationController extends Controller
         }
         try {
             $this->consolidationService->sendConsolidation($consolidation);
+
             return back()->with('success', $Unit.' enviado. Los paquetes vinculados a un preregistro pasaron a IN_TRANSIT.');
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());

@@ -32,6 +32,14 @@ class AuditLog extends Model
     {
         return match ($this->auditable_type) {
             'preregistration' => 'Paquete / Preregistro',
+            'delivery_note' => 'Hoja de salida',
+            'delivery' => 'Salida / retiro',
+            'receipt_note' => 'Nota de recepción',
+            'prealert' => 'Prealerta',
+            'consolidation' => 'Saco / consolidado',
+            'consolidation_item' => 'Ítem de consolidado',
+            'agency' => 'Cuenta',
+            'user' => 'Usuario',
             'accounting_invoice' => 'Factura PrimeTrack',
             'accounting_payment' => 'Cobro',
             'accounting_credit_note' => 'Nota de crédito',
@@ -46,6 +54,8 @@ class AuditLog extends Model
             'created' => 'Creado',
             'updated' => 'Modificado',
             'deleted' => 'Eliminado',
+            'restored' => 'Recuperado',
+            'force_deleted' => 'Eliminado definitivo',
             'admin_reset_to_miami' => 'Admin: volver a Miami',
             'admin_change_intake_type' => 'Admin: cambiar tipo de ingreso',
             'invoice_voided' => 'Factura anulada',
@@ -87,9 +97,9 @@ class AuditLog extends Model
     public function actionClass(): string
     {
         return match ($this->action) {
-            'created', 'payment_registered', 'credit_note_registered', 'expense_registered', 'invoice_emailed' => 'is-created',
+            'created', 'payment_registered', 'credit_note_registered', 'expense_registered', 'invoice_emailed', 'restored' => 'is-created',
             'updated', 'admin_change_intake_type' => 'is-updated',
-            'deleted', 'invoice_voided', 'invoice_deleted', 'payment_voided', 'credit_note_voided', 'expense_deleted' => 'is-deleted',
+            'deleted', 'invoice_voided', 'invoice_deleted', 'payment_voided', 'credit_note_voided', 'expense_deleted', 'force_deleted' => 'is-deleted',
             default => 'is-admin',
         };
     }
@@ -121,7 +131,7 @@ class AuditLog extends Model
 
     public function displayCode(): ?string
     {
-        foreach (['warehouse_code', 'folio', 'tracking_external'] as $key) {
+        foreach (['warehouse_code', 'folio', 'tracking_external', 'code'] as $key) {
             $value = $this->snapshotGet($key);
             if ($value !== null && $value !== '') {
                 return (string) $value;
@@ -164,6 +174,8 @@ class AuditLog extends Model
             'created' => 'Creado',
             'updated' => 'Modificado',
             'deleted' => 'Eliminado',
+            'restored' => 'Recuperado',
+            'force_deleted' => 'Eliminado definitivo',
             'admin_reset_to_miami' => 'Admin: volver a Miami',
             'admin_change_intake_type' => 'Admin: tipo de ingreso',
             'invoice_emailed' => 'Factura enviada',
@@ -185,6 +197,14 @@ class AuditLog extends Model
     {
         return [
             'preregistration' => 'Paquetes',
+            'delivery_note' => 'Hojas de salida',
+            'delivery' => 'Salidas / retiros',
+            'receipt_note' => 'Notas de recepción',
+            'prealert' => 'Prealertas',
+            'consolidation' => 'Sacos / consolidados',
+            'consolidation_item' => 'Ítems de consolidado',
+            'agency' => 'Cuentas',
+            'user' => 'Usuarios',
             'accounting_invoice' => 'Facturas',
             'accounting_payment' => 'Cobros',
             'accounting_credit_note' => 'Notas de crédito',
@@ -204,7 +224,30 @@ class AuditLog extends Model
     {
         return match ($key) {
             'warehouse_code' => 'Código',
+            'code' => 'Folio / hoja',
+            'tracking' => 'Tracking',
             'tracking_external' => 'Tracking',
+            'previous_note_code' => 'Hoja anterior',
+            'delivery_note_id' => 'Hoja de salida',
+            'delivered_to' => 'Retirado por',
+            'retirer_id_number' => 'Cédula de quien retira',
+            'retirer_phone' => 'Teléfono de quien retira',
+            'delivered_by' => 'Entregado por',
+            'delivery_type' => 'Tipo de salida',
+            'invoice_number' => 'Nº factura',
+            'split_into' => 'Hojas creadas',
+            'packages' => 'Paquetes',
+            'items' => 'Ítems',
+            'is_admin' => 'Administrador',
+            'is_active' => 'Activo',
+            'permissions' => 'Permisos',
+            'account_type' => 'Tipo de cuenta',
+            'billing_email' => 'Correo de facturación',
+            'tax_id' => 'RUC / cédula',
+            'agency_name' => 'Nombre de agencia',
+            'transport_number' => 'Nº transporte',
+            'unmatched_code' => 'Código sin preregistro',
+            'deleted_at' => 'Eliminado el',
             'label_name' => 'Nombre en etiqueta',
             'service_type' => 'Servicio',
             'intake_type' => 'Tipo de ingreso',
@@ -292,6 +335,12 @@ class AuditLog extends Model
                 'READY' => 'Listo para retiro',
                 'DELIVERED' => 'Entregado',
                 'CANCELLED' => 'Inactivo',
+                'OPEN' => 'Abierto',
+                'SENT' => 'Enviado',
+                'RECEIVED' => 'Recibido',
+                'pending' => 'Pendiente',
+                'matched' => 'Ingresado',
+                'cancelled' => 'Cancelada',
                 'issued' => 'Emitida',
                 'paid' => 'Pagada',
                 'void' => 'Anulada',

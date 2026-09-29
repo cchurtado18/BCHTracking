@@ -57,7 +57,7 @@
         <form method="GET" action="{{ route('audit.index') }}" class="cx-filters-form">
             <div class="cx-field cx-field-search">
                 <label class="cx-label" for="search">Buscar</label>
-                <input type="text" name="search" id="search" class="cx-input" value="{{ request('search') }}" placeholder="Código, tracking, folio, nombre…">
+                <input type="text" name="search" id="search" class="cx-input" value="{{ request('search') }}" placeholder="Hoja, código, tracking, folio, usuario…">
             </div>
             <div class="cx-field">
                 <label class="cx-label" for="action">Acción</label>

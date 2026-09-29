@@ -11,6 +11,8 @@
         'created' => ['label' => 'Creado', 'class' => 'is-created'],
         'updated' => ['label' => 'Modificado', 'class' => 'is-updated'],
         'deleted' => ['label' => 'Eliminado', 'class' => 'is-deleted'],
+        'restored' => ['label' => 'Recuperado', 'class' => 'is-created'],
+        'force_deleted' => ['label' => 'Eliminado definitivo', 'class' => 'is-deleted'],
         'admin_reset_to_miami' => ['label' => 'Admin: volver a Miami', 'class' => 'is-admin'],
         'admin_change_intake_type' => ['label' => 'Admin: tipo de ingreso', 'class' => 'is-admin'],
         'invoice_emailed' => ['label' => 'Factura enviada', 'class' => 'is-created'],
@@ -36,7 +38,7 @@
     $recipientNames = $recipientNames ?? [];
     $categoryNames = $categoryNames ?? [];
     $recordUrl = $recordUrl ?? null;
-    $highlightKeys = ['warehouse_code', 'folio', 'tracking_external', 'label_name', 'agency_id', 'agency_client_id', 'status', 'service_type', 'intake_type', 'intake_weight_lbs', 'verified_weight_lbs', 'amount_usd', 'total_usd', 'email', 'method', 'deposit_account', 'category_id'];
+    $highlightKeys = ['warehouse_code', 'folio', 'code', 'tracking_external', 'label_name', 'agency_id', 'agency_client_id', 'status', 'service_type', 'intake_type', 'intake_weight_lbs', 'verified_weight_lbs', 'amount_usd', 'total_usd', 'email', 'method', 'deposit_account', 'category_id', 'delivered_to', 'tracking'];
     $highlights = [];
     foreach ($highlightKeys as $key) {
         $value = $log->snapshotGet($key);

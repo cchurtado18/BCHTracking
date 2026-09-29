@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers\Web;
 
-use App\Http\Controllers\Controller;
 use App\Http\Controllers\Concerns\AuthorizesAgencyAccess;
+use App\Http\Controllers\Controller;
 use App\Models\Agency;
 use App\Models\Delivery;
 use App\Models\DeliveryNote;
 use App\Models\Preregistration;
+use App\Support\AuditRecorder;
 use App\Support\TrackingCode;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -1235,14 +1236,39 @@ class DeliveryController extends Controller
             'delivered_to.required' => 'El nombre de quien retira es obligatorio.',
         ]);
 
+        $first = $deliveryNote->deliveries()->first();
+        $old = [
+            'code' => $deliveryNote->code,
+            'agency_id' => $deliveryNote->agency_id,
+            'delivered_to' => $first?->delivered_to,
+            'retirer_id_number' => $first?->retirer_id_number,
+            'retirer_phone' => $first?->retirer_phone,
+        ];
+
         $count = $deliveryNote->deliveries()->update([
             'delivered_to' => $validated['delivered_to'],
             'retirer_id_number' => $validated['retirer_id_number'] ?: null,
             'retirer_phone' => $validated['retirer_phone'] ?: null,
         ]);
 
+        AuditRecorder::record(
+            'delivery_note',
+            $deliveryNote->id,
+            'updated',
+            "Hoja {$deliveryNote->code}: datos de quien retira actualizados (".($old['delivered_to'] ?: '—')." → {$validated['delivered_to']})",
+            $old,
+            [
+                'code' => $deliveryNote->code,
+                'agency_id' => $deliveryNote->agency_id,
+                'delivered_to' => $validated['delivered_to'],
+                'retirer_id_number' => $validated['retirer_id_number'] ?: null,
+                'retirer_phone' => $validated['retirer_phone'] ?: null,
+                'salidas_actualizadas' => $count,
+            ],
+        );
+
         return redirect()->route('salidas.hojas.edit', $deliveryNote)
-            ->with('success', "Hoja actualizada ({$count} " . ($count === 1 ? 'salida' : 'salidas') . ').');
+            ->with('success', "Hoja actualizada ({$count} ".($count === 1 ? 'salida' : 'salidas').').');
     }
 
     public function removeFromNote(DeliveryNote $deliveryNote, Delivery $delivery)
@@ -1258,30 +1284,25 @@ class DeliveryController extends Controller
             return back()->with('error', 'Este paquete no pertenece a la nota indicada.');
         }
 
+        if ($deliveryNote->deliveries()->count() <= 1) {
+            return back()->with('error', 'No se puede quitar el último paquete. Esta hoja es el comprobante de retiro y se necesita para facturar.');
+        }
+
         $label = $delivery->preregistration?->warehouse_code
             ?? $delivery->preregistration?->label_name
             ?? '#'.$delivery->id;
 
-        DB::transaction(function () use ($delivery, $deliveryNote) {
+        DB::transaction(function () use ($delivery) {
             $pre = Preregistration::lockForUpdate()->find($delivery->preregistration_id);
             $delivery->delete();
 
             if ($pre && $pre->status === 'DELIVERED') {
                 $pre->update(['status' => 'READY']);
             }
-
-            if ($deliveryNote->deliveries()->count() === 0) {
-                $deliveryNote->delete();
-            }
         });
 
-        if (! DeliveryNote::whereKey($deliveryNote->id)->exists()) {
-            return redirect()->route('salidas.index', session('deliveries_index_filters', []))
-                ->with('success', "Paquete {$label} quitado. La nota quedó vacía y fue eliminada.");
-        }
-
         return redirect()->route('salidas.hojas.edit', $deliveryNote)
-            ->with('success', "Paquete {$label} quitado de la nota. El paquete volvió a estado «Listo para retiro».");
+            ->with('success', "Paquete {$label} quitado de la nota. El paquete volvió a estado «Listo para retiro». La hoja se conserva para facturar.");
     }
 
     /**
@@ -1338,18 +1359,46 @@ class DeliveryController extends Controller
                         continue;
                     }
                     $newNote = $this->createDeliveryNoteForAgency($billTo);
-                    Delivery::query()
-                        ->whereIn('id', $deliveries->pluck('id')->all())
-                        ->update(['delivery_note_id' => $newNote->id]);
+                    $movedCodes = $deliveries
+                        ->map(fn ($d) => $d->preregistration?->warehouse_code ?: $d->preregistration?->tracking_external)
+                        ->filter()
+                        ->values()
+                        ->all();
+                    foreach ($deliveries as $moved) {
+                        $moved->update(['delivery_note_id' => $newNote->id]);
+                    }
 
                     $createdNotes->push($newNote->fresh('agency'));
+                    $createdNotes->last()->setAttribute('_moved_packages', $movedCodes);
                 }
 
                 $keepGroup = $groups->get($keepKey);
                 $keepAgency = $keepGroup?->first()?->preregistration?->billToAgency($sloClientsByName);
+                $originalAgencyId = $locked->agency_id;
                 if ($keepAgency && (int) $locked->agency_id !== (int) $keepAgency->id) {
                     $locked->update(['agency_id' => $keepAgency->id]);
                 }
+
+                AuditRecorder::record(
+                    'delivery_note',
+                    $locked->id,
+                    'updated',
+                    'Hoja '.$locked->code.' separada. Se creó '
+                        .$createdNotes->pluck('code')->implode(', '),
+                    [
+                        'code' => $locked->code,
+                        'agency_id' => $originalAgencyId,
+                    ],
+                    [
+                        'code' => $locked->code,
+                        'agency_id' => $locked->agency_id,
+                        'split_into' => $createdNotes->pluck('code')->all(),
+                        'packages' => $createdNotes
+                            ->flatMap(fn (DeliveryNote $n) => $n->getAttribute('_moved_packages') ?? [])
+                            ->values()
+                            ->all(),
+                    ],
+                );
 
                 return $createdNotes;
             });

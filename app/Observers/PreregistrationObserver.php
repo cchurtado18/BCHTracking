@@ -2,16 +2,13 @@
 
 namespace App\Observers;
 
-use App\Models\AuditLog;
 use App\Models\Preregistration;
 use App\Services\ConsolidationService;
-use Illuminate\Support\Facades\Request;
+use App\Support\AuditRecorder;
 
 class PreregistrationObserver
 {
-    public function __construct(private ConsolidationService $consolidations)
-    {
-    }
+    public function __construct(private ConsolidationService $consolidations) {}
 
     public function created(Preregistration $preregistration): void
     {
@@ -23,7 +20,7 @@ class PreregistrationObserver
     public function updated(Preregistration $preregistration): void
     {
         $changes = $preregistration->getChanges();
-        unset($changes['updated_at']);
+        unset($changes['updated_at'], $changes['deleted_at']);
         if (empty($changes)) {
             return;
         }
@@ -42,18 +39,34 @@ class PreregistrationObserver
         $this->log('deleted', $preregistration, $preregistration->getAttributes(), null, "Paquete eliminado (código/tracking: {$code})");
     }
 
+    public function restored(Preregistration $preregistration): void
+    {
+        $code = $preregistration->warehouse_code ?? $preregistration->tracking_external ?? '—';
+        $this->log('restored', $preregistration, ['deleted_at' => $preregistration->getOriginal('deleted_at')], [
+            'warehouse_code' => $preregistration->warehouse_code,
+            'tracking_external' => $preregistration->tracking_external,
+            'label_name' => $preregistration->label_name,
+            'agency_id' => $preregistration->agency_id,
+            'status' => $preregistration->status,
+        ], "Paquete recuperado (código/tracking: {$code})");
+    }
+
+    public function forceDeleted(Preregistration $preregistration): void
+    {
+        $code = $preregistration->warehouse_code ?? $preregistration->tracking_external ?? '—';
+        $this->log('force_deleted', $preregistration, $preregistration->getAttributes(), null, "Paquete eliminado de forma definitiva (código/tracking: {$code})");
+    }
+
     private function log(string $action, Preregistration $preregistration, ?array $oldValues, ?array $newValues, string $summary): void
     {
-        AuditLog::create([
-            'user_id' => auth()->id(),
-            'auditable_type' => 'preregistration',
-            'auditable_id' => $preregistration->id,
-            'action' => $action,
-            'summary' => $summary,
-            'old_values' => $oldValues,
-            'new_values' => $newValues,
-            'ip_address' => Request::ip(),
-        ]);
+        AuditRecorder::record(
+            'preregistration',
+            $preregistration->id,
+            $action,
+            $summary,
+            $oldValues,
+            $newValues,
+        );
     }
 
     private function buildUpdateSummary(Preregistration $preregistration, array $old, array $new): string
@@ -65,33 +78,34 @@ class PreregistrationObserver
                 $newVal = $new['verified_weight_lbs'];
                 $parts[] = "Peso verificado: {$oldVal} → {$newVal} lbs";
             }
-            if (isset($new['intake_weight_lbs']) && !isset($new['verified_weight_lbs'])) {
+            if (isset($new['intake_weight_lbs']) && ! isset($new['verified_weight_lbs'])) {
                 $oldVal = $old['intake_weight_lbs'] ?? '—';
                 $newVal = $new['intake_weight_lbs'];
                 $parts[] = "Peso ingreso: {$oldVal} → {$newVal} lbs";
             }
         }
         if (isset($new['status'])) {
-            $parts[] = "Estado: " . ($old['status'] ?? '—') . " → " . $new['status'];
+            $parts[] = 'Estado: '.($old['status'] ?? '—').' → '.$new['status'];
         }
         if (isset($new['agency_id'])) {
             $parts[] = "Agencia asignada (ID: {$new['agency_id']})";
         }
         if (isset($new['label_name'])) {
-            $parts[] = "Nombre/etiqueta modificado";
+            $parts[] = 'Nombre/etiqueta modificado';
         }
         if (isset($new['tracking_external'])) {
-            $parts[] = "Tracking modificado";
+            $parts[] = 'Tracking modificado';
         }
         if (isset($new['label_print_count'])) {
-            $parts[] = "Etiqueta reimpresa";
+            $parts[] = 'Etiqueta reimpresa';
         }
         $rest = array_diff_key($new, array_flip(['intake_weight_lbs', 'verified_weight_lbs', 'status', 'agency_id', 'label_name', 'tracking_external', 'label_print_count', 'updated_at']));
-        if (!empty($rest)) {
-            $parts[] = "Otros campos actualizados";
+        if (! empty($rest)) {
+            $parts[] = 'Otros campos actualizados';
         }
         $code = $preregistration->warehouse_code ?? $preregistration->tracking_external ?? $preregistration->id;
-        return "Paquete modificado ({$code}): " . implode('; ', $parts);
+
+        return "Paquete modificado ({$code}): ".implode('; ', $parts);
     }
 
     private function linkSackIfUnmatched(Preregistration $preregistration): void
