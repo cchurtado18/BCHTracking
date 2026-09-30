@@ -177,7 +177,7 @@
                     <div class="cx-field cx-field-wide" data-only="subagency">
                         <label for="logo" class="cx-label">Logo (opcional)</label>
                         <input type="file" name="logo" id="logo" accept="image/jpeg,image/png,image/gif,image/webp" class="cx-input">
-                        <p class="cx-field-hint">PNG, JPEG, GIF o WebP. Máx. 2 MB.</p>
+                        <p class="cx-field-hint">Se ajusta solo en la etiqueta, sea ancho, cuadrado o alto. Mejor PNG transparente. Máx. 2 MB.</p>
                     </div>
                 </div>
                 <div class="cx-step-actions">

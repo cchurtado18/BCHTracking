@@ -173,7 +173,7 @@
                         </div>
                         @endif
                         <input type="file" name="logo" id="logo" accept="image/jpeg,image/png,image/gif,image/webp" class="cx-input">
-                        <p class="cx-field-hint">Se muestra en la etiqueta. PNG con fondo transparente. Máx. 2 MB.</p>
+                        <p class="cx-field-hint">Se ajusta solo en la etiqueta, sea ancho, cuadrado o alto. Mejor PNG con fondo transparente. Máx. 2 MB.</p>
                         @error('logo')<p class="cx-field-error">{{ $message }}</p>@enderror
                     </div>
                     @endunless

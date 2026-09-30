@@ -91,23 +91,59 @@
             border-radius: 0;
             padding: 12px 14px;
         }
-        .sl-top-logo {
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
+        .sl-header {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+            align-items: center;
+            gap: 10px;
+            min-height: 84px;
             margin-bottom: 10px;
-            min-height: 56px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #111;
         }
-        .sl-top-logo img {
-            max-width: 100%;
-            max-height: 56px;
+        .sl-header-provider {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 5px;
+        }
+        .sl-header-provider img {
+            max-width: 198px;
+            max-height: 52px;
+            width: auto;
+            height: auto;
             object-fit: contain;
+            object-position: left center;
         }
-        .sl-divider {
-            height: 3px;
-            background: #1e40af;
-            margin: 10px 0 16px;
+        .sl-header-address {
+            font-size: 12px;
+            line-height: 1.25;
+            font-weight: 700;
+            color: #111;
         }
+        .sl-header-rule { width: 1px; align-self: stretch; background: #111; }
+        .sl-header-agency {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 84px;
+        }
+        .sl-header-agency-frame {
+            width: 100%;
+            height: 84px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .sl-header-agency-frame img {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            object-position: center;
+        }
+        .sl-header-agency-name { font-size: 18px; font-weight: 900; color: #111; text-align: center; line-height: 1.1; padding: 0 4px; }
         .sl-tracking-global-label {
             font-size: 11px;
             color: #6b7280;
@@ -120,23 +156,30 @@
             font-weight: 800;
             color: #111;
             line-height: 1;
-            margin-bottom: 8px;
+            margin-bottom: 0;
             white-space: normal;
             overflow-wrap: anywhere;
             word-break: break-word;
         }
-        .sl-agency-box {
-            margin-top: 6px;
-            background: #f8fafc;
-            border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            padding: 12px 14px;
-            position: relative;
+        .sl-tracking-cubic {
+            font-size: 12px;
+            font-weight: 900;
+            color: #111;
+            margin-top: 4px;
         }
+        .sl-meta-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 6px 0 2px;
+            padding: 8px 0;
+            border-top: 1px solid #111;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .sl-meta-col + .sl-meta-col { border-left: 1px solid #e5e7eb; padding-left: 10px; }
         .sl-bulto-badge {
-            position: absolute;
-            right: 10px;
-            top: 10px;
+            display: inline-block;
+            margin-left: 8px;
             font-size: 11px;
             font-weight: 900;
             color: #111;
@@ -146,35 +189,9 @@
             background: #fff;
             letter-spacing: 0.02em;
             line-height: 1;
-        }
-        .sl-agency-box::before {
-            content: '';
-            position: absolute;
-            left: 14px;
-            top: 10px;
-            bottom: 10px;
-            width: 8px;
-            background: #1e40af;
-            border-radius: 8px;
-        }
-        .sl-agency-title {
-            font-size: 12px;
-            font-weight: 800;
-            color: #111827;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            margin-left: 14px;
-            margin-bottom: 4px;
-        }
-        .sl-agency-value {
-            font-size: 22px;
-            font-weight: 800;
-            color: #111;
-            margin-left: 14px;
-            line-height: 1.05;
+            vertical-align: middle;
         }
         .sl-destination-title {
-            margin-top: 18px;
             font-size: 12px;
             font-weight: 800;
             color: #6b7280;
@@ -279,33 +296,50 @@
             margin-top: 8px;
             font-weight: 600;
         }
+        .sl-care-row {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 6px;
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #e5e7eb;
+        }
+        .sl-care {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            color: #111;
+            text-align: center;
+        }
+        .sl-care svg { width: 22px; height: 22px; }
+        .sl-care span { font-size: 7px; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; line-height: 1.15; }
 
         .label-paper-narrow .label-sheet {
             width: 2.25in;
             min-height: 4in;
             padding: 6px 8px;
         }
-        .label-paper-narrow .sl-top-logo { min-height: 36px; margin-bottom: 4px; }
-        .label-paper-narrow .sl-top-logo img { max-height: 36px; }
-        .label-paper-narrow .sl-divider { margin: 4px 0 8px; height: 2px; }
-        .label-paper-narrow .sl-agency-box { padding: 8px 10px; margin-top: 4px; }
-        .label-paper-narrow .sl-agency-box::before { width: 5px; left: 10px; top: 8px; bottom: 8px; }
-        .label-paper-narrow .sl-agency-title { font-size: 9px; margin-left: 12px; }
-        .label-paper-narrow .sl-agency-value { font-size: 13px; margin-left: 12px; line-height: 1.15; }
-        .label-paper-narrow .sl-bulto-badge { font-size: 9px; padding: 1px 6px; right: 6px; top: 6px; }
+        .label-paper-narrow .sl-header { min-height: 0; gap: 6px; margin-bottom: 6px; padding-bottom: 6px; }
+        .label-paper-narrow .sl-header-provider img { max-width: 118px; max-height: 30px; }
+        .label-paper-narrow .sl-header-address { font-size: 8px; }
+        .label-paper-narrow .sl-header-agency { min-height: 44px; }
+        .label-paper-narrow .sl-header-agency-frame { height: 44px; }
+        .label-paper-narrow .sl-header-agency-name { font-size: 11px; }
+        .label-paper-narrow .sl-bulto-badge { font-size: 9px; padding: 1px 6px; margin-left: 4px; }
         .label-paper-narrow .sl-warehouse-title { font-size: 10px; margin-bottom: 4px; }
         .label-paper-narrow .sl-warehouse-code { font-size: 22px; letter-spacing: 0.05em; }
         .label-paper-narrow .sl-barcode-row { flex-wrap: wrap; gap: 4px; justify-content: center; }
         .label-paper-narrow .sl-service-mark-large { font-size: 28px; margin-bottom: 4px; margin-left: 0; }
         .label-paper-narrow .sl-tracking-global-label { font-size: 9px; }
         .label-paper-narrow .sl-tracking-global-value { font-size: 11px; line-height: 1.15; }
-        .label-paper-narrow .sl-tracking-row {
-            grid-template-columns: 1fr;
-            gap: 2px;
-            margin-bottom: 6px;
-        }
-        .label-paper-narrow .sl-tracking-cubic { text-align: left; font-size: 10px; white-space: normal; }
-        .label-paper-narrow .sl-destination-title { font-size: 10px; margin-top: 6px; }
+        .label-paper-narrow .sl-meta-2 { grid-template-columns: 1fr; gap: 4px; margin-bottom: 6px; }
+        .label-paper-narrow .sl-meta-col + .sl-meta-col { border-left: none; padding-left: 0; border-top: 1px solid #e5e7eb; padding-top: 4px; }
+        .label-paper-narrow .sl-tracking-cubic { font-size: 10px; }
+        .label-paper-narrow .sl-destination-title { font-size: 10px; margin-top: 0; }
+        .label-paper-narrow .sl-care-row { gap: 3px; margin-top: 6px; padding-top: 6px; }
+        .label-paper-narrow .sl-care svg { width: 14px; height: 14px; }
+        .label-paper-narrow .sl-care span { font-size: 6px; }
         .label-paper-narrow .sl-destination-name { font-size: 14px; }
         .label-paper-narrow .sl-grid-3 {
             grid-template-columns: 1fr;
@@ -352,10 +386,11 @@
                 border-radius: 0;
             }
             .label-sheet:last-child { page-break-after: auto; }
-            .sl-top-logo { min-height: 44px; margin-bottom: 6px; }
-            .sl-top-logo img { max-height: 44px; }
-            .sl-divider { margin: 6px 0 10px; height: 2px; }
-            .sl-agency-box { padding: 10px 12px; margin-top: 4px; }
+            .sl-header { min-height: 80px; margin-bottom: 6px; padding-bottom: 8px; }
+            .sl-header-provider img { max-width: 198px; max-height: 50px; }
+            .sl-header-address { font-size: 12px; }
+            .sl-header-agency { min-height: 80px; }
+            .sl-header-agency-frame { height: 80px; }
             .sl-warehouse-code { font-size: 34px; }
             .sl-service-mark-large { font-size: 50px; margin-bottom: 10px; }
             .sl-destination-name { font-size: 18px; }

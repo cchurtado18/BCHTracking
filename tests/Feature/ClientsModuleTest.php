@@ -725,9 +725,39 @@ class ClientsModuleTest extends TestCase
             ->assertOk()
             ->getContent();
 
+        $this->assertStringContainsString('PrimeTrack Group', $html);
+        $this->assertStringContainsString('primetrack-group-logo.png', $html);
         $this->assertStringContainsString('SkyLink One', $html);
-        $this->assertStringContainsString((string) $slo->code, $html);
+        $this->assertStringNotContainsString($slo->code.' - ', $html);
         $this->assertStringNotContainsString('0882 - Cliente Etiqueta SLO', $html);
+        $this->assertStringNotContainsString('qrserver.com', $html);
+        $this->assertStringNotContainsString('create-qr-code', $html);
+    }
+
+    public function test_subagency_label_keeps_primetrack_and_uses_that_agency_on_the_right(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+        ['ch' => $ch] = $this->sloTree();
+        $pkg = Preregistration::create([
+            'intake_type' => 'COURIER',
+            'tracking_external' => 'TRK-LABEL-CH-1',
+            'warehouse_code' => '882010',
+            'label_name' => 'Destinatario CH',
+            'service_type' => 'AIR',
+            'intake_weight_lbs' => 3,
+            'status' => 'RECEIVED_MIAMI',
+            'agency_id' => $ch->id,
+        ]);
+
+        $html = $this->actingAs($user)
+            ->get(route('preregistrations.label', $pkg))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('PrimeTrack Group', $html);
+        $this->assertStringContainsString('primetrack-group-logo.png', $html);
+        $this->assertStringContainsString($ch->name, $html);
+        $this->assertStringNotContainsString('qrserver.com', $html);
     }
 
     public function test_nested_subagency_portal_is_packages_only(): void
