@@ -16,7 +16,31 @@ class TrackingCode
             return $code;
         }
 
+        if (preg_match('/1Z[A-Z0-9]{16}/', $code, $match)) {
+            return $match[0];
+        }
+        if (preg_match('/TB[A-Z]\d{10,16}/', $code, $match)) {
+            return $match[0];
+        }
+
+        $fromUrl = self::fromUrl($code);
+        if ($fromUrl !== null) {
+            $code = $fromUrl;
+        }
+
         return self::extractUsps($code) ?? $code;
+    }
+
+    private static function fromUrl(string $code): ?string
+    {
+        if (preg_match('/[?&](?:TLABELS|TLABEL|Q|TRACKINGNUMBER|TRACKNUM|TRACKNUMS|TRACKING|TRACK|INQUIRYNUMBER|TRACKINGID|TRACKING_ID)=([0-9A-Z]{10,34})/', $code, $match)) {
+            return $match[1];
+        }
+        if (preg_match('/\/(?:TRACK|TRACKING|PKG|PACKAGE)\/([0-9A-Z]{10,34})/', $code, $match)) {
+            return $match[1];
+        }
+
+        return null;
     }
 
     /**
@@ -76,10 +100,10 @@ class TrackingCode
         if (preg_match('/^([A-Z]{2}\d{9}[A-Z]{2})/', $code, $match)) {
             return $match[1];
         }
-        if (preg_match('/^(9[0-5]\d{20})/', $code, $match)) {
+        if (preg_match('/(9[0-5]\d{20})/', $code, $match)) {
             return $match[1];
         }
-        if (preg_match('/^(9[0-5]\d{18})/', $code, $match)) {
+        if (preg_match('/(9[0-5]\d{18})/', $code, $match)) {
             return $match[1];
         }
 

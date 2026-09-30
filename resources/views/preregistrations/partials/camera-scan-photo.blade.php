@@ -1,10 +1,10 @@
 {{-- Visor: la cámara propia se ve siempre; el lector solo decodifica frames. --}}
-<div id="cspOverlay" class="csp-overlay" hidden data-csp-build="14">
+<div id="cspOverlay" class="csp-overlay" hidden data-csp-build="23">
     <video id="cspVideo" class="csp-video" autoplay muted playsinline webkit-playsinline></video>
     <div id="cspReader" class="csp-reader" aria-hidden="true"></div>
     <div class="csp-frame" aria-hidden="true"></div>
     <div class="csp-bar csp-bar-top">
-        <p id="cspHint" class="csp-hint">Apunte el código de barras del tracking</p>
+        <p id="cspHint" class="csp-hint">Apunte el código de barras o el QR del tracking</p>
         <p id="cspRead" class="csp-read" hidden></p>
         <div id="cspPrealert" class="csp-prealert" hidden></div>
         <button type="button" id="cspClose" class="csp-close">Cerrar</button>
@@ -18,6 +18,7 @@
             <input type="text" id="cspManualInput" class="csp-manual-input" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Apunte el código o escríbalo aquí">
             <button type="button" id="cspManualOk" class="csp-shutter">Usar este tracking</button>
         </div>
+        <button type="button" id="cspRetryCam" class="csp-shutter" hidden>Abrir cámara</button>
         <button type="button" id="cspShutter" class="csp-shutter" hidden>Tomar foto del paquete</button>
         <button type="button" id="cspManualBtn" class="csp-manual-btn" hidden>No lee el código — escribir tracking</button>
     </div>
@@ -38,7 +39,7 @@
     opacity: 0; pointer-events: none;
 }
 .csp-frame {
-    position: absolute; left: 5%; right: 5%; top: 36%; bottom: 38%;
+    position: absolute; left: 6%; right: 6%; top: 22%; bottom: 32%;
     border: 2px solid rgba(255,255,255,0.9); border-radius: 12px;
     box-shadow: 0 0 0 9999px rgba(0,0,0,0.32); pointer-events: none; z-index: 2;
 }
@@ -132,7 +133,7 @@
 
     window.skylinkLoadHtml5Qrcode = function () {
         if (window.skylinkHtml5QrcodeClass()) return Promise.resolve();
-        return loadScript(@json(asset('vendor/html5-qrcode.min.js')));
+        return loadScript('/vendor/html5-qrcode.min.js');
     };
     window.skylinkLoadHtml5Qrcode().catch(function () {});
 })();
@@ -146,6 +147,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
     var readEl = document.getElementById('cspRead');
     var btnClose = document.getElementById('cspClose');
     var btnShutter = document.getElementById('cspShutter');
+    var btnRetryCam = document.getElementById('cspRetryCam');
     var btnManual = document.getElementById('cspManualBtn');
     var manualWrap = document.getElementById('cspManualWrap');
     var manualInput = document.getElementById('cspManualInput');
@@ -176,6 +178,8 @@ window.skylinkOpenScanPhotoCamera = function (options) {
     var cropCtx = cropCanvas.getContext('2d', { willReadFrequently: true }) || cropCanvas.getContext('2d');
     var fullCanvas = document.createElement('canvas');
     var fullCtx = fullCanvas.getContext('2d', { willReadFrequently: true }) || fullCanvas.getContext('2d');
+    var padCanvas = document.createElement('canvas');
+    var padCtx = padCanvas.getContext('2d', { willReadFrequently: true }) || padCanvas.getContext('2d');
 
     function setHint(text) {
         if (hint) hint.textContent = text;
@@ -183,34 +187,143 @@ window.skylinkOpenScanPhotoCamera = function (options) {
     function isStale() {
         return closed || session !== window.__cspSession;
     }
+    function inAppBrowser() {
+        var ua = navigator.userAgent || '';
+        if (/WhatsApp|FBAN|FBAV|Instagram/i.test(ua)) return true;
+        return /iP(hone|od|ad)/.test(ua) && !/Safari\//.test(ua);
+    }
+    function cameraBlockReason() {
+        if (inAppBrowser()) {
+            return 'Ábralo en Safari, no en WhatsApp. Toque “Abrir en Safari”.';
+        }
+        if (!window.isSecureContext) {
+            return 'El iPhone no enciende la cámara en http. Use https:// (candado).';
+        }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            return 'Este navegador no permite la cámara en vivo. Ábralo en Safari.';
+        }
+        return '';
+    }
+    function cameraFailMessage(err) {
+        var blocked = cameraBlockReason();
+        if (blocked) return blocked;
+        var name = err && err.name;
+        if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+            return 'Safari bloqueó la cámara. Ajustes > Safari > Cámara: permitir, y pulse Abrir cámara.';
+        }
+        if (name === 'SecurityError' || !window.isSecureContext) {
+            return 'Abra el enlace con https://. En http el iPhone no enciende la cámara.';
+        }
+        return 'No se pudo abrir la cámara. Ábralo en Safari y pulse Abrir cámara.';
+    }
+    function showCameraFailed(err) {
+        setHint(cameraFailMessage(err));
+        if (manualWrap) manualWrap.hidden = false;
+        if (btnManual) btnManual.hidden = true;
+        if (btnRetryCam) btnRetryCam.hidden = false;
+        if (btnShutter) btnShutter.hidden = true;
+    }
     function normalize(raw) {
         return String(raw || '')
-            .replace(/[\s\u0000\u001d\u001e]/g, '')
+            .replace(/[\s\u0000\u001d\u001e()]/g, '')
             .replace(/^\][A-Z0-9]{1,3}/, '')
             .trim()
             .toUpperCase();
     }
+    function trackingFromRaw(raw) {
+        var original = String(raw || '').trim();
+        var fromUrl = extractFromUrl(original);
+        var text = fromUrl || original;
+        var n = normalize(text);
+        var ups = n.match(/1Z[A-Z0-9]{16}/);
+        if (ups) return ups[0];
+        var amazon = n.match(/TB[A-Z]\d{10,16}/);
+        if (amazon) return amazon[0];
+        var spx = n.match(/SPX[A-Z0-9]{12,}/);
+        if (spx) return spx[0];
+        var embedded = n.match(/9[0-5]\d{18,20}/);
+        if (embedded && (n.length > 26 || /^HTTPS?:/i.test(original) || /USPS\.COM/i.test(original) || fromUrl)) {
+            text = embedded[0];
+        }
+        return canonicalTracking(text);
+    }
+    function extractFromUrl(text) {
+        var u = String(text || '');
+        var hit = u.match(/[?&](?:tLabels|tLabel|q|trackingNumber|tracknum|trackNums|tracking|track|inquiryNumber|trackingId|tracking_id)=([0-9A-Za-z]{10,34})/i)
+            || u.match(/\/(?:track|tracking|pkg|package)\/([0-9A-Za-z]{10,34})/i);
+        return hit ? hit[1] : '';
+    }
+    function looksLikeUspsStart(code) {
+        return /^9[0-5]\d{17,}/.test(code) || /^[A-Z]{2}\d{9}[A-Z]{2}/.test(code);
+    }
+    function stripRoutingPrefix(code) {
+        if (code.indexOf('420') !== 0 || code.length < 8) return code;
+        var afterZip5 = code.substring(8);
+        var afterZip9 = code.length > 12 ? code.substring(12) : '';
+        if (looksLikeUspsStart(afterZip5)) return afterZip5;
+        if (afterZip9 && looksLikeUspsStart(afterZip9)) return afterZip9;
+        return afterZip5 || code;
+    }
+    function extractUsps(code) {
+        code = stripRoutingPrefix(code);
+        var m = code.match(/^([A-Z]{2}\d{9}[A-Z]{2})/)
+            || code.match(/(9[0-5]\d{20})/)
+            || code.match(/(9[0-5]\d{18})/);
+        return m ? m[1] : '';
+    }
+    function canonicalTracking(raw) {
+        var code = normalize(raw);
+        if (!code || /^\d{6}$/.test(code)) return code;
+        if (/^1Z[A-Z0-9]{16}/.test(code) || /^TB[A-Z]\d{10,}/.test(code)) return code;
+        return extractUsps(code) || code;
+    }
     function isUrl(code) {
         return /^HTTPS?:\/\//.test(code) || /^WWW\./.test(code);
     }
+    function isPostageIndicia(code) {
+        return /^0\d{2}[A-Z]\d{6,}$/.test(code);
+    }
+    function isUspsTracking(code) {
+        return /^9[0-5]\d{18,20}$/.test(code);
+    }
+    function isUpsTracking(code) {
+        return /^1Z[A-Z0-9]{16}$/.test(code);
+    }
+    function isAmazonTracking(code) {
+        return /^TB[A-Z]\d{10,16}$/.test(code);
+    }
+    function isUspsIntl(code) {
+        return /^[A-Z]{2}\d{9}[A-Z]{2}$/.test(code);
+    }
+    function isKnownCourier(code) {
+        return isUspsTracking(code) || isUpsTracking(code) || isAmazonTracking(code) || isUspsIntl(code);
+    }
     function isPlausible(code) {
-        if (!code || code.length < 8 || code.length > 48) return false;
+        if (!code || code.length < 8 || code.length > 64) return false;
         if (isUrl(code)) return false;
         return /^[A-Z0-9]+$/.test(code);
     }
     function isCompleteTracking(code) {
-        if (!isPlausible(code) || code.length < 12) return false;
-        if (/[A-Z]/.test(code) && /\d/.test(code)) return true;
-        return /^\d{12,22}$/.test(code);
+        var value = trackingFromRaw(code);
+        if (isPostageIndicia(normalize(code)) || isPostageIndicia(value)) return false;
+        if (!isPlausible(value)) return false;
+        if (value.length < 12) return false;
+        if (isKnownCourier(value)) return true;
+        if (/[A-Z]/.test(value) && /\d/.test(value) && value.length <= 34) return true;
+        return /^\d{12,22}$/.test(value);
     }
     function scoreCode(code) {
-        if (!isPlausible(code)) return -1;
-        var score = Math.min(code.length, 30);
+        var value = trackingFromRaw(code);
+        if (isPostageIndicia(normalize(code)) || isPostageIndicia(value)) return -1;
+        if (!isPlausible(value)) return -1;
+        var score = Math.min(value.length, 30);
         if (isCompleteTracking(code)) score += 40;
-        if (/^[A-Z]{3,8}\d{8,}$/.test(code)) score += 24;
-        if (/^\d+$/.test(code)) score -= 10;
-        if (/^[A-Z]{3,8}$/.test(code)) score -= 20;
-        if (code.length >= 12 && code.length <= 34) score += 8;
+        if (isUspsTracking(value)) score += 36;
+        if (isUpsTracking(value) || isAmazonTracking(value)) score += 40;
+        if (/^[A-Z]{3,8}\d{8,}$/.test(value)) score += 24;
+        if (/^\d+$/.test(value) && !isUspsTracking(value)) score -= 10;
+        if (/^[A-Z]{3,8}$/.test(value)) score -= 20;
+        if (value.length >= 12 && value.length <= 34) score += 8;
         return score;
     }
     function pickBest(values) {
@@ -272,7 +385,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
 
     function pauseScanner() {
         scanning = false;
-        if (timer) { clearInterval(timer); timer = null; }
+        if (timer) { clearTimeout(timer); clearInterval(timer); timer = null; }
         if (scanTimer) { clearTimeout(scanTimer); scanTimer = null; }
     }
 
@@ -297,7 +410,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         }
         if (readEl) { readEl.hidden = true; readEl.textContent = ''; }
         showOverlayPrealert(null);
-        setHint('Apunte el código de barras del tracking');
+        setHint('Apunte el código de barras o el QR del tracking');
         startScanLoop();
     }
 
@@ -314,6 +427,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
             btnShutter.disabled = false;
             btnShutter.textContent = 'Tomar foto del paquete';
         }
+        if (btnRetryCam) btnRetryCam.hidden = true;
         setHint('Tome la foto del paquete');
     }
 
@@ -357,15 +471,31 @@ window.skylinkOpenScanPhotoCamera = function (options) {
     }
 
     function consider(raw) {
-        var code = typeof raw === 'string' ? combineParts([raw]) : combineParts(raw);
-        if (!isCompleteTracking(code)) return false;
+        var list = typeof raw === 'string' ? [raw] : (raw || []);
+        var extracted = [];
+        for (var i = 0; i < list.length; i++) {
+            var item = String(list[i] || '');
+            if (isPostageIndicia(normalize(item))) {
+                setHint('Ese es el código de arriba. Apunte al código largo de USPS TRACKING #');
+            }
+            var value = trackingFromRaw(item);
+            if (value && extracted.indexOf(value) === -1) extracted.push(value);
+        }
+        var code = trackingFromRaw(combineParts(extracted.length ? extracted : list));
+        if (!isCompleteTracking(code)) {
+            if (extracted.length && hint && hint.textContent.indexOf('Ese es el código') === -1) {
+                    setHint('Acerque el código de barras o el QR en el recuadro');
+            }
+            return false;
+        }
         if (!scanning || isStale() || photoMode) return false;
+        var needHits = 1;
         if (code === pendingMatch) matchHits += 1;
         else {
             pendingMatch = code;
             matchHits = 1;
         }
-        if (matchHits < 2) return false;
+        if (matchHits < needHits) return false;
         pendingMatch = '';
         matchHits = 0;
         applyTracking(code);
@@ -391,6 +521,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         overlay.hidden = true;
         overlay.classList.remove('is-photo');
         if (btnShutter) btnShutter.hidden = true;
+        if (btnRetryCam) btnRetryCam.hidden = true;
         if (readEl) readEl.hidden = true;
         if (manualWrap) manualWrap.hidden = true;
         if (confirmRow) confirmRow.hidden = true;
@@ -417,8 +548,8 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         var lib = window.__Html5QrcodeLibrary__ || window;
         if (!lib.Html5QrcodeSupportedFormats) return null;
         var F = lib.Html5QrcodeSupportedFormats;
-        return [F.CODE_128, F.CODE_39, F.CODE_93, F.ITF, F.CODABAR].filter(function (v) {
-            return typeof v !== 'undefined';
+        return [F.CODE_128, F.QR_CODE, F.DATA_MATRIX, F.CODE_39, F.PDF_417, F.ITF, F.CODE_93].filter(function (v) {
+            return typeof v === 'number';
         });
     }
 
@@ -435,108 +566,145 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         try {
             return new Ctor('cspReader', verbose);
         } catch (e) {
-            try { return new Ctor('cspReader', { verbose: false, useBarCodeDetectorIfSupported: false }); }
+            try { return new Ctor('cspReader', { verbose: false, useBarCodeDetectorIfSupported: false, formatsToSupport: [5, 0, 6, 3] }); }
             catch (err) { return null; }
         }
     }
 
     function decodeCanvas(canvas) {
         if (!canvas || !canvas.width || !html5Scanner || !html5Scanner.qrcode) return Promise.resolve('');
-        var decoder = html5Scanner.qrcode;
-        var run = decoder.decodeRobustlyAsync
-            ? decoder.decodeRobustlyAsync(canvas)
-            : decoder.decodeAsync
-                ? decoder.decodeAsync(canvas)
-                : Promise.reject();
-        return run.then(function (res) {
+        var decoder = html5Scanner.qrcode.primaryDecoder || html5Scanner.qrcode;
+        if (!decoder.decodeAsync) return Promise.resolve('');
+        return decoder.decodeAsync(canvas).then(function (res) {
             return textFromDecode(res);
         }).catch(function () { return ''; });
     }
 
-    function drawBand() {
+    function coverMappedCrop(leftPct, topPct, widthPct, heightPct) {
         if (!video || !video.videoWidth || !cropCtx) return null;
         var vw = video.videoWidth;
         var vh = video.videoHeight;
         var cw = overlay.clientWidth || window.innerWidth;
         var ch = overlay.clientHeight || window.innerHeight;
+        if (!cw || !ch) return null;
         var scale = Math.max(cw / vw, ch / vh);
         var dw = vw * scale;
         var dh = vh * scale;
         var ox = (cw - dw) / 2;
         var oy = (ch - dh) / 2;
-        var fx = cw * 0.03;
-        var fy = ch * 0.30;
-        var fw = cw * 0.94;
-        var fh = ch * 0.40;
-        var sx = (fx - ox) / scale;
-        var sy = (fy - oy) / scale;
-        var sw = fw / scale;
-        var sh = fh / scale;
+        var sx = (cw * leftPct - ox) / scale;
+        var sy = (ch * topPct - oy) / scale;
+        var sw = (cw * widthPct) / scale;
+        var sh = (ch * heightPct) / scale;
         if (sx < 0) { sw += sx; sx = 0; }
         if (sy < 0) { sh += sy; sy = 0; }
         if (sx + sw > vw) sw = vw - sx;
         if (sy + sh > vh) sh = vh - sy;
-        if (sw < 40 || sh < 20) {
-            sx = 0; sy = vh * 0.28; sw = vw; sh = vh * 0.44;
-        }
+        if (sw < 48 || sh < 16) return null;
         cropCanvas.width = Math.max(1, Math.round(sw));
         cropCanvas.height = Math.max(1, Math.round(sh));
+        cropCtx.imageSmoothingEnabled = false;
         cropCtx.drawImage(video, sx, sy, sw, sh, 0, 0, cropCanvas.width, cropCanvas.height);
         return cropCanvas;
+    }
+
+    function padQuietZone(src) {
+        if (!src || !src.width || !padCtx) return src;
+        var padX = Math.max(48, Math.round(src.width * 0.08));
+        var padY = Math.max(16, Math.round(src.height * 0.18));
+        padCanvas.width = src.width + padX * 2;
+        padCanvas.height = src.height + padY * 2;
+        padCtx.fillStyle = '#ffffff';
+        padCtx.fillRect(0, 0, padCanvas.width, padCanvas.height);
+        padCtx.drawImage(src, padX, padY);
+        return padCanvas;
+    }
+
+    function drawGuideBand() {
+        return coverMappedCrop(0.02, 0.36, 0.96, 0.26);
+    }
+
+    function drawQrBox() {
+        return coverMappedCrop(0.08, 0.18, 0.84, 0.52);
     }
 
     function drawFull() {
         if (!video || !video.videoWidth || !fullCtx) return null;
         var vw = video.videoWidth;
         var vh = video.videoHeight;
-        var maxW = 960;
+        var maxW = 1600;
         var scale = vw > maxW ? maxW / vw : 1;
         fullCanvas.width = Math.max(1, Math.round(vw * scale));
         fullCanvas.height = Math.max(1, Math.round(vh * scale));
+        fullCtx.imageSmoothingEnabled = false;
         fullCtx.drawImage(video, 0, 0, fullCanvas.width, fullCanvas.height);
         return fullCanvas;
     }
 
     function nativeDetect(source) {
         if (!window.BarcodeDetector || !source) return Promise.resolve([]);
-        if (!nativeDetect.detector) {
+        if (!nativeDetect.detectors) {
+            nativeDetect.detectors = [];
             var formatSets = [
-                ['code_128', 'code_39', 'code_93', 'itf', 'codabar'],
+                ['qr_code'],
+                ['qr_code', 'data_matrix', 'pdf417'],
                 ['code_128', 'code_39'],
                 ['code_128']
             ];
-            for (var i = 0; i < formatSets.length && !nativeDetect.detector; i++) {
-                try { nativeDetect.detector = new BarcodeDetector({ formats: formatSets[i] }); } catch (e) {}
+            for (var i = 0; i < formatSets.length; i++) {
+                try { nativeDetect.detectors.push(new BarcodeDetector({ formats: formatSets[i] })); } catch (e) {}
             }
-            if (!nativeDetect.detector) {
-                try { nativeDetect.detector = new BarcodeDetector(); } catch (e) { return Promise.resolve([]); }
+            if (!nativeDetect.detectors.length) {
+                try { nativeDetect.detectors.push(new BarcodeDetector()); } catch (e) {}
             }
         }
-        return nativeDetect.detector.detect(source).then(function (codes) {
+        if (!nativeDetect.detectors.length) return Promise.resolve([]);
+        return Promise.all(nativeDetect.detectors.map(function (detector) {
+            return detector.detect(source).then(function (codes) {
+                var values = [];
+                for (var i = 0; i < (codes || []).length; i++) {
+                    if (codes[i] && codes[i].rawValue) values.push(codes[i].rawValue);
+                }
+                return values;
+            }).catch(function () { return []; });
+        })).then(function (groups) {
             var values = [];
-            for (var i = 0; i < (codes || []).length; i++) {
-                if (codes[i] && codes[i].rawValue) values.push(codes[i].rawValue);
+            for (var g = 0; g < groups.length; g++) {
+                for (var i = 0; i < groups[g].length; i++) {
+                    if (values.indexOf(groups[g][i]) === -1) values.push(groups[g][i]);
+                }
             }
             return values;
-        }).catch(function () { return []; });
+        });
     }
 
     function startScanLoop() {
         if (timer || skipScan) return;
         var tick = 0;
-        timer = setInterval(function () {
-            if (!scanning || isStale() || scanBusy || !video || !video.videoWidth) return;
+        function pump() {
+            if (!scanning || isStale()) { timer = null; return; }
+            if (scanBusy || !video || !video.videoWidth) {
+                timer = setTimeout(pump, 80);
+                return;
+            }
             scanBusy = true;
             tick += 1;
-            var band = drawBand();
-            var tasks = [nativeDetect(band || video)];
-            if (band) tasks.push(decodeCanvas(band));
-            if (tick % 3 === 0) {
-                var full = drawFull();
-                if (full) {
-                    tasks.push(nativeDetect(full));
-                    tasks.push(decodeCanvas(full));
-                }
+            var band = drawGuideBand();
+            var qrBox = drawQrBox();
+            var full = (tick % 2 === 0) ? drawFull() : null;
+            var tasks = [nativeDetect(video)];
+            if (band) {
+                var padded = padQuietZone(band);
+                tasks.push(decodeCanvas(padded));
+                tasks.push(nativeDetect(padded));
+            }
+            if (qrBox) {
+                tasks.push(decodeCanvas(qrBox));
+                tasks.push(nativeDetect(qrBox));
+            }
+            if (full) {
+                tasks.push(decodeCanvas(full));
+                tasks.push(nativeDetect(full));
             }
             Promise.all(tasks).then(function (results) {
                 if (!scanning || isStale()) return;
@@ -547,8 +715,12 @@ window.skylinkOpenScanPhotoCamera = function (options) {
                     else if (item) values.push(item);
                 }
                 if (values.length) consider(values);
-            }).catch(function () {}).finally(function () { scanBusy = false; });
-        }, 120);
+            }).catch(function () {}).finally(function () {
+                scanBusy = false;
+                if (scanning && !isStale()) timer = setTimeout(pump, 70);
+            });
+        }
+        timer = setTimeout(pump, 50);
     }
 
     function attachStream(media) {
@@ -580,6 +752,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         video.playsInline = true;
         var tries = [
             { audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } } },
+            { audio: false, video: { facingMode: 'environment' } },
             { audio: false, video: { facingMode: { ideal: 'environment' } } },
             { audio: false, video: true }
         ];
@@ -593,10 +766,14 @@ window.skylinkOpenScanPhotoCamera = function (options) {
                     }
                     throw err;
                 });
-            }).catch(function () {
+            }).catch(function (err) {
                 if (isStale()) return Promise.resolve();
+                var name = err && err.name;
+                if (name === 'NotAllowedError' || name === 'PermissionDeniedError' || name === 'SecurityError') {
+                    return Promise.reject(err);
+                }
                 if (i + 1 < tries.length) return attempt(i + 1);
-                return Promise.reject(new Error('Sin cámara'));
+                return Promise.reject(err || new Error('Sin cámara'));
             });
         }
         return attempt(0);
@@ -615,6 +792,7 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         }
     }
     if (btnShutter) { btnShutter.hidden = true; btnShutter.disabled = false; }
+    if (btnRetryCam) btnRetryCam.hidden = true;
     if (btnManual) btnManual.hidden = true;
     if (manualWrap) manualWrap.hidden = false;
     if (confirmRow) confirmRow.hidden = true;
@@ -637,12 +815,32 @@ window.skylinkOpenScanPhotoCamera = function (options) {
     }
     if (manualOk) {
         manualOk.onclick = function () {
-            var code = normalize(manualInput && manualInput.value);
+            var code = canonicalTracking(manualInput && manualInput.value);
             if (!isPlausible(code)) {
                 alert('Escriba el tracking de la etiqueta.');
                 return;
             }
             applyTracking(code);
+        };
+    }
+    if (btnRetryCam) {
+        btnRetryCam.onclick = function () {
+            if (isStale()) return;
+            btnRetryCam.hidden = true;
+            setHint('Abriendo cámara…');
+            startLiveCamera().then(function () {
+                if (isStale()) return;
+                if (skipScan) {
+                    setHint('Tracking listo. Tome la foto del paquete');
+                    enterPhotoMode();
+                    return;
+                }
+                setHint('Apunte el código de barras o el QR del tracking');
+                startScanLoop();
+            }).catch(function (err) {
+                if (isStale()) return;
+                showCameraFailed(err);
+            });
         };
     }
     if (btnShutter) btnShutter.onclick = async function () {
@@ -670,10 +868,12 @@ window.skylinkOpenScanPhotoCamera = function (options) {
         }
     };
 
+    var cameraStart = startLiveCamera();
+
     return window.skylinkLoadHtml5Qrcode().catch(function () {}).then(function () {
         if (isStale()) return;
         html5Scanner = prepareDecoder();
-        return startLiveCamera();
+        return cameraStart;
     }).then(function () {
         if (isStale()) return;
         if (skipScan) {
@@ -681,13 +881,11 @@ window.skylinkOpenScanPhotoCamera = function (options) {
             enterPhotoMode();
             return;
         }
-        setHint('Buscando el código de barras…');
+        setHint('Apunte el código de barras o el QR del tracking');
         startScanLoop();
-    }).catch(function () {
+    }).catch(function (err) {
         if (isStale()) return;
-        setHint('No se pudo abrir la cámara. Escriba el tracking.');
-        if (manualWrap) manualWrap.hidden = false;
-        if (btnManual) btnManual.hidden = true;
+        showCameraFailed(err);
     });
 };
 </script>
