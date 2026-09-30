@@ -57,13 +57,16 @@
                         @include('preregistrations.partials.prealert-lookup')
                     </div>
                     <div class="quick-field quick-field-service">
-                        @php $quickService = old('service_type', 'AIR'); @endphp
+                        @php
+                            $quickService = old('service_type', 'AIR');
+                            $quickService = $quickService === 'SEA' ? 'SEA' : 'AIR';
+                        @endphp
                         <label for="service_type" class="preregs-label">Servicio</label>
                         <select name="service_type" id="service_type" class="preregs-input preregs-select">
                             <option value="AIR" @selected($quickService === 'AIR')>Aéreo</option>
                             <option value="SEA" @selected($quickService === 'SEA')>Marítimo</option>
                         </select>
-                        <p class="quick-help">Sale aéreo. Cámbielo solo si es marítimo.</p>
+                        <p class="quick-help">Queda aéreo por defecto. Cámbielo solo si es marítimo.</p>
                         @error('service_type')
                         <p class="preregs-field-error">{{ $message }}</p>
                         @enderror
@@ -150,6 +153,10 @@ window.skylinkApplyPreregService = function (service) {
 document.addEventListener('DOMContentLoaded', function() {
     var scanThenPhoto = @json($scanThenPhoto);
     var form = document.getElementById('quickCourierForm');
+    var defaultService = document.getElementById('service_type');
+    if (defaultService && defaultService.value !== 'SEA') {
+        defaultService.value = 'AIR';
+    }
     var input = document.getElementById('photo');
     var btnTake = document.getElementById('quickTakePhoto');
     var btnStop = document.getElementById('quickStopCamera');
