@@ -31,6 +31,7 @@ class QuickCourierCameraScanTest extends TestCase
             ->assertSee('id="intake_weight_lbs"', false)
             ->assertSee('Servicio')
             ->assertSee('id="service_type"', false)
+            ->assertSee('value="AIR" selected', false)
             ->assertSee('Aéreo')
             ->assertSee('Marítimo');
     }
@@ -57,6 +58,7 @@ class QuickCourierCameraScanTest extends TestCase
             ->assertSee('id="intake_weight_lbs"', false)
             ->assertSee('Servicio')
             ->assertSee('id="service_type"', false)
+            ->assertSee('value="AIR" selected', false)
             ->assertSee('Aéreo')
             ->assertSee('Marítimo');
     }
@@ -95,7 +97,7 @@ class QuickCourierCameraScanTest extends TestCase
         $this->assertNull($created->warehouse_code);
     }
 
-    public function test_quick_courier_store_requires_and_saves_air_or_sea_service(): void
+    public function test_quick_courier_store_defaults_to_air_and_can_save_sea(): void
     {
         Storage::fake('public');
         $user = User::factory()->create(['agency_id' => null]);
@@ -107,11 +109,17 @@ class QuickCourierCameraScanTest extends TestCase
                 'intake_weight_lbs' => 4.5,
                 'photos' => [$photo],
             ])
-            ->assertSessionHasErrors('service_type');
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('preregistrations', [
+            'tracking_external' => '1ZSERVICETEST001',
+            'service_type' => 'AIR',
+            'status' => 'PHOTO_PENDING',
+        ]);
 
         $this->actingAs($user)
             ->post(route('preregistrations.store-quick-courier'), [
-                'tracking_external' => '1ZSERVICETEST001',
+                'tracking_external' => '1ZSERVICETEST002',
                 'service_type' => 'CFT',
                 'intake_weight_lbs' => 4.5,
                 'photos' => [$photo],
@@ -120,7 +128,7 @@ class QuickCourierCameraScanTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('preregistrations.store-quick-courier'), [
-                'tracking_external' => '1ZSERVICETEST001',
+                'tracking_external' => '1ZSERVICETEST002',
                 'service_type' => 'SEA',
                 'intake_weight_lbs' => 4.5,
                 'photos' => [$photo],
@@ -128,7 +136,7 @@ class QuickCourierCameraScanTest extends TestCase
             ->assertRedirect();
 
         $this->assertDatabaseHas('preregistrations', [
-            'tracking_external' => '1ZSERVICETEST001',
+            'tracking_external' => '1ZSERVICETEST002',
             'service_type' => 'SEA',
             'intake_weight_lbs' => 4.5,
             'status' => 'PHOTO_PENDING',

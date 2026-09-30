@@ -57,13 +57,13 @@
                         @include('preregistrations.partials.prealert-lookup')
                     </div>
                     <div class="quick-field quick-field-service">
-                        <label for="service_type" class="preregs-label">Servicio <span class="preregs-req">*</span></label>
-                        <select name="service_type" id="service_type" class="preregs-input preregs-select" required>
-                            <option value="" disabled {{ old('service_type') ? '' : 'selected' }}>Aéreo o marítimo</option>
-                            <option value="AIR" @selected(old('service_type') === 'AIR')>Aéreo</option>
-                            <option value="SEA" @selected(old('service_type') === 'SEA')>Marítimo</option>
+                        @php $quickService = old('service_type', 'AIR'); @endphp
+                        <label for="service_type" class="preregs-label">Servicio</label>
+                        <select name="service_type" id="service_type" class="preregs-input preregs-select">
+                            <option value="AIR" @selected($quickService === 'AIR')>Aéreo</option>
+                            <option value="SEA" @selected($quickService === 'SEA')>Marítimo</option>
                         </select>
-                        <p class="quick-help">Obligatorio. Si hay prealerta, se sugiere el servicio.</p>
+                        <p class="quick-help">Sale aéreo. Cámbielo solo si es marítimo.</p>
                         @error('service_type')
                         <p class="preregs-field-error">{{ $message }}</p>
                         @enderror
@@ -140,9 +140,11 @@
 <script>
 window.skylinkApplyPreregService = function (service) {
     var el = document.getElementById('service_type');
-    if (!el || String(el.value || '').trim()) return;
+    if (!el) return;
     var route = String(service || '').toUpperCase() === 'CFT' ? 'SEA' : String(service || '').toUpperCase();
-    if (route === 'AIR' || route === 'SEA') el.value = route;
+    if (route !== 'AIR' && route !== 'SEA') return;
+    if (String(el.value || '').toUpperCase() === 'SEA') return;
+    el.value = route;
 };
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -274,9 +276,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var serviceInput = document.getElementById('service_type');
             var service = serviceInput ? String(serviceInput.value || '').toUpperCase() : '';
             if (service !== 'AIR' && service !== 'SEA') {
-                alert('Seleccione si el paquete es aéreo o marítimo.');
-                if (serviceInput) serviceInput.focus();
-                return;
+                service = 'AIR';
             }
             var weightInput = document.getElementById('intake_weight_lbs');
             var weight = weightInput ? parseFloat(weightInput.value) : NaN;

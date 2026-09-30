@@ -707,6 +707,9 @@ class PreregistrationController extends Controller
         if ($request->exists('tracking_external') && is_string($request->input('tracking_external'))) {
             $request->merge(['tracking_external' => Preregistration::normalizeTrackingExternal($request->input('tracking_external'))]);
         }
+        if (! $request->filled('service_type')) {
+            $request->merge(['service_type' => \App\Support\ServiceType::AIR]);
+        }
         $data = $request->validate([
             'tracking_external' => [
                 'nullable',
