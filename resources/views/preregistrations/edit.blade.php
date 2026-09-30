@@ -152,10 +152,7 @@
 
                                 <div class="preregs-field preregs-field--full">
                                     @php
-                                        $editService = old(
-                                            'service_type',
-                                            $preregistration->status === 'PHOTO_PENDING' ? '' : $preregistration->service_type
-                                        );
+                                        $editService = old('service_type', $preregistration->service_type);
                                     @endphp
                                     @include('preregistrations.partials.service-route-fields', [
                                         'selectId' => 'service_type',

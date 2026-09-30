@@ -188,6 +188,7 @@ class PrealertModuleTest extends TestCase
         $this->actingAs($central)
             ->post(route('preregistrations.store-quick-courier'), [
                 'tracking_external' => 'SPXMIA012462609040007777',
+                'service_type' => 'AIR',
                 'intake_weight_lbs' => 3.2,
                 'photos' => [UploadedFile::fake()->image('caja.jpg', 400, 400)],
             ])
@@ -489,6 +490,7 @@ class PrealertModuleTest extends TestCase
         $this->actingAs($central)
             ->post(route('preregistrations.store-quick-courier'), [
                 'tracking_external' => 'SPXMIA777777777777',
+                'service_type' => 'SEA',
                 'intake_weight_lbs' => 4.5,
                 'photos' => [UploadedFile::fake()->image('caja.jpg', 400, 400)],
             ])
@@ -510,6 +512,34 @@ class PrealertModuleTest extends TestCase
             ->assertSee('Este paquete ya fue prealertado')
             ->assertSee('CLIENTE PREALERTA')
             ->assertSee('Marítimo');
+    }
+
+    public function test_quick_courier_keeps_chosen_service_when_prealert_differs(): void
+    {
+        Storage::fake('public');
+        $agencies = $this->createAgencies();
+        $central = User::factory()->create(['agency_id' => null]);
+        Prealert::create([
+            'name' => 'Cliente Prealerta',
+            'agency_id' => $agencies['subA']->id,
+            'tracking' => 'SPXMIA888888888888',
+            'service_type' => 'SEA',
+            'status' => Prealert::STATUS_PENDING,
+        ]);
+
+        $this->actingAs($central)
+            ->post(route('preregistrations.store-quick-courier'), [
+                'tracking_external' => 'SPXMIA888888888888',
+                'service_type' => 'AIR',
+                'intake_weight_lbs' => 2.25,
+                'photos' => [UploadedFile::fake()->image('caja.jpg', 400, 400)],
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('preregistrations', [
+            'tracking_external' => 'SPXMIA888888888888',
+            'service_type' => 'AIR',
+        ]);
     }
 
     public function test_preregistration_store_marks_prealert_as_matched(): void

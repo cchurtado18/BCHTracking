@@ -714,11 +714,14 @@ class PreregistrationController extends Controller
                 'max:255',
                 Rule::unique('preregistrations', 'tracking_external')->whereNull('deleted_at'),
             ],
+            'service_type' => ['required', \App\Support\ServiceType::routeRule()],
             'photo' => 'nullable|file|image|mimes:jpg,jpeg,png,webp|max:10240',
             'photos' => 'nullable|array|max:3',
             'photos.*' => 'file|image|mimes:jpg,jpeg,png,webp|max:10240',
             'intake_weight_lbs' => 'required|numeric|min:0.01|max:999999.99',
         ], [
+            'service_type.required' => 'Seleccione si el paquete es aéreo o marítimo.',
+            'service_type.in' => 'Seleccione si el paquete es aéreo o marítimo.',
             'intake_weight_lbs.required' => 'Indique el peso del paquete en libras.',
             'intake_weight_lbs.min' => 'El peso debe ser mayor a 0.',
         ]);
@@ -742,6 +745,7 @@ class PreregistrationController extends Controller
             'intake_type' => 'COURIER',
             'tracking_external' => $data['tracking_external'] ?? null,
             'label_name' => '[PENDIENTE]',
+            'service_type' => \App\Support\ServiceType::normalize($data['service_type']),
             'intake_weight_lbs' => $data['intake_weight_lbs'],
             'status' => 'PHOTO_PENDING',
         ]);

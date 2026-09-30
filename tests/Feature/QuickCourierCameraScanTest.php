@@ -28,7 +28,11 @@ class QuickCourierCameraScanTest extends TestCase
             ->assertSee('Tome la foto del paquete y, si quiere, el tracking')
             ->assertSee('id="quickTakePhoto"', false)
             ->assertSee('Peso (lb)')
-            ->assertSee('id="intake_weight_lbs"', false);
+            ->assertSee('id="intake_weight_lbs"', false)
+            ->assertSee('Servicio')
+            ->assertSee('id="service_type"', false)
+            ->assertSee('Aéreo')
+            ->assertSee('Marítimo');
     }
 
     public function test_tracking_photo_page_includes_scan_then_photo_camera(): void
@@ -50,7 +54,11 @@ class QuickCourierCameraScanTest extends TestCase
             ->assertSee('id="quickTakePhoto"', false)
             ->assertSee('Si el tracking está vacío')
             ->assertSee('Peso (lb)')
-            ->assertSee('id="intake_weight_lbs"', false);
+            ->assertSee('id="intake_weight_lbs"', false)
+            ->assertSee('Servicio')
+            ->assertSee('id="service_type"', false)
+            ->assertSee('Aéreo')
+            ->assertSee('Marítimo');
     }
 
     public function test_quick_courier_store_requires_and_saves_package_weight(): void
@@ -62,6 +70,7 @@ class QuickCourierCameraScanTest extends TestCase
         $this->actingAs($user)
             ->post(route('preregistrations.store-quick-courier'), [
                 'tracking_external' => '1ZWEIGHTTEST001',
+                'service_type' => 'AIR',
                 'photos' => [$photo],
             ])
             ->assertSessionHasErrors('intake_weight_lbs');
@@ -69,6 +78,7 @@ class QuickCourierCameraScanTest extends TestCase
         $this->actingAs($user)
             ->post(route('preregistrations.store-quick-courier'), [
                 'tracking_external' => '1ZWEIGHTTEST001',
+                'service_type' => 'AIR',
                 'intake_weight_lbs' => 12.75,
                 'photos' => [$photo],
             ])
@@ -77,11 +87,52 @@ class QuickCourierCameraScanTest extends TestCase
         $this->assertDatabaseHas('preregistrations', [
             'tracking_external' => '1ZWEIGHTTEST001',
             'intake_weight_lbs' => 12.75,
+            'service_type' => 'AIR',
             'status' => 'PHOTO_PENDING',
         ]);
         $created = Preregistration::where('tracking_external', '1ZWEIGHTTEST001')->first();
         $this->assertNotNull($created);
         $this->assertNull($created->warehouse_code);
+    }
+
+    public function test_quick_courier_store_requires_and_saves_air_or_sea_service(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create(['agency_id' => null]);
+        $photo = UploadedFile::fake()->image('caja.jpg', 400, 400);
+
+        $this->actingAs($user)
+            ->post(route('preregistrations.store-quick-courier'), [
+                'tracking_external' => '1ZSERVICETEST001',
+                'intake_weight_lbs' => 4.5,
+                'photos' => [$photo],
+            ])
+            ->assertSessionHasErrors('service_type');
+
+        $this->actingAs($user)
+            ->post(route('preregistrations.store-quick-courier'), [
+                'tracking_external' => '1ZSERVICETEST001',
+                'service_type' => 'CFT',
+                'intake_weight_lbs' => 4.5,
+                'photos' => [$photo],
+            ])
+            ->assertSessionHasErrors('service_type');
+
+        $this->actingAs($user)
+            ->post(route('preregistrations.store-quick-courier'), [
+                'tracking_external' => '1ZSERVICETEST001',
+                'service_type' => 'SEA',
+                'intake_weight_lbs' => 4.5,
+                'photos' => [$photo],
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('preregistrations', [
+            'tracking_external' => '1ZSERVICETEST001',
+            'service_type' => 'SEA',
+            'intake_weight_lbs' => 4.5,
+            'status' => 'PHOTO_PENDING',
+        ]);
     }
 
     public function test_preregistration_index_shows_both_capture_buttons(): void

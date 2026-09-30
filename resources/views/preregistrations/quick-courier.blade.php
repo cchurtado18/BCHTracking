@@ -56,6 +56,18 @@
                         <p class="quick-help">{{ $scanThenPhoto ? 'Se llena al escanear la etiqueta. Si lo borra, la cámara vuelve a buscar el código.' : 'Si el paquete trae tracking de courier, ingrésalo aquí para poder buscarlo luego.' }}</p>
                         @include('preregistrations.partials.prealert-lookup')
                     </div>
+                    <div class="quick-field quick-field-service">
+                        <label for="service_type" class="preregs-label">Servicio <span class="preregs-req">*</span></label>
+                        <select name="service_type" id="service_type" class="preregs-input preregs-select" required>
+                            <option value="" disabled {{ old('service_type') ? '' : 'selected' }}>Aéreo o marítimo</option>
+                            <option value="AIR" @selected(old('service_type') === 'AIR')>Aéreo</option>
+                            <option value="SEA" @selected(old('service_type') === 'SEA')>Marítimo</option>
+                        </select>
+                        <p class="quick-help">Obligatorio. Si hay prealerta, se sugiere el servicio.</p>
+                        @error('service_type')
+                        <p class="preregs-field-error">{{ $message }}</p>
+                        @enderror
+                    </div>
                     <div class="quick-field quick-field-weight">
                         <label for="intake_weight_lbs" class="preregs-label">Peso (lb) <span class="preregs-req">*</span></label>
                         <div class="quick-weight-affix">
@@ -126,6 +138,13 @@
 @push('scripts')
 @include('partials.compress-image-script')
 <script>
+window.skylinkApplyPreregService = function (service) {
+    var el = document.getElementById('service_type');
+    if (!el || String(el.value || '').trim()) return;
+    var route = String(service || '').toUpperCase() === 'CFT' ? 'SEA' : String(service || '').toUpperCase();
+    if (route === 'AIR' || route === 'SEA') el.value = route;
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     var scanThenPhoto = @json($scanThenPhoto);
     var form = document.getElementById('quickCourierForm');
@@ -252,6 +271,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Toma al menos una foto antes de guardar.');
                 return;
             }
+            var serviceInput = document.getElementById('service_type');
+            var service = serviceInput ? String(serviceInput.value || '').toUpperCase() : '';
+            if (service !== 'AIR' && service !== 'SEA') {
+                alert('Seleccione si el paquete es aéreo o marítimo.');
+                if (serviceInput) serviceInput.focus();
+                return;
+            }
             var weightInput = document.getElementById('intake_weight_lbs');
             var weight = weightInput ? parseFloat(weightInput.value) : NaN;
             if (!weightInput || isNaN(weight) || weight <= 0) {
@@ -265,6 +291,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var fd = new FormData();
             fd.append('_token', form.querySelector('input[name="_token"]').value);
             fd.append('tracking_external', (document.getElementById('tracking_external') || {}).value || '');
+            fd.append('service_type', service);
             fd.append('intake_weight_lbs', weightInput.value);
             files.forEach(function(item) { fd.append('photos[]', item.file); });
 
@@ -275,7 +302,10 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(async function(res) {
                 var data = await res.json().catch(function() { return {}; });
-                if (!res.ok) throw new Error(data.message || 'No se pudo guardar.');
+                if (!res.ok) {
+                    var firstError = data.errors && Object.values(data.errors)[0];
+                    throw new Error((firstError && firstError[0]) || data.message || 'No se pudo guardar.');
+                }
                 if (data.redirect_url) window.location.href = data.redirect_url;
                 else window.location.reload();
             })
@@ -334,15 +364,16 @@ document.addEventListener('DOMContentLoaded', function() {
     grid-template-columns: 1fr;
     gap: 1rem;
     margin-bottom: 0.5rem;
-    max-width: 40rem;
+    max-width: 52rem;
 }
-@media (min-width: 640px) {
+@media (min-width: 768px) {
     .quick-grid {
-        grid-template-columns: minmax(16rem, 1fr) 10.75rem;
+        grid-template-columns: minmax(14rem, 1fr) 11.5rem 10.75rem;
         align-items: start;
     }
 }
 .quick-field { max-width: 32rem; }
+.quick-field-service,
 .quick-field-weight { max-width: none; width: 100%; }
 .quick-weight-affix { position: relative; }
 .quick-weight-affix .preregs-input { padding-right: 2.65rem; }
