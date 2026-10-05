@@ -744,11 +744,16 @@ class PreregistrationController extends Controller
 
         // Algunos campos de la tabla (como label_name) no permiten NULL,
         // así que usamos valores de marcador que luego se podrán editar.
+        $serviceType = \App\Support\ServiceType::normalize($data['service_type']);
+        $isMaritime = \App\Support\ServiceType::route($serviceType) === \App\Support\ServiceType::SEA;
+        $warehouseCode = $isMaritime ? $this->warehouseService->generateWarehouseCode() : null;
+
         $preregistration = Preregistration::create([
             'intake_type' => 'COURIER',
             'tracking_external' => $data['tracking_external'] ?? null,
+            'warehouse_code' => $warehouseCode,
             'label_name' => '[PENDIENTE]',
-            'service_type' => \App\Support\ServiceType::normalize($data['service_type']),
+            'service_type' => $serviceType,
             'intake_weight_lbs' => $data['intake_weight_lbs'],
             'status' => 'PHOTO_PENDING',
         ]);
@@ -758,23 +763,28 @@ class PreregistrationController extends Controller
             $this->photoService->uploadPhoto($preregistration, $photoFile);
         }
 
-        $message = 'Preregistro rápido creado. Falta completar los datos de etiqueta y agencia.';
+        $message = $isMaritime && filled($preregistration->warehouse_code)
+            ? 'Preregistro rápido creado. Imprime la etiqueta de control. Falta completar los datos de etiqueta y agencia.'
+            : 'Preregistro rápido creado. Falta completar los datos de etiqueta y agencia.';
         if ($prealert) {
             $message = 'Paquete prealertado: '.$prealert->name
                 .($prealert->agency ? ' · '.$prealert->agency->listingAccountLabel() : '')
                 .'. '.$message;
         }
 
+        $redirectUrl = ($isMaritime && filled($preregistration->warehouse_code))
+            ? route('preregistrations.control-label', $preregistration->id)
+            : route('preregistrations.show', $preregistration->id);
+
         if ($request->expectsJson()) {
             return response()->json([
                 'message' => $message,
-                'redirect_url' => route('preregistrations.show', $preregistration->id),
+                'redirect_url' => $redirectUrl,
                 'prealert' => $prealert?->warehouseNotice(),
             ]);
         }
 
-        return redirect()->route('preregistrations.show', $preregistration->id)
-            ->with('success', $message);
+        return redirect()->to($redirectUrl)->with('success', $message);
     }
 
     public function uploadPhoto(Request $request, string $id)
@@ -915,11 +925,20 @@ class PreregistrationController extends Controller
     public function label(Request $request, string $id)
     {
         $preregistration = Preregistration::with(['agency', 'agency.parent'])->findOrFail($id);
-        if (empty($preregistration->warehouse_code)) {
-            if ($preregistration->status === 'PHOTO_PENDING') {
-                return redirect()->route('preregistrations.edit', $preregistration->id)
-                    ->with('error', 'Complete y guarde el preregistro para asignar el código de almacén.');
+        if ($preregistration->status === 'PHOTO_PENDING') {
+            if (filled($preregistration->warehouse_code)) {
+                return redirect()->route('preregistrations.control-label', array_filter([
+                    'id' => $preregistration->id,
+                    'format' => $request->query('format'),
+                    'paper' => $request->query('paper'),
+                    'autoprint' => $request->query('autoprint'),
+                ], fn ($value) => $value !== null && $value !== ''));
             }
+
+            return redirect()->route('preregistrations.edit', $preregistration->id)
+                ->with('error', 'Complete y guarde el preregistro para asignar el código de almacén.');
+        }
+        if (empty($preregistration->warehouse_code)) {
             $this->warehouseService->ensureWarehouseCode($preregistration);
         }
         $dropoffNextStep = null;
@@ -937,6 +956,26 @@ class PreregistrationController extends Controller
 
         // Usar el mismo diseño nuevo de etiqueta para cualquier agencia/servicio.
         return view('preregistrations.label-skylink-one', compact('preregistration', 'dropoffNextStep', 'dropoffTotal', 'labelFormat'));
+    }
+
+    /**
+     * Pegatina de control (captura rápida marítima): solo logo PrimeTrack + warehouse + barcode.
+     */
+    public function controlLabel(Request $request, string $id)
+    {
+        $preregistration = Preregistration::findOrFail($id);
+        if (empty($preregistration->warehouse_code)) {
+            if ($preregistration->status === 'PHOTO_PENDING') {
+                return redirect()->route('preregistrations.edit', $preregistration->id)
+                    ->with('error', 'Complete y guarde el preregistro para asignar el código de almacén.');
+            }
+
+            return redirect()->route('preregistrations.label', $preregistration->id);
+        }
+
+        $labelFormat = $this->resolveLabelPaperFormat($request);
+
+        return view('preregistrations.label-control', compact('preregistration', 'labelFormat'));
     }
 
     /** Imprimir todas las etiquetas de un dropoff (varios bultos mismo warehouse). Query: ids=1,2,3 */

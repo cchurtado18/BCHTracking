@@ -176,6 +176,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('preregistrations/courier/tracking-photo', [PreregistrationController::class, 'trackingPhoto'])->name('preregistrations.tracking-photo');
         Route::post('preregistrations/courier/quick', [PreregistrationController::class, 'storeQuickCourier'])->name('preregistrations.store-quick-courier');
         Route::get('preregistrations/{id}/label', [PreregistrationController::class, 'label'])->name('preregistrations.label');
+        Route::get('preregistrations/{id}/control-label', [PreregistrationController::class, 'controlLabel'])->name('preregistrations.control-label');
         Route::get('preregistrations-dropoff-labels', [PreregistrationController::class, 'dropoffLabels'])->name('preregistrations.dropoff-labels');
         Route::post('preregistrations/{id}/photos', [PreregistrationController::class, 'uploadPhoto'])->name('preregistrations.upload-photo');
         Route::post('preregistrations/{id}/photos/{photo}/move', [PreregistrationController::class, 'movePhoto'])->name('preregistrations.photos.move');

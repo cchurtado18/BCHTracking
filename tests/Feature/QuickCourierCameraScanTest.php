@@ -156,6 +156,9 @@ class QuickCourierCameraScanTest extends TestCase
             'intake_weight_lbs' => 4.5,
             'status' => 'PHOTO_PENDING',
         ]);
+        $sea = Preregistration::where('tracking_external', '1ZSERVICETEST002')->first();
+        $this->assertNotNull($sea);
+        $this->assertMatchesRegularExpression('/^\d{6}$/', (string) $sea->warehouse_code);
     }
 
     public function test_preregistration_index_shows_both_capture_buttons(): void

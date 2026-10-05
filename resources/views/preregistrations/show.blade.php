@@ -84,7 +84,9 @@
             @endif
             <a href="{{ route('preregistrations.edit', $preregistration->id) }}" class="mb-btn mb-btn-secondary">Editar</a>
             @if($preregistration->warehouse_code)
-                @if(!empty($dropoffLabelIds))
+                @if($preregistration->usesControlWarehouseLabel())
+                <a href="{{ $preregistration->warehousePrintUrl() }}" target="_blank" class="mb-btn mb-btn-secondary">Etiqueta de control 4×6</a>
+                @elseif(!empty($dropoffLabelIds))
                 @php $dropoffIdsParam = implode(',', $dropoffLabelIds); @endphp
                 <a href="{{ route('preregistrations.dropoff-labels', ['ids' => $dropoffIdsParam]) }}" target="_blank" class="mb-btn mb-btn-secondary">Etiquetas 4×6 ({{ count($dropoffLabelIds) }})</a>
                 @else

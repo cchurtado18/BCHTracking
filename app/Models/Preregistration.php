@@ -229,4 +229,18 @@ class Preregistration extends Model
     {
         return $this->hasOne(Prealert::class);
     }
+
+    public function usesControlWarehouseLabel(): bool
+    {
+        return $this->status === 'PHOTO_PENDING' && filled($this->warehouse_code);
+    }
+
+    public function warehousePrintUrl(): string
+    {
+        if ($this->usesControlWarehouseLabel()) {
+            return route('preregistrations.control-label', $this->id);
+        }
+
+        return route('preregistrations.label', $this->id);
+    }
 }
