@@ -14,7 +14,7 @@ class ControlWarehouseLabelTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_maritime_quick_capture_assigns_warehouse_and_opens_control_label(): void
+    public function test_maritime_quick_capture_assigns_warehouse_and_stays_on_preregistration(): void
     {
         Storage::fake('public');
         $user = User::factory()->create(['agency_id' => null]);
@@ -33,7 +33,7 @@ class ControlWarehouseLabelTest extends TestCase
         $this->assertNotNull($package);
         $this->assertSame('PHOTO_PENDING', $package->status);
         $this->assertMatchesRegularExpression('/^\d{6}$/', (string) $package->warehouse_code);
-        $response->assertJsonPath('redirect_url', route('preregistrations.control-label', $package->id));
+        $response->assertJsonPath('redirect_url', route('preregistrations.show', $package->id));
     }
 
     public function test_air_quick_capture_does_not_assign_warehouse(): void

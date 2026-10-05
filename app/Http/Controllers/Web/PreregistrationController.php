@@ -764,7 +764,7 @@ class PreregistrationController extends Controller
         }
 
         $message = $isMaritime && filled($preregistration->warehouse_code)
-            ? 'Preregistro rápido creado. Imprime la etiqueta de control. Falta completar los datos de etiqueta y agencia.'
+            ? 'Preregistro rápido creado. El código de almacén ya está asignado. Falta completar los datos de etiqueta y agencia.'
             : 'Preregistro rápido creado. Falta completar los datos de etiqueta y agencia.';
         if ($prealert) {
             $message = 'Paquete prealertado: '.$prealert->name
@@ -772,9 +772,7 @@ class PreregistrationController extends Controller
                 .'. '.$message;
         }
 
-        $redirectUrl = ($isMaritime && filled($preregistration->warehouse_code))
-            ? route('preregistrations.control-label', $preregistration->id)
-            : route('preregistrations.show', $preregistration->id);
+        $redirectUrl = route('preregistrations.show', $preregistration->id);
 
         if ($request->expectsJson()) {
             return response()->json([
