@@ -53,6 +53,34 @@ class PackageProcessingService
     }
 
     /**
+     * Corrige el peso verificado de un paquete listo o entregado.
+     * La hoja de salida y la próxima factura leen ese peso del paquete.
+     */
+    public function correctVerifiedWeight(Preregistration $preregistration, float $verifiedWeightLbs): Preregistration
+    {
+        if (! in_array($preregistration->status, ['READY', 'DELIVERED'], true)) {
+            throw new \Exception('Solo se puede corregir el peso de paquetes listos para retiro o entregados.');
+        }
+
+        $preregistration->loadMissing([
+            'delivery.deliveryNote.accountingInvoice',
+            'delivery.deliveryNote.linkedInvoices',
+        ]);
+        $invoice = $preregistration->delivery?->deliveryNote?->currentInvoice();
+        if ($invoice) {
+            throw new \Exception(
+                'La hoja ya tiene la factura '.$invoice->folio.' activa. Anúlela, corrija el peso y emita de nuevo para cobrar lo correcto.'
+            );
+        }
+
+        $preregistration->update([
+            'verified_weight_lbs' => $verifiedWeightLbs,
+        ]);
+
+        return $preregistration->fresh();
+    }
+
+    /**
      * Reprint label for a package
      * 
      * @param Preregistration $preregistration

@@ -150,7 +150,8 @@ class PackageController extends Controller
             'photos',
             'agency',
             'consolidationItem.consolidation',
-            'delivery.deliveryNote',
+            'delivery.deliveryNote.accountingInvoice',
+            'delivery.deliveryNote.linkedInvoices',
         ])->findOrFail($id);
         $this->ensureUserCanAccessPreregistration($package);
         if ($package->status !== 'PHOTO_PENDING' && ! filled($package->warehouse_code)) {
@@ -214,6 +215,42 @@ class PackageController extends Controller
                 ->route('packages.show', $package->id)
                 ->with('success', 'Paquete procesado (READY). Si no aparece el diálogo de impresión, use «Imprimir etiqueta».')
                 ->with('open_label_autoprint', true);
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage())->withInput();
+        }
+    }
+
+    public function updateVerifiedWeight(Request $request, string $id)
+    {
+        if ($redirect = $this->denyAgencyWarehouseWrite()) {
+            return $redirect;
+        }
+
+        $package = Preregistration::with([
+            'delivery.deliveryNote.accountingInvoice',
+            'delivery.deliveryNote.linkedInvoices',
+        ])->findOrFail($id);
+        $this->ensureUserCanAccessPreregistration($package);
+        $request->validate([
+            'verified_weight_lbs' => 'required|numeric|min:0.01|max:999999.99',
+        ], [
+            'verified_weight_lbs.required' => 'Indique el peso verificado en libras.',
+            'verified_weight_lbs.min' => 'El peso debe ser mayor a 0.',
+        ]);
+
+        try {
+            $this->packageService->correctVerifiedWeight(
+                $package,
+                (float) $request->verified_weight_lbs
+            );
+
+            $noteCode = $package->fresh()->delivery?->deliveryNote?->code;
+
+            return redirect()
+                ->route('packages.show', $package->id)
+                ->with('success', $noteCode
+                    ? 'Peso verificado actualizado. La hoja '.$noteCode.' y la próxima factura usarán '.$request->verified_weight_lbs.' lbs.'
+                    : 'Peso verificado actualizado. La hoja de salida y la próxima factura usarán este peso.');
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage())->withInput();
         }

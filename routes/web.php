@@ -232,6 +232,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}', [PackageController::class, 'show'])->name('show');
         Route::get('/{id}/process', [PackageController::class, 'showProcess'])->name('process');
         Route::post('/{id}/process', [PackageController::class, 'process'])->name('process.store');
+        Route::post('/{id}/verified-weight', [PackageController::class, 'updateVerifiedWeight'])->name('verified-weight');
         Route::post('/{id}/reprint-label', [PackageController::class, 'reprintLabel'])->name('reprint-label');
     });
 

@@ -16,6 +16,10 @@
     $isAgencyUser = auth()->user() && auth()->user()->isAgencyUser();
     $packagesOnlyPortal = auth()->user()?->isPackagesOnlyPortal();
     $weightLbs = $package->verified_weight_lbs ?? $package->intake_weight_lbs;
+    $canCorrectWeight = ! $isAgencyUser && in_array($package->status, ['READY', 'DELIVERED'], true);
+    $blockingInvoice = $canCorrectWeight ? $package->delivery?->deliveryNote?->currentInvoice() : null;
+    $weightFormValue = old('verified_weight_lbs', $package->verified_weight_lbs ?? $package->intake_weight_lbs);
+    $weightError = $errors->first('verified_weight_lbs');
     $showAdmin = auth()->user()?->hasPermission(\App\Support\Permission::ACTION_CHANGE_INTAKE_TYPE)
         || auth()->user()?->hasPermission(\App\Support\Permission::ACTION_RESET_TO_MIAMI);
 
@@ -160,10 +164,38 @@
                             <span class="prd-field-label">Peso etiqueta</span>
                             <span class="prd-field-value">{{ $package->intake_weight_lbs !== null ? number_format((float) $package->intake_weight_lbs, 2).' lbs' : '—' }}</span>
                         </div>
-                        @if($package->verified_weight_lbs)
-                        <div class="prd-field">
+                        @if($package->verified_weight_lbs || $canCorrectWeight)
+                        <div class="prd-field {{ $canCorrectWeight ? 'prd-field-span' : '' }}">
                             <span class="prd-field-label">Peso verificado</span>
-                            <span class="prd-field-value">{{ number_format((float) $package->verified_weight_lbs, 2) }} lbs</span>
+                            <span class="prd-field-value">{{ $package->verified_weight_lbs !== null ? number_format((float) $package->verified_weight_lbs, 2).' lbs' : '—' }}</span>
+                            @if($canCorrectWeight && $blockingInvoice)
+                            <p class="prd-weight-hint">La hoja ya tiene la factura {{ $blockingInvoice->folio }} activa. Anúlela para editar el peso y emitir de nuevo.</p>
+                            @endif
+                            @if($canCorrectWeight && ! $blockingInvoice)
+                            <details class="prd-weight-edit"{!! $weightError ? ' open' : '' !!}>
+                                <summary class="prd-weight-edit-toggle">Editar peso</summary>
+                                <form action="{{ route('packages.verified-weight', $package->id) }}" method="POST" class="prd-weight-form">
+                                    @csrf
+                                    <input
+                                        type="number"
+                                        name="verified_weight_lbs"
+                                        step="0.01"
+                                        min="0.01"
+                                        max="999999.99"
+                                        required
+                                        value="{{ $weightFormValue }}"
+                                        class="prd-weight-input{{ $weightError ? ' prd-weight-input-invalid' : '' }}"
+                                        aria-label="Peso verificado en libras"
+                                    >
+                                    <span class="prd-weight-unit">lbs</span>
+                                    <button type="submit" class="prd-weight-btn">Guardar</button>
+                                </form>
+                                @if($weightError)
+                                <span class="prd-weight-error">{{ $weightError }}</span>
+                                @endif
+                                <p class="prd-weight-hint">Se actualiza también en la hoja de salida y en la próxima factura{{ $package->service_type === 'CFT' ? ' (CFT cobra pies³)' : '' }}.</p>
+                            </details>
+                            @endif
                         </div>
                         @endif
                         @unless($isAgencyUser)
@@ -412,6 +444,28 @@
 .prd-field-label { font-size: 0.66rem; font-weight: 700; color: #94a3b8; letter-spacing: 0.07em; text-transform: uppercase; }
 .prd-field-value { font-size: 0.92rem; font-weight: 650; color: #0f172a; word-break: break-word; }
 .prd-field-intake { display: inline-flex; align-items: center; gap: 0.45rem; }
+.prd-weight-edit { margin-top: 0.4rem; }
+.prd-weight-edit-toggle {
+    display: inline-flex; align-items: center; cursor: pointer; list-style: none;
+    font-size: 0.78rem; font-weight: 700; color: #0A2D6F;
+}
+.prd-weight-edit-toggle::-webkit-details-marker { display: none; }
+.prd-weight-edit-toggle:hover { text-decoration: underline; }
+.prd-weight-form { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; margin-top: 0.45rem; }
+.prd-weight-input {
+    width: 7.2rem; padding: 0.4rem 0.55rem; border: 1px solid #cbd5e1; border-radius: 0.5rem;
+    font-size: 0.92rem; font-weight: 700; color: #0f172a; background: #fff;
+}
+.prd-weight-input:focus { outline: none; border-color: #1E4FA8; box-shadow: 0 0 0 3px rgba(30, 79, 168, 0.12); }
+.prd-weight-input-invalid { border-color: #f87171; }
+.prd-weight-unit { font-size: 0.8rem; font-weight: 700; color: #64748b; }
+.prd-weight-btn {
+    display: inline-flex; align-items: center; padding: 0.4rem 0.75rem; border-radius: 0.5rem;
+    border: 1px solid #0A2D6F; background: #0A2D6F; color: #fff; font-size: 0.78rem; font-weight: 700; cursor: pointer;
+}
+.prd-weight-btn:hover { background: #143A8C; }
+.prd-weight-hint { margin: 0.4rem 0 0; font-size: 0.75rem; color: #64748b; font-weight: 600; line-height: 1.35; }
+.prd-weight-error { display: block; margin-top: 0.3rem; font-size: 0.75rem; color: #b91c1c; font-weight: 650; }
 .prd-intake-dot { width: 0.5rem; height: 0.5rem; border-radius: 999px; background: #1E4FA8; flex-shrink: 0; }
 
 /* ===== Evidencia ===== */
