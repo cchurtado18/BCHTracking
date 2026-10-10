@@ -17,9 +17,11 @@
     $packagesOnlyPortal = auth()->user()?->isPackagesOnlyPortal();
     $weightLbs = $package->verified_weight_lbs ?? $package->intake_weight_lbs;
     $canCorrectWeight = ! $isAgencyUser && in_array($package->status, ['READY', 'DELIVERED'], true);
-    $blockingInvoice = $canCorrectWeight ? $package->delivery?->deliveryNote?->currentInvoice() : null;
+    $blockingInvoice = $canCorrectWeight ? ($blockingInvoice ?? null) : null;
+    $showWeightForm = $canCorrectWeight && ! $blockingInvoice;
     $weightFormValue = old('verified_weight_lbs', $package->verified_weight_lbs ?? $package->intake_weight_lbs);
     $weightError = $errors->first('verified_weight_lbs');
+    $weightUpdateUrl = url('/packages/'.$package->id.'/verified-weight');
     $showAdmin = auth()->user()?->hasPermission(\App\Support\Permission::ACTION_CHANGE_INTAKE_TYPE)
         || auth()->user()?->hasPermission(\App\Support\Permission::ACTION_RESET_TO_MIAMI);
 
@@ -168,13 +170,13 @@
                         <div class="prd-field {{ $canCorrectWeight ? 'prd-field-span' : '' }}">
                             <span class="prd-field-label">Peso verificado</span>
                             <span class="prd-field-value">{{ $package->verified_weight_lbs !== null ? number_format((float) $package->verified_weight_lbs, 2).' lbs' : '—' }}</span>
-                            @if($canCorrectWeight && $blockingInvoice)
+                            @if($blockingInvoice)
                             <p class="prd-weight-hint">La hoja ya tiene la factura {{ $blockingInvoice->folio }} activa. Anúlela para editar el peso y emitir de nuevo.</p>
                             @endif
-                            @if($canCorrectWeight && ! $blockingInvoice)
+                            @if($showWeightForm)
                             <details class="prd-weight-edit"{!! $weightError ? ' open' : '' !!}>
                                 <summary class="prd-weight-edit-toggle">Editar peso</summary>
-                                <form action="{{ route('packages.verified-weight', $package->id) }}" method="POST" class="prd-weight-form">
+                                <form action="{{ $weightUpdateUrl }}" method="POST" class="prd-weight-form">
                                     @csrf
                                     <input
                                         type="number"

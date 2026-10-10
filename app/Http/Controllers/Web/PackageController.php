@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Concerns\AuthorizesAgencyAccess;
+use App\Models\AccountingInvoice;
 use App\Models\Agency;
 use App\Models\Preregistration;
 use App\Services\PackageProcessingService;
@@ -150,8 +151,7 @@ class PackageController extends Controller
             'photos',
             'agency',
             'consolidationItem.consolidation',
-            'delivery.deliveryNote.accountingInvoice',
-            'delivery.deliveryNote.linkedInvoices',
+            'delivery.deliveryNote',
         ])->findOrFail($id);
         $this->ensureUserCanAccessPreregistration($package);
         if ($package->status !== 'PHOTO_PENDING' && ! filled($package->warehouse_code)) {
@@ -159,7 +159,19 @@ class PackageController extends Controller
         }
         $package->photos->each(fn ($p) => $p->url = asset('storage/'.$p->path));
 
-        return view('packages.show', compact('package'));
+        $blockingInvoice = null;
+        if (! auth()->user()?->isAgencyUser() && in_array($package->status, ['READY', 'DELIVERED'], true)) {
+            $noteId = $package->delivery?->delivery_note_id;
+            if ($noteId) {
+                $blockingInvoice = AccountingInvoice::query()
+                    ->coveringNote((int) $noteId)
+                    ->where('status', '!=', 'void')
+                    ->orderByDesc('id')
+                    ->first();
+            }
+        }
+
+        return view('packages.show', compact('package', 'blockingInvoice'));
     }
 
     public function showProcess(string $id)
@@ -226,10 +238,7 @@ class PackageController extends Controller
             return $redirect;
         }
 
-        $package = Preregistration::with([
-            'delivery.deliveryNote.accountingInvoice',
-            'delivery.deliveryNote.linkedInvoices',
-        ])->findOrFail($id);
+        $package = Preregistration::with('delivery.deliveryNote')->findOrFail($id);
         $this->ensureUserCanAccessPreregistration($package);
         $request->validate([
             'verified_weight_lbs' => 'required|numeric|min:0.01|max:999999.99',

@@ -65,6 +65,34 @@ class CorrectVerifiedWeightTest extends TestCase
         return compact('agency', 'note', 'package');
     }
 
+    public function test_package_show_works_before_and_after_delivery(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        $agency = $this->createAgency();
+        $pending = Preregistration::create([
+            'intake_type' => 'COURIER',
+            'tracking_external' => 'TRK-WGT-SHOW',
+            'warehouse_code' => '112233',
+            'label_name' => 'Pendiente Show',
+            'service_type' => 'AIR',
+            'intake_weight_lbs' => 5,
+            'status' => 'RECEIVED_MIAMI',
+            'agency_id' => $agency->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('packages.show', $pending->id))
+            ->assertOk()
+            ->assertDontSee('Editar peso');
+
+        ['package' => $package] = $this->seedDeliveredPackage();
+
+        $this->actingAs($admin)
+            ->get(route('packages.show', $package->id))
+            ->assertOk()
+            ->assertSee('Editar peso');
+    }
+
     public function test_central_user_can_correct_weight_after_delivery_and_note_uses_it(): void
     {
         $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
