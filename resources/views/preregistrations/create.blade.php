@@ -145,7 +145,7 @@
         <form action="{{ route('preregistrations.store') }}" method="POST" enctype="multipart/form-data" class="preregs-create-formwrap" id="preregForm" novalidate>
             @csrf
             <input type="hidden" name="service_type" id="service_type_post" value="{{ old('service_type') }}">
-            <input type="hidden" name="service_route" id="service_route_post" value="{{ old('service_route', in_array(old('service_type'), ['SEA', 'CFT'], true) ? 'SEA' : old('service_type')) }}">
+            <input type="hidden" name="service_route" id="service_route_post" value="{{ old('service_route', in_array(old('service_type'), ['SEA', 'CFT'], true) ? 'SEA' : (old('service_type') === 'TBC' ? 'TBC' : old('service_type'))) }}">
             <input type="hidden" name="sea_billing" id="sea_billing_post" value="{{ old('sea_billing', \App\Support\ServiceType::seaBillingValue(old('service_type'))) }}">
 
             <div class="preregs-form-panel">
@@ -1457,6 +1457,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function currentService() {
         var route = selectedServiceRoute();
         if (route === 'AIR') return 'AIR';
+        if (route === 'TBC') return 'TBC';
         if (route === 'SEA') {
             var billing = selectedSeaBilling();
             if (billing === 'CFT') return 'CFT';
@@ -1501,7 +1502,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var billing = key === 'CFT' ? 'CFT' : (key === 'SEA' ? 'LBS' : '');
         ['service_type', 'service_type_multi'].forEach(function (id) {
             var el = document.getElementById(id);
-            if (!el || String(el.value || '').trim()) return;
+            if (!el || String(el.value || '').trim() || String(el.value || '').toUpperCase() === 'TBC') return;
             if (route === 'AIR' || route === 'SEA') {
                 el.value = route;
             }

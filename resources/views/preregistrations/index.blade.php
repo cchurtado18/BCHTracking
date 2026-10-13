@@ -303,6 +303,7 @@
 .preregs-badge-air { background: #dbeafe; color: #1e40af; }
 .preregs-badge-sea,
 .preregs-badge-cft { background: #ffedd5; color: #9a3412; }
+.preregs-badge-tbc { background: #fef3c7; color: #92400e; }
 .preregs-status.status-pending { background: #eef2ff; color: #3730a3; }
 .preregs-status.status-info { background: #fef3c7; color: #92400e; }
 .preregs-status.status-warning { background: #ffedd5; color: #9a3412; }
@@ -518,6 +519,7 @@
                     <option value="AIR" {{ request('service_type') == 'AIR' ? 'selected' : '' }}>Aéreo</option>
                     <option value="SEA" {{ request('service_type') == 'SEA' ? 'selected' : '' }}>Marítimo</option>
                     <option value="CFT" {{ request('service_type') == 'CFT' ? 'selected' : '' }}>Pie cúbico</option>
+                    <option value="TBC" {{ request('service_type') == 'TBC' ? 'selected' : '' }}>TBC</option>
                 </select>
             </div>
             <div class="preregs-field preregs-field-select">

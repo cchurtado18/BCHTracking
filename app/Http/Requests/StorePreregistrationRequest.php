@@ -69,7 +69,7 @@ class StorePreregistrationRequest extends FormRequest
             ],
             'service_type' => [
                 Rule::requiredIf(fn () => ! $this->isDropoffStepSubmission() || (int) $this->input('dropoff_step') === 1),
-                ServiceType::rule(),
+                ServiceType::persistRule(),
             ],
             'photo' => 'nullable|file|image|mimes:jpg,jpeg,png,webp|max:10240',
             'bultos_count' => 'sometimes|integer|min:1|max:20',

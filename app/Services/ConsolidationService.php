@@ -201,6 +201,9 @@ class ConsolidationService
         if ($package->status === 'CANCELLED') {
             return;
         }
+        if (ServiceType::isTbc($package->service_type)) {
+            return;
+        }
 
         $codes = collect(TrackingCode::lookupValues($package->tracking_external))
             ->push(TrackingCode::compact($package->warehouse_code))
@@ -260,8 +263,8 @@ class ConsolidationService
             return ['found' => false, 'service_mismatch' => false, 'package' => null];
         }
 
-        $mismatch = $any->service_type
-            && ! ServiceType::matchesRoute($any->service_type, $serviceType);
+        $mismatch = ServiceType::isTbc($any->service_type)
+            || ($any->service_type && ! ServiceType::matchesRoute($any->service_type, $serviceType));
 
         return [
             'found' => ! $mismatch,
@@ -323,6 +326,9 @@ class ConsolidationService
 
         return $candidates->first(function (Preregistration $package) use ($normalized, $sackService, $anyService, $alreadyInSack, $miamiOnly) {
             if ($package->status === 'CANCELLED') {
+                return false;
+            }
+            if (ServiceType::isTbc($package->service_type) && ! $anyService) {
                 return false;
             }
             if ($miamiOnly && ! in_array($package->status, ['RECEIVED_MIAMI', 'PHOTO_PENDING'], true)) {

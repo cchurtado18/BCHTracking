@@ -14,6 +14,8 @@ class ServiceType
 
     public const DELIVERY = 'DELIVERY';
 
+    public const TBC = 'TBC';
+
     /** @var list<string> */
     public const ALL = [self::AIR, self::SEA, self::CFT];
 
@@ -25,9 +27,19 @@ class ServiceType
         return 'in:'.implode(',', self::ALL);
     }
 
+    public static function persistRule(): string
+    {
+        return 'in:'.implode(',', array_merge(self::ALL, [self::TBC]));
+    }
+
     public static function routeRule(): string
     {
         return 'in:'.implode(',', self::ROUTES);
+    }
+
+    public static function captureRouteRule(): string
+    {
+        return 'in:'.implode(',', [self::AIR, self::SEA, self::TBC]);
     }
 
     public const BILLING_LBS = 'LBS';
@@ -60,6 +72,9 @@ class ServiceType
     {
         $route = strtoupper(trim((string) $route));
         $billing = strtoupper(trim((string) $billing));
+        if ($route === self::TBC) {
+            return self::TBC;
+        }
         if ($route === self::AIR) {
             return self::AIR;
         }
@@ -82,8 +97,16 @@ class ServiceType
         return in_array(strtoupper((string) $value), self::ALL, true);
     }
 
+    public static function isTbc(?string $value): bool
+    {
+        return strtoupper((string) $value) === self::TBC;
+    }
+
     public static function normalize(?string $value, string $fallback = self::AIR): string
     {
+        if (self::isTbc($value)) {
+            return self::TBC;
+        }
         $key = strtoupper((string) $value);
 
         return self::isValid($key) ? $key : $fallback;
@@ -95,15 +118,23 @@ class ServiceType
     }
 
     /**
-     * Vía de envío: pie cúbico viaja por mar.
+     * Vía de envío: pie cúbico viaja por mar. TBC no es vía.
      */
     public static function route(?string $value): string
     {
+        if (self::isTbc($value)) {
+            return self::TBC;
+        }
+
         return self::isCft($value) ? self::SEA : self::normalize($value, self::AIR);
     }
 
     public static function matchesRoute(?string $packageService, ?string $sackOrRoute): bool
     {
+        if (self::isTbc($packageService) || self::isTbc($sackOrRoute)) {
+            return false;
+        }
+
         return self::route($packageService) === self::route($sackOrRoute);
     }
 
@@ -112,12 +143,45 @@ class ServiceType
      */
     public static function servicesForRoute(?string $route): array
     {
+        if (self::isTbc($route)) {
+            return [];
+        }
+
         return self::route($route) === self::SEA ? [self::SEA, self::CFT] : [self::AIR];
     }
 
     public static function routeMark(?string $value): string
     {
+        if (self::isTbc($value)) {
+            return self::TBC;
+        }
+
         return self::route($value) === self::SEA ? 'M' : 'A';
+    }
+
+    /**
+     * Texto de vía en etiqueta: AIR, SEA, CFT o TBC. TBC no se pinta como aéreo.
+     */
+    public static function printCode(?string $value): string
+    {
+        if (self::isTbc($value)) {
+            return self::TBC;
+        }
+        if (self::isCft($value)) {
+            return self::CFT;
+        }
+
+        return self::route($value) === self::SEA ? self::SEA : self::AIR;
+    }
+
+    public static function printClass(?string $value): string
+    {
+        return match (self::printCode($value)) {
+            self::TBC => 'service-tbc',
+            self::CFT => 'service-cft',
+            self::SEA => 'service-sea',
+            default => 'service-air',
+        };
     }
 
     public static function routeLabel(?string $value): string
@@ -142,6 +206,9 @@ class ServiceType
         if ($key === self::CFT) {
             return [self::CFT];
         }
+        if ($key === self::TBC) {
+            return [self::TBC];
+        }
 
         return self::servicesForRoute($key);
     }
@@ -153,6 +220,7 @@ class ServiceType
             self::SEA => 'Marítimo',
             self::CFT => 'Pie cúbico',
             self::DELIVERY => 'Delivery',
+            self::TBC => 'TBC',
             default => $value ?: '—',
         };
     }
@@ -163,6 +231,7 @@ class ServiceType
             self::AIR => 'aéreo',
             self::SEA => 'marítimo',
             self::CFT => 'pie cúbico',
+            self::TBC => 'TBC',
             default => strtolower((string) $value),
         };
     }
@@ -199,6 +268,7 @@ class ServiceType
             self::AIR => '✈',
             self::SEA => '⚓',
             self::CFT => '▣',
+            self::TBC => '?',
             default => '',
         };
     }

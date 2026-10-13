@@ -181,6 +181,7 @@
 .packages-badge { display: inline-block; padding: 0.22rem 0.55rem; font-size: 0.7rem; font-weight: 600; border-radius: 9999px; white-space: nowrap; }
 .packages-badge-air { background: #dbeafe; color: #1e40af; }
 .packages-badge-sea { background: #E8EEF8; color: #0A2D6F; }
+.packages-badge-tbc { background: #fef3c7; color: #92400e; }
 .packages-status { }
 .packages-status.status-info { background: #e0f2fe; color: #075985; }
 .packages-status.status-warning { background: #fef3c7; color: #92400e; }

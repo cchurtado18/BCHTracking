@@ -620,6 +620,8 @@ class PreregistrationController extends Controller
         $resolvedService = \App\Support\ServiceType::fromRouteAndBilling($request->input('service_route'), $request->input('sea_billing'));
         if ($resolvedService) {
             $request->merge(['service_type' => $resolvedService]);
+        } elseif (\App\Support\ServiceType::isTbc($preregistration->service_type) && ! $request->filled('service_route')) {
+            $request->merge(['service_type' => \App\Support\ServiceType::TBC]);
         }
         if ($upperMerge !== []) {
             $request->merge($upperMerge);
@@ -631,8 +633,8 @@ class PreregistrationController extends Controller
         $data = $request->validate([
             'agency_id' => 'required|exists:agencies,id',
             'label_name' => 'sometimes|string|max:255',
-            'service_type' => 'required|'.\App\Support\ServiceType::rule(),
-            'service_route' => 'nullable|'.\App\Support\ServiceType::routeRule(),
+            'service_type' => 'required|'.\App\Support\ServiceType::persistRule(),
+            'service_route' => 'nullable|'.\App\Support\ServiceType::captureRouteRule(),
             'sea_billing' => 'required_if:service_route,SEA|nullable|in:LBS,CFT',
             'intake_weight_lbs' => 'sometimes|numeric|min:0|max:999999.99',
             'tracking_external' => $trackingRules,
@@ -717,14 +719,14 @@ class PreregistrationController extends Controller
                 'max:255',
                 Rule::unique('preregistrations', 'tracking_external')->whereNull('deleted_at'),
             ],
-            'service_type' => ['required', \App\Support\ServiceType::routeRule()],
+            'service_type' => ['required', \App\Support\ServiceType::captureRouteRule()],
             'photo' => 'nullable|file|image|mimes:jpg,jpeg,png,webp|max:10240',
             'photos' => 'nullable|array|max:3',
             'photos.*' => 'file|image|mimes:jpg,jpeg,png,webp|max:10240',
             'intake_weight_lbs' => 'required|numeric|min:0.01|max:999999.99',
         ], [
-            'service_type.required' => 'Seleccione si el paquete es aéreo o marítimo.',
-            'service_type.in' => 'Seleccione si el paquete es aéreo o marítimo.',
+            'service_type.required' => 'Seleccione aéreo, marítimo o TBC si aún no está confirmado.',
+            'service_type.in' => 'Seleccione aéreo, marítimo o TBC si aún no está confirmado.',
             'intake_weight_lbs.required' => 'Indique el peso del paquete en libras.',
             'intake_weight_lbs.min' => 'El peso debe ser mayor a 0.',
         ]);
@@ -745,7 +747,8 @@ class PreregistrationController extends Controller
         // Algunos campos de la tabla (como label_name) no permiten NULL,
         // así que usamos valores de marcador que luego se podrán editar.
         $serviceType = \App\Support\ServiceType::normalize($data['service_type']);
-        $isMaritime = \App\Support\ServiceType::route($serviceType) === \App\Support\ServiceType::SEA;
+        $isMaritime = ! \App\Support\ServiceType::isTbc($serviceType)
+            && \App\Support\ServiceType::route($serviceType) === \App\Support\ServiceType::SEA;
         $warehouseCode = $isMaritime ? $this->warehouseService->generateWarehouseCode() : null;
 
         $preregistration = Preregistration::create([
@@ -880,6 +883,10 @@ class PreregistrationController extends Controller
         ]);
 
         $newType = \App\Support\ServiceType::normalize($validated['service_type']);
+        if (\App\Support\ServiceType::isTbc($newType)) {
+            return redirect()->route('preregistrations.show', $preregistration->id)
+                ->with('error', 'Confirme si el paquete es aéreo o marítimo.');
+        }
         if (! $this->canEditServiceType($preregistration)) {
             return redirect()->route('preregistrations.show', $preregistration->id)
                 ->with('error', 'No se puede cambiar el servicio de un paquete que ya está en saco, en entrega o más adelante en el proceso.');
@@ -894,7 +901,9 @@ class PreregistrationController extends Controller
         $preregistration->update(['service_type' => $newType]);
 
         return redirect()->route('preregistrations.show', $preregistration->id)
-            ->with('success', 'Servicio actualizado: '.\App\Support\ServiceType::label($oldType).' → '.\App\Support\ServiceType::label($newType).'.');
+            ->with('success', \App\Support\ServiceType::isTbc($oldType)
+                ? 'Vía confirmada: '.\App\Support\ServiceType::label($newType).'. Ya puede ir a un saco.'
+                : 'Servicio actualizado: '.\App\Support\ServiceType::label($oldType).' → '.\App\Support\ServiceType::label($newType).'.');
     }
 
     private function canEditServiceType(Preregistration $preregistration): bool

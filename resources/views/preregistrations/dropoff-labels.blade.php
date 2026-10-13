@@ -59,6 +59,7 @@
         }
         .label-sheet .value.label-service-air { border-style: dashed; }
         .label-sheet .value.label-service-sea { border-style: solid; }
+        .label-sheet .value.label-service-tbc { border-style: dotted; }
         .label-sheet .reception-note { margin-top: 20px; padding: 12px 14px; background: #eff6ff; border: 1px solid #93c5fd; border-radius: 6px; }
         .label-sheet .reception-note .title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #111827; font-weight: 700; margin-bottom: 4px; }
         .label-sheet .reception-note .datetime { font-size: 18px; font-weight: 700; color: #1e3a8a; }
@@ -240,6 +241,7 @@
         }
         .sl-service-badge.service-air { border-style: dashed; }
         .sl-service-badge.service-sea { border-style: solid; }
+        .sl-service-badge.service-tbc { border-style: dotted; }
         .sl-code-mini-date {
             margin-top: 6px;
             font-size: 13px;
@@ -250,6 +252,7 @@
         }
         .sl-grid-value.service-air { color: #0A2D6F; }
         .sl-grid-value.service-sea { color: #1e40af; }
+        .sl-grid-value.service-tbc { color: #92400e; }
         .sl-description-title {
             margin-top: 16px;
             font-size: 12px;
@@ -289,6 +292,7 @@
         .sl-barcode-wrap { display: flex; justify-content: center; margin-bottom: 6px; }
         .sl-barcode-row { display: inline-flex; align-items: flex-end; justify-content: center; gap: 14px; }
         .sl-service-mark-large { display: inline-block; font-size: 60px; font-weight: 900; line-height: 0.9; color: #111; letter-spacing: 0.02em; margin-bottom: 16px; margin-left: 6px; }
+        .sl-service-mark-large.is-tbc { font-size: 28px; letter-spacing: 0.06em; margin-bottom: 22px; }
         .sl-review-text {
             text-align: center;
             font-size: 14px;

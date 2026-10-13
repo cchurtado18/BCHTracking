@@ -146,6 +146,13 @@ class ConsolidationController extends Controller
         $sackService = $request->validated()['service_type'];
         foreach ($codes as $code) {
             $anyMatch = $this->consolidationService->findAvailableForScan($code, $sackService, true);
+            if ($anyMatch && ServiceType::isTbc($anyMatch->service_type)) {
+                return redirect()->route('consolidations.create-scan')
+                    ->withInput($request->except('entry_codes'))
+                    ->withErrors([
+                        'entry_codes' => "El código {$code} está TBC. Confirme si es aéreo o marítimo antes de meterlo en un saco.",
+                    ]);
+            }
             if ($anyMatch && $anyMatch->service_type && ! ServiceType::matchesRoute($anyMatch->service_type, $sackService)) {
                 $sackLabel = ServiceType::routeLabelLower($sackService);
                 $pkgLabel = ServiceType::routeLabelLower($anyMatch->service_type);
@@ -304,6 +311,9 @@ class ConsolidationController extends Controller
         if ($pre->consolidationItem) {
             return back()->with('error', 'El preregistro ya está en otro '.$pre->consolidationItem->consolidation?->unitNoun().'.');
         }
+        if (ServiceType::isTbc($pre->service_type)) {
+            return back()->with('error', 'Este paquete está TBC. Confirme si es aéreo o marítimo antes de meterlo en un saco.');
+        }
         if (! ServiceType::matchesRoute($pre->service_type, $consolidation->service_type)) {
             return back()->with('error', 'El tipo de servicio no coincide.');
         }
@@ -363,6 +373,10 @@ class ConsolidationController extends Controller
         }
 
         $anyMatch = $this->consolidationService->findAvailableForScan($code, $consolidation->service_type, true);
+        if ($anyMatch && ServiceType::isTbc($anyMatch->service_type)) {
+            return redirect()->route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'scan'])
+                ->with('error', 'Este paquete está TBC. Confirme si es aéreo o marítimo antes de meterlo en un saco.');
+        }
         if ($anyMatch && $anyMatch->service_type && ! ServiceType::matchesRoute($anyMatch->service_type, $consolidation->service_type)) {
             $sackLabel = ServiceType::routeLabelLower($consolidation->service_type);
             $pkgLabel = ServiceType::routeLabelLower($anyMatch->service_type);
@@ -471,6 +485,10 @@ class ConsolidationController extends Controller
         if ($preregistration->status !== 'RECEIVED_MIAMI') {
             return redirect()->route('preregistrations.show', $preregistration->id)
                 ->with('error', 'Solo se puede crear un '.$unit.' unitario para preregistros en Miami (RECEIVED_MIAMI).');
+        }
+        if (ServiceType::isTbc($preregistration->service_type)) {
+            return redirect()->route('preregistrations.show', $preregistration->id)
+                ->with('error', 'Este paquete está TBC. Confirme si es aéreo o marítimo antes de meterlo en un saco.');
         }
         if ($preregistration->consolidationItem) {
             return redirect()->route('preregistrations.show', $preregistration->id)

@@ -161,6 +161,23 @@ class QuickCourierCameraScanTest extends TestCase
         $seaResponse->assertRedirect(route('preregistrations.show', $sea->id));
     }
 
+    public function test_quick_courier_and_tracking_photo_pages_offer_tbc(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+
+        $this->actingAs($user)
+            ->get(route('preregistrations.quick-courier'))
+            ->assertOk()
+            ->assertSee('TBC — Por confirmar')
+            ->assertSee('value="TBC"', false);
+
+        $this->actingAs($user)
+            ->get(route('preregistrations.tracking-photo'))
+            ->assertOk()
+            ->assertSee('TBC — Por confirmar')
+            ->assertSee('value="TBC"', false);
+    }
+
     public function test_preregistration_index_shows_both_capture_buttons(): void
     {
         $user = User::factory()->create(['agency_id' => null]);

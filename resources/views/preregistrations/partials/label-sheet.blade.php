@@ -68,8 +68,8 @@
     <div class="kv kv-3col">
         <div class="kv-col">
             <div class="field">Servicio</div>
-            <div class="value label-service label-service-{{ strtolower($preregistration->service_type ?? 'air') }}">
-                {{ $preregistration->service_type === 'CFT' ? 'CFT' : ($preregistration->service_type === 'SEA' ? 'SEA' : 'AIR') }}
+            <div class="value label-service label-service-{{ strtolower(\App\Support\ServiceType::printCode($preregistration->service_type)) }}">
+                {{ \App\Support\ServiceType::printCode($preregistration->service_type) }}
             </div>
         </div>
         <div class="kv-col">
@@ -99,7 +99,7 @@
     <div class="barcode-wrap">
         <div class="barcode-row">
             <canvas id="barcode-{{ $preregistration->id }}" class="barcode-canvas" data-barcode="{{ $preregistration->warehouse_code }}"></canvas>
-            <span class="service-mark-large" aria-label="Tipo de servicio">{{ $serviceMark }}</span>
+            <span class="service-mark-large{{ $serviceMark === 'TBC' ? ' is-tbc' : '' }}" aria-label="Tipo de servicio">{{ $serviceMark }}</span>
         </div>
     </div>
     @endif

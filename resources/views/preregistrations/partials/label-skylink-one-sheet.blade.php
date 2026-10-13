@@ -24,12 +24,8 @@
     $bultoBadge = ($preregistration->bultos_total && $preregistration->bultos_total > 1)
         ? (($preregistration->bulto_index ?? 1).' de '.$preregistration->bultos_total)
         : null;
-    $serviceLabel = match ($preregistration->service_type) {
-        'SEA' => 'SEA',
-        'CFT' => 'CFT',
-        default => 'AIR',
-    };
-    $serviceClass = \App\Support\ServiceType::route($preregistration->service_type) === 'SEA' ? 'service-sea' : 'service-air';
+    $serviceLabel = \App\Support\ServiceType::printCode($preregistration->service_type);
+    $serviceClass = \App\Support\ServiceType::printClass($preregistration->service_type);
     $serviceMark = \App\Support\ServiceType::routeMark($preregistration->service_type);
     $weight = number_format((float) ($preregistration->verified_weight_lbs ?? $preregistration->intake_weight_lbs ?? 0), 2);
     $cubicFeetValue = $preregistration->cubic_feet !== null ? number_format((float) $preregistration->cubic_feet, 2) : null;
@@ -66,7 +62,7 @@
         @if($preregistration->warehouse_code)
             <div class="sl-barcode-row">
                 <canvas id="barcode-{{ $preregistration->id }}-skylink" class="barcode-canvas" data-barcode="{{ $preregistration->warehouse_code }}"></canvas>
-                <span class="sl-service-mark-large" aria-label="Tipo de servicio">{{ $serviceMark }}</span>
+                <span class="sl-service-mark-large{{ $serviceMark === 'TBC' ? ' is-tbc' : '' }}" aria-label="Tipo de servicio">{{ $serviceMark }}</span>
             </div>
         @endif
     </div>

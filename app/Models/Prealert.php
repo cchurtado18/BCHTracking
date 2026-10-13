@@ -94,7 +94,9 @@ class Prealert extends Model
         ]);
 
         $packageUpdates = [];
-        if ($this->service_type && ! \App\Support\ServiceType::isValid($preregistration->service_type)) {
+        if ($this->service_type
+            && ! \App\Support\ServiceType::isTbc($preregistration->service_type)
+            && ! \App\Support\ServiceType::isValid($preregistration->service_type)) {
             $packageUpdates['service_type'] = $this->service_type;
         }
         if ($this->agency_id && ! $preregistration->agency_id) {

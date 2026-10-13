@@ -20,6 +20,11 @@ Su paquete **{{ $packageCode }}** ya está en nuestro almacén de Miami.
 @if($receivedAt)
 **Recibido:** {{ $receivedAt }}  
 @endif
+@if(\App\Support\ServiceType::isTbc($package->service_type))
+**Servicio:** TBC (por confirmar)  
+
+La vía aún no está confirmada. Revise el paquete y comuníquese con nosotros para indicar si va aéreo o marítimo.
+@endif
 @if($package->bultos_total && $package->bultos_total > 1)
 **Bulto:** {{ $package->bulto_index }} de {{ $package->bultos_total }}  
 @endif

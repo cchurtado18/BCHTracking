@@ -382,6 +382,7 @@
 .prd-chip-air { background: #E8EEF8; color: #0A2D6F; border-color: #C5D4EB; }
 .prd-chip-sea { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
 .prd-chip-cft { background: #E8F6EE; color: #16794C; border-color: #b7e0c8; }
+.prd-chip-tbc { background: #fef3c7; color: #92400e; border-color: #fde68a; }
 
 /* ===== Timeline horizontal ===== */
 .prd-timeline-card { margin-bottom: 1rem; }

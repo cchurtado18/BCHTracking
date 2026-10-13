@@ -237,6 +237,7 @@
 .packages-badge-air { background: #dbeafe; color: #1e40af; }
 .packages-badge-sea,
 .packages-badge-cft { background: #ffedd5; color: #9a3412; }
+.packages-badge-tbc { background: #fef3c7; color: #92400e; }
 .packages-status.status-info { background: #fef3c7; color: #92400e; }
 .packages-status.status-warning { background: #ffedd5; color: #9a3412; }
 .packages-status.status-primary { background: #dbeafe; color: #1e40af; }
@@ -441,6 +442,7 @@
                     <option value="AIR" {{ request('service_type') == 'AIR' ? 'selected' : '' }}>Aéreo</option>
                     <option value="SEA" {{ request('service_type') == 'SEA' ? 'selected' : '' }}>Marítimo</option>
                     <option value="CFT" {{ request('service_type') == 'CFT' ? 'selected' : '' }}>Pie cúbico</option>
+                    <option value="TBC" {{ request('service_type') == 'TBC' ? 'selected' : '' }}>TBC</option>
                 </select>
             </div>
             @unless($isClientView)

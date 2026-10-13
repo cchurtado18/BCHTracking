@@ -193,6 +193,7 @@
         .sl-grid-value.service-air { color: #0A2D6F; }
         .sl-grid-value.service-sea { color: #1e40af; }
         .sl-grid-value.service-cft { color: #16794C; }
+        .sl-grid-value.service-tbc { color: #92400e; }
 
         /* Badge AIR/SEA para distinguir en blanco y negro (por forma) */
         .sl-service-badge {
@@ -208,6 +209,7 @@
         }
         .sl-service-badge.service-air { border-style: dashed; }
         .sl-service-badge.service-sea { border-style: solid; }
+        .sl-service-badge.service-tbc { border-style: dotted; }
 
         .sl-description-title {
             margin-top: 16px;
@@ -267,6 +269,11 @@
             letter-spacing: 0.02em;
             margin-bottom: 16px;
             margin-left: 6px;
+        }
+        .sl-service-mark-large.is-tbc {
+            font-size: 28px;
+            letter-spacing: 0.06em;
+            margin-bottom: 22px;
         }
 
         /* RECIBIDO EN ALMACÉN */

@@ -59,7 +59,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
         </x-slot:icon>
         <x-slot:actions>
-            @if($preregistration->status === 'RECEIVED_MIAMI' && !$preregistration->consolidationItem)
+            @if($preregistration->status === 'RECEIVED_MIAMI' && !$preregistration->consolidationItem && !\App\Support\ServiceType::isTbc($preregistration->service_type))
             <form action="{{ route('preregistrations.create-single-consolidation', $preregistration->id) }}" method="POST" class="mb-inline-cons">
                 @csrf
                 <input
@@ -230,6 +230,9 @@
                                     'currentService' => $currentService,
                                 ])
                                 <button type="submit" class="prd-service-save">Guardar</button>
+                                @if(\App\Support\ServiceType::isTbc($preregistration->service_type))
+                                <p class="prd-weight-hint">Está TBC: el cliente ya puede ver Recibido en Miami. Confirme aéreo o marítimo antes de meterlo en un saco.</p>
+                                @endif
                             </form>
                             @else
                             <span class="prd-field-value">{{ \App\Support\ServiceType::label($preregistration->service_type) }}</span>
@@ -621,6 +624,7 @@
 .prd-chip-air { background: #E8EEF8; color: #0A2D6F; border-color: #C5D4EB; }
 .prd-chip-sea { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
 .prd-chip-cft { background: #E8F6EE; color: #16794C; border-color: #b7e0c8; }
+.prd-chip-tbc { background: #fef3c7; color: #92400e; border-color: #fde68a; }
 
 /* ===== Timeline horizontal ===== */
 .prd-timeline-card { margin-bottom: 1rem; }
@@ -699,6 +703,7 @@
     color: #fff; background: #0A2D6F; border: 0; border-radius: 0.55rem; cursor: pointer;
 }
 .prd-service-save:hover { background: #1E4FA8; }
+.prd-weight-hint { margin: 0.15rem 0 0; font-size: 0.75rem; color: #64748b; font-weight: 600; line-height: 1.35; }
 .sr-only {
     position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
     overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;

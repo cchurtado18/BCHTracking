@@ -58,15 +58,16 @@
                     </div>
                     <div class="quick-field quick-field-service">
                         @php
-                            $quickService = old('service_type', 'AIR');
-                            $quickService = $quickService === 'SEA' ? 'SEA' : 'AIR';
+                            $quickService = strtoupper((string) old('service_type', 'AIR'));
+                            $quickService = in_array($quickService, ['AIR', 'SEA', 'TBC'], true) ? $quickService : 'AIR';
                         @endphp
                         <label for="service_type" class="preregs-label">Servicio</label>
                         <select name="service_type" id="service_type" class="preregs-input preregs-select">
                             <option value="AIR" @selected($quickService === 'AIR')>Aéreo</option>
                             <option value="SEA" @selected($quickService === 'SEA')>Marítimo</option>
+                            <option value="TBC" @selected($quickService === 'TBC')>TBC — Por confirmar</option>
                         </select>
-                        <p class="quick-help">Queda aéreo por defecto. Cámbielo solo si es marítimo.</p>
+                        <p class="quick-help">Queda aéreo por defecto. Use TBC si aún no saben si va aéreo o marítimo.</p>
                         @error('service_type')
                         <p class="preregs-field-error">{{ $message }}</p>
                         @enderror
@@ -144,9 +145,10 @@
 window.skylinkApplyPreregService = function (service) {
     var el = document.getElementById('service_type');
     if (!el) return;
+    var current = String(el.value || '').toUpperCase();
+    if (current === 'SEA' || current === 'TBC') return;
     var route = String(service || '').toUpperCase() === 'CFT' ? 'SEA' : String(service || '').toUpperCase();
     if (route !== 'AIR' && route !== 'SEA') return;
-    if (String(el.value || '').toUpperCase() === 'SEA') return;
     el.value = route;
 };
 
@@ -154,8 +156,11 @@ document.addEventListener('DOMContentLoaded', function() {
     var scanThenPhoto = @json($scanThenPhoto);
     var form = document.getElementById('quickCourierForm');
     var defaultService = document.getElementById('service_type');
-    if (defaultService && defaultService.value !== 'SEA') {
-        defaultService.value = 'AIR';
+    if (defaultService) {
+        var currentService = String(defaultService.value || '').toUpperCase();
+        if (currentService !== 'AIR' && currentService !== 'SEA' && currentService !== 'TBC') {
+            defaultService.value = 'AIR';
+        }
     }
     var input = document.getElementById('photo');
     var btnTake = document.getElementById('quickTakePhoto');

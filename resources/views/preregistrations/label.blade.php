@@ -138,6 +138,11 @@
             margin-bottom: 18px;
             margin-left: 6px;
         }
+        .label-sheet .service-mark-large.is-tbc {
+            font-size: 28px;
+            letter-spacing: 0.06em;
+            margin-bottom: 24px;
+        }
         /* Títulos (labels) en negro: mayor contraste */
         .label-sheet .field {
             font-size: 10px;
@@ -178,6 +183,9 @@
         }
         .label-sheet .value.label-service-sea {
             border-style: solid;
+        }
+        .label-sheet .value.label-service-tbc {
+            border-style: dotted;
         }
         .label-sheet .reception-note {
             margin-top: 20px;
