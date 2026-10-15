@@ -235,6 +235,23 @@ class Preregistration extends Model
         return $this->status === 'PHOTO_PENDING' && filled($this->warehouse_code);
     }
 
+    /**
+     * Capturas pendientes pueden quedarse sin fotos.
+     * Un paquete ya completo debe conservar al menos una foto de respaldo.
+     */
+    public function canDeleteSavedPhotos(): bool
+    {
+        if ($this->status === 'PHOTO_PENDING') {
+            return true;
+        }
+
+        $count = $this->relationLoaded('photos')
+            ? $this->photos->count()
+            : $this->photos()->count();
+
+        return $count > 1;
+    }
+
     public function warehousePrintUrl(): string
     {
         if ($this->usesControlWarehouseLabel()) {

@@ -39,15 +39,16 @@ class PreregistrationPhotoDeleteTest extends TestCase
         Storage::disk('public')->assertExists($keep->path);
     }
 
-    public function test_preregistration_and_package_views_show_delete_overlay_for_saved_photos(): void
+    public function test_preregistration_and_package_views_show_delete_overlay_when_complete_package_has_extra_photos(): void
     {
         Storage::fake('public');
         $user = User::factory()->create(['agency_id' => null]);
         $package = $this->createPackage();
-        $photo = $this->uploadPhoto($package, 'caja.jpg');
+        $this->uploadPhoto($package, 'caja-1.jpg', 240, 240);
+        $second = $this->uploadPhoto($package, 'caja-2.jpg', 320, 180);
         $deleteUrl = route('preregistrations.photos.destroy', [
             'id' => $package->id,
-            'photo' => $photo->id,
+            'photo' => $second->id,
         ]);
 
         $this->actingAs($user)
@@ -65,6 +66,56 @@ class PreregistrationPhotoDeleteTest extends TestCase
             ->get(route('packages.show', $package->id))
             ->assertOk()
             ->assertSee('aria-label="Eliminar foto"', false);
+    }
+
+    public function test_complete_package_keeps_the_last_photo_as_backup(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create(['agency_id' => null]);
+        $package = $this->createPackage();
+        $photo = $this->uploadPhoto($package, 'unica.jpg');
+
+        $this->actingAs($user)
+            ->from(route('preregistrations.show', $package->id))
+            ->delete(route('preregistrations.photos.destroy', [
+                'id' => $package->id,
+                'photo' => $photo->id,
+            ]))
+            ->assertRedirect(route('preregistrations.show', $package->id))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('preregistration_photos', ['id' => $photo->id]);
+        Storage::disk('public')->assertExists($photo->path);
+
+        $this->actingAs($user)
+            ->get(route('preregistrations.show', $package->id))
+            ->assertOk()
+            ->assertDontSee('aria-label="Eliminar foto"', false);
+
+        $this->actingAs($user)
+            ->get(route('packages.show', $package->id))
+            ->assertOk()
+            ->assertDontSee('aria-label="Eliminar foto"', false);
+    }
+
+    public function test_pending_package_can_delete_its_last_photo(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create(['agency_id' => null]);
+        $package = $this->createPackage('PHOTO_PENDING');
+        $photo = $this->uploadPhoto($package, 'pendiente.jpg');
+
+        $this->actingAs($user)
+            ->from(route('preregistrations.show', $package->id))
+            ->delete(route('preregistrations.photos.destroy', [
+                'id' => $package->id,
+                'photo' => $photo->id,
+            ]))
+            ->assertRedirect(route('preregistrations.show', $package->id))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('preregistration_photos', ['id' => $photo->id]);
+        Storage::disk('public')->assertMissing($photo->path);
     }
 
     public function test_agency_user_cannot_delete_a_photo(): void

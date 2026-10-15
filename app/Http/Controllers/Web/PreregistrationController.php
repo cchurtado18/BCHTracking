@@ -829,6 +829,15 @@ class PreregistrationController extends Controller
             abort(404);
         }
 
+        if (! $preregistration->canDeleteSavedPhotos()) {
+            $message = 'El paquete ya está completo. Debe quedar al menos una foto de respaldo.';
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 422);
+            }
+
+            return back()->with('error', $message);
+        }
+
         $this->photoService->deletePhoto($photo);
         $message = 'Foto eliminada.';
 

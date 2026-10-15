@@ -324,7 +324,7 @@
                             <a href="{{ $photo->url }}" target="_blank" rel="noopener noreferrer" title="Clic para ver imagen completa">
                                 <img src="{{ $photo->url }}" alt="Foto del paquete" class="prd-photo-img">
                             </a>
-                            @if(! $isAgencyUser)
+                            @if(! $isAgencyUser && $package->canDeleteSavedPhotos())
                             @include('preregistrations.partials.photo-delete-overlay', [
                                 'photo' => $photo,
                                 'photoDeleteId' => $package->id,

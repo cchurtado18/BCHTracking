@@ -313,10 +313,12 @@
                             <a href="{{ $photo->url }}" target="_blank" rel="noopener">
                                 <img src="{{ $photo->url }}" alt="Foto del paquete" class="prd-photo-img">
                             </a>
+                            @if($preregistration->canDeleteSavedPhotos())
                             @include('preregistrations.partials.photo-delete-overlay', [
                                 'photo' => $photo,
                                 'photoDeleteId' => $preregistration->id,
                             ])
+                            @endif
                         </div>
                         @endforeach
                     </div>
