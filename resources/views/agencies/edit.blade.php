@@ -4,18 +4,23 @@
 
 @section('content')
 @php
-    $canReparent = (bool) ($canReparent ?? false);
+    $canChangeType = (bool) ($canChangeType ?? false);
+    $hasChildren = (bool) ($hasChildren ?? false);
     $isClient = $agency->isDirectClient();
+    $currentType = $currentType ?? ($isClient ? 'direct_client' : 'subagency');
     $currentScope = $currentScope ?? 'slo';
-    $panelDatos = $canReparent ? 2 : 1;
-    $panelConta = $canReparent ? 3 : 2;
+    $showAffiliation = $canChangeType && $currentType === 'subagency';
+    $panelDatos = $canChangeType ? 2 : 1;
+    $panelConta = $canChangeType ? 3 : 2;
+    $panelAcceso = $canChangeType ? 4 : 3;
+    $accessUsers = $agency->users ?? collect();
 @endphp
 <div class="cx-page cx-page--wide">
     <x-module-banner
         section="Administración"
         current="Editar cliente"
         title="{{ $isClient ? 'Editar cliente' : 'Editar subagencia' }}"
-        subtitle="{{ $agency->name }} · {{ $agency->typeLabel() }}. Actualice afiliación, datos de contacto y facturación."
+        subtitle="{{ $agency->name }} · {{ $agency->typeLabel() }}. Puede cambiar el tipo de cuenta; los paquetes se quedan en esta ficha."
         back-href="{{ route('agencies.show', $agency->id) }}"
         back-label="Volver a la ficha"
     >
@@ -24,6 +29,9 @@
         </x-slot:icon>
     </x-module-banner>
 
+    @if(session('success'))
+    <div class="cx-alert cx-alert-success">{{ session('success') }}</div>
+    @endif
     @if($errors->any())
     <div class="cx-alert cx-alert-danger">
         <strong>No se pudo guardar la cuenta.</strong>
@@ -36,77 +44,106 @@
     @endif
 
     <ol class="cx-steps" aria-label="Secciones">
-        @if($canReparent)
-        <li class="cx-step is-active"><span>1</span> Afiliación</li>
+        @if($canChangeType)
+        <li class="cx-step is-active"><span>1</span> Tipo</li>
         @endif
         <li class="cx-step is-active"><span>{{ $panelDatos }}</span> Datos</li>
         <li class="cx-step is-active"><span>{{ $panelConta }}</span> Contabilidad</li>
+        <li class="cx-step is-active"><span>{{ $panelAcceso }}</span> Acceso</li>
     </ol>
 
+    <div class="cx-stack">
     <form action="{{ route('agencies.update', $agency->id) }}" method="POST" enctype="multipart/form-data" id="agency-edit-form" class="cx-stack">
         @csrf
         @method('PUT')
 
-        @if($canReparent)
+        @if($canChangeType)
         <div class="cx-card">
             <div class="cx-section-head">
                 <span class="cx-panel-num">1</span>
                 <div>
-                    <h2 class="cx-section-title">¿De quién es esta subagencia?</h2>
-                    <p class="cx-section-sub">Si pertenece a CH u otra red, cámbielo aquí. El portal de una hija de subagencia solo ve paquetes.</p>
+                    <h2 class="cx-section-title">Tipo de cuenta</h2>
+                    <p class="cx-section-sub">Los paquetes, facturas y usuarios se quedan en esta ficha. Cambia la rotulación y, si la cuelga de un partner, el cobro de facturas nuevas.</p>
                 </div>
             </div>
             <div class="cx-card-body">
-                <div class="cx-type-cards" role="radiogroup" aria-label="Afiliación de la subagencia">
-                    <label class="cx-type-card {{ $currentScope === 'slo' ? 'is-selected' : '' }}">
-                        <input type="radio" name="subagency_scope" value="slo" {{ $currentScope === 'slo' ? 'checked' : '' }}>
+                <div class="cx-type-cards" role="radiogroup" aria-label="Tipo de cuenta">
+                    <label class="cx-type-card {{ $currentType === 'direct_client' ? 'is-selected' : '' }} {{ $hasChildren ? 'is-disabled' : '' }}">
+                        <input type="radio" name="account_type" value="direct_client" {{ $currentType === 'direct_client' ? 'checked' : '' }} @disabled($hasChildren)>
                         <span class="cx-type-card-body">
-                            <strong>Hija de SkyLink One</strong>
-                            <span>Partner propio de SLO. Ve paquetes, entregas y facturas.</span>
+                            <strong>Cliente SLO</strong>
+                            <span>Persona o empresa de SkyLink One. Las etiquetas usan la marca de SkyLink One.</span>
                         </span>
                     </label>
-                    <label class="cx-type-card {{ $currentScope === 'nested' ? 'is-selected' : '' }}">
-                        <input type="radio" name="subagency_scope" value="nested" {{ $currentScope === 'nested' ? 'checked' : '' }}>
+                    <label class="cx-type-card {{ $currentType === 'subagency' ? 'is-selected' : '' }}">
+                        <input type="radio" name="account_type" value="subagency" {{ $currentType === 'subagency' ? 'checked' : '' }}>
                         <span class="cx-type-card-body">
-                            <strong>Hija de otra subagencia</strong>
-                            <span>Se cuelga de un partner que ya existe (por ejemplo CH Logistics).</span>
+                            <strong>Subagencia</strong>
+                            <span>Partner comercial. Las etiquetas usan el nombre y logo de esta cuenta.</span>
                         </span>
                     </label>
                 </div>
-                @error('subagency_scope')
+                @error('account_type')
                 <p class="cx-field-error">{{ $message }}</p>
                 @enderror
-
-                <div class="cx-form-grid cx-form-grid--pair" id="parent_field_wrap" style="margin-top: 1rem;" @if($currentScope !== 'nested') hidden @endif>
-                    <div class="cx-field">
-                        <label for="parent_agency_filter" class="cx-label">Buscar padre</label>
-                        <input type="search" id="parent_agency_filter" class="cx-input" autocomplete="off"
-                               placeholder="Nombre o código…" @if($currentScope !== 'nested') disabled @endif>
-                    </div>
-                    <div class="cx-field">
-                        <label for="parent_agency_id" class="cx-label">Subagencia padre *</label>
-                        <select name="parent_agency_id" id="parent_agency_id" class="cx-input" @if($currentScope !== 'nested') disabled @endif>
-                            <option value="">— Seleccionar subagencia —</option>
-                            @foreach($subagencyParents as $parent)
-                            <option value="{{ $parent->id }}"
-                                    data-search="{{ strtolower(trim(($parent->code ? $parent->code.' ' : '').$parent->name)) }}"
-                                    @selected((string) old('parent_agency_id', $agency->parent_agency_id) === (string) $parent->id)>
-                                {{ $parent->code ? $parent->code.' · ' : '' }}{{ $parent->name }}
-                            </option>
-                            @endforeach
-                        </select>
-                        <p class="cx-field-hint">No puede colgar de un cliente propio de SLO ni de una de sus hijas.</p>
-                        @error('parent_agency_id')
-                        <p class="cx-field-error">{{ $message }}</p>
-                        @enderror
-                    </div>
-                </div>
-                <p class="cx-slo-note" id="slo_parent_note" @if($currentScope !== 'slo') hidden @endif>
-                    Queda bajo <strong>SkyLink One</strong>.
-                </p>
-                @if(!empty($slo))
-                <input type="hidden" name="parent_agency_id" id="parent_agency_id_slo" value="{{ $slo->id }}" @if($currentScope !== 'slo') disabled @endif>
+                @if($hasChildren)
+                <p class="cx-field-hint">No se puede pasar a cliente SLO mientras tenga subagencias colgadas.</p>
                 @endif
+
+                <div id="affiliation_wrap" @if(!$showAffiliation) hidden @endif>
+                    <h3 class="cx-section-title" style="margin-top: 1.25rem; font-size: 1rem;">¿De quién es esta subagencia?</h3>
+                    <p class="cx-section-sub">Si pertenece a CH u otra red, elíjalo aquí. El portal de una hija de subagencia solo ve paquetes.</p>
+                    <div class="cx-type-cards" role="radiogroup" aria-label="Afiliación de la subagencia">
+                        <label class="cx-type-card {{ $currentScope === 'slo' ? 'is-selected' : '' }}">
+                            <input type="radio" name="subagency_scope" value="slo" {{ $currentScope === 'slo' ? 'checked' : '' }} @disabled(!$showAffiliation)>
+                            <span class="cx-type-card-body">
+                                <strong>Hija de SkyLink One</strong>
+                                <span>Partner propio de SLO. Ve paquetes, entregas y facturas.</span>
+                            </span>
+                        </label>
+                        <label class="cx-type-card {{ $currentScope === 'nested' ? 'is-selected' : '' }}">
+                            <input type="radio" name="subagency_scope" value="nested" {{ $currentScope === 'nested' ? 'checked' : '' }} @disabled(!$showAffiliation)>
+                            <span class="cx-type-card-body">
+                                <strong>Hija de otra subagencia</strong>
+                                <span>Se cuelga de un partner que ya existe (por ejemplo CH Logistics).</span>
+                            </span>
+                        </label>
+                    </div>
+                    @error('subagency_scope')
+                    <p class="cx-field-error">{{ $message }}</p>
+                    @enderror
+
+                    <div class="cx-form-grid cx-form-grid--pair" id="parent_field_wrap" style="margin-top: 1rem;" @if($currentScope !== 'nested' || !$showAffiliation) hidden @endif>
+                        <div class="cx-field">
+                            <label for="parent_agency_filter" class="cx-label">Buscar padre</label>
+                            <input type="search" id="parent_agency_filter" class="cx-input" autocomplete="off"
+                                   placeholder="Nombre o código…" @if($currentScope !== 'nested' || !$showAffiliation) disabled @endif>
+                        </div>
+                        <div class="cx-field">
+                            <label for="parent_agency_id" class="cx-label">Subagencia padre *</label>
+                            <select name="parent_agency_id" id="parent_agency_id" class="cx-input" @if($currentScope !== 'nested' || !$showAffiliation) disabled @endif>
+                                <option value="">— Seleccionar subagencia —</option>
+                                @foreach($subagencyParents as $parent)
+                                <option value="{{ $parent->id }}"
+                                        data-search="{{ strtolower(trim(($parent->code ? $parent->code.' ' : '').$parent->name)) }}"
+                                        @selected((string) old('parent_agency_id', $agency->parent_agency_id) === (string) $parent->id)>
+                                    {{ $parent->code ? $parent->code.' · ' : '' }}{{ $parent->name }}
+                                </option>
+                                @endforeach
+                            </select>
+                            <p class="cx-field-hint">No puede colgar de un cliente propio de SLO ni de una de sus hijas.</p>
+                            @error('parent_agency_id')
+                            <p class="cx-field-error">{{ $message }}</p>
+                            @enderror
+                        </div>
+                    </div>
+                    <p class="cx-slo-note" id="slo_parent_note" @if($currentScope !== 'slo' || !$showAffiliation) hidden @endif>
+                        Queda bajo <strong>SkyLink One</strong>.
+                    </p>
+                    @if(!empty($slo))
+                    <input type="hidden" name="parent_agency_id" id="parent_agency_id_slo" value="{{ $slo->id }}" @if($currentScope !== 'slo' || !$showAffiliation) disabled @endif>
+                    @endif
+                </div>
             </div>
         </div>
         @endif
@@ -115,7 +152,7 @@
             <div class="cx-section-head">
                 <span class="cx-panel-num">{{ $panelDatos }}</span>
                 <div>
-                    <h2 class="cx-section-title">{{ $isClient ? 'Datos del cliente' : 'Datos de la subagencia' }}</h2>
+                    <h2 class="cx-section-title" id="datos_title">{{ $currentType === 'direct_client' ? 'Datos del cliente' : 'Datos de la subagencia' }}</h2>
                     <p class="cx-section-sub">Nombre comercial, contacto y estado de la cuenta.</p>
                 </div>
             </div>
@@ -133,9 +170,9 @@
                         </label>
                     </div>
                     <div class="cx-field cx-field-wide">
-                        <label for="name" class="cx-label">{{ $isClient ? 'Nombre del cliente' : 'Nombre de la subagencia' }} *</label>
+                        <label for="name" class="cx-label" id="name_label">{{ $currentType === 'direct_client' ? 'Nombre del cliente' : 'Nombre de la subagencia' }} *</label>
                         <input type="text" name="name" id="name" value="{{ old('name', $agency->name) }}" required class="cx-input"
-                               placeholder="{{ $isClient ? 'Ej. Juan Pérez o Empresa S.A.' : 'Ej. Agencia Norte' }}">
+                               placeholder="{{ $currentType === 'direct_client' ? 'Ej. Juan Pérez o Empresa S.A.' : 'Ej. Agencia Norte' }}">
                         <p class="cx-field-hint">No puede coincidir con el nombre de otra cuenta.</p>
                         @error('name')<p class="cx-field-error">{{ $message }}</p>@enderror
                     </div>
@@ -157,11 +194,10 @@
                     <div class="cx-field cx-field-wide">
                         <label for="address" class="cx-label">Dirección</label>
                         <input type="text" name="address" id="address" value="{{ old('address', $agency->address) }}" class="cx-input"
-                               placeholder="{{ $isClient ? 'Dirección del cliente' : 'Dirección de la subagencia' }}">
+                               placeholder="{{ $currentType === 'direct_client' ? 'Dirección del cliente' : 'Dirección de la subagencia' }}">
                         @error('address')<p class="cx-field-error">{{ $message }}</p>@enderror
                     </div>
-                    @unless($isClient)
-                    <div class="cx-field cx-field-wide">
+                    <div class="cx-field cx-field-wide" id="logo_field_wrap" @if($currentType === 'direct_client') hidden @endif>
                         <label for="logo" class="cx-label">Logo (opcional)</label>
                         @if($agency->logo_url)
                         <div class="cx-logo-row">
@@ -176,7 +212,6 @@
                         <p class="cx-field-hint">Se ajusta solo en la etiqueta, sea ancho, cuadrado o alto. Mejor PNG con fondo transparente. Máx. 2 MB.</p>
                         @error('logo')<p class="cx-field-error">{{ $message }}</p>@enderror
                     </div>
-                    @endunless
                 </div>
             </div>
         </div>
@@ -236,18 +271,79 @@
             <button type="submit" class="cx-btn cx-btn-primary">Guardar cambios</button>
         </div>
     </form>
+
+        <div class="cx-card" id="acceso">
+            <div class="cx-section-head">
+                <span class="cx-panel-num">{{ $panelAcceso }}</span>
+                <div>
+                    <h2 class="cx-section-title">Usuario de acceso</h2>
+                    <p class="cx-section-sub">{{ $currentType === 'direct_client' ? 'Credenciales para que el cliente inicie sesión y vea sus paquetes.' : 'Credenciales para que la subagencia inicie sesión y vea sus paquetes.' }}</p>
+                </div>
+            </div>
+            <div class="cx-card-body">
+                @if($accessUsers->isNotEmpty())
+                    @foreach($accessUsers as $agencyUser)
+                    <div class="cx-access-item">
+                        <div class="cx-access-head">
+                            <p class="cx-access-mail"><strong>Correo:</strong> <span class="cx-code">{{ $agencyUser->email }}</span> <span class="cx-field-hint">({{ $agencyUser->name }})</span></p>
+                            @auth
+                            @if(auth()->user()->canManageClientAccess())
+                            <a href="{{ route('agencies.users.edit', [$agency, $agencyUser]) }}" class="cx-btn cx-btn-secondary">Editar acceso</a>
+                            @endif
+                            @endauth
+                        </div>
+                        @auth
+                        @if(auth()->user()->canManageClientAccess())
+                        <form action="{{ route('agencies.users.reset-password', [$agency->id, $agencyUser->id]) }}" method="POST" class="cx-reset-form">
+                            @csrf
+                            <p class="cx-field-hint">Restablecer contraseña (si la olvidó)</p>
+                            <div class="cx-reset-row">
+                                <input type="password" name="password" id="edit-password-{{ $agencyUser->id }}" required minlength="8" placeholder="Nueva contraseña" class="cx-input">
+                                <input type="password" name="password_confirmation" id="edit-password_confirmation-{{ $agencyUser->id }}" required minlength="8" placeholder="Confirmar" class="cx-input">
+                                <button type="submit" class="cx-btn cx-btn-primary">Guardar contraseña</button>
+                            </div>
+                            @error('password')
+                            <p class="cx-field-error">{{ $message }}</p>
+                            @enderror
+                        </form>
+                        @endif
+                        @endauth
+                    </div>
+                    @endforeach
+                    @if(!auth()->user()?->canManageClientAccess())
+                    <p class="cx-field-hint">La contraseña no se muestra por seguridad. Si la olvidaron, use «¿Olvidó su contraseña?» en la pantalla de login.</p>
+                    @endif
+                @else
+                    <p class="cx-field-hint">Esta cuenta no tiene acceso al panel.</p>
+                    @if(auth()->user()?->canManageClientAccess())
+                    <a href="{{ route('agencies.users.create', $agency) }}" class="cx-btn cx-btn-secondary">Crear acceso del cliente</a>
+                    @endif
+                @endif
+            </div>
+        </div>
+    </div>
 </div>
 
 @include('agencies.partials.cx-form-styles')
-@if($canReparent)
+@if($canChangeType)
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    var affiliationWrap = document.getElementById('affiliation_wrap');
     var parentWrap = document.getElementById('parent_field_wrap');
     var parentSelect = document.getElementById('parent_agency_id');
     var parentSlo = document.getElementById('parent_agency_id_slo');
     var sloNote = document.getElementById('slo_parent_note');
     var filter = document.getElementById('parent_agency_filter');
+    var logoWrap = document.getElementById('logo_field_wrap');
+    var nameLabel = document.getElementById('name_label');
+    var datosTitle = document.getElementById('datos_title');
+    var nameInput = document.getElementById('name');
     var cards = document.querySelectorAll('#agency-edit-form .cx-type-card');
+
+    function accountType() {
+        var checked = document.querySelector('input[name="account_type"]:checked');
+        return checked ? checked.value : 'subagency';
+    }
 
     function scope() {
         var checked = document.querySelector('input[name="subagency_scope"]:checked');
@@ -257,20 +353,35 @@ document.addEventListener('DOMContentLoaded', function () {
     function syncCards() {
         cards.forEach(function (card) {
             var radio = card.querySelector('input');
-            card.classList.toggle('is-selected', !!(radio && radio.checked));
+            card.classList.toggle('is-selected', !!(radio && radio.checked && !radio.disabled));
         });
     }
 
-    function sync() {
-        var nested = scope() === 'nested';
+    function syncAffiliation() {
+        var isSub = accountType() === 'subagency';
+        var nested = isSub && scope() === 'nested';
+        if (affiliationWrap) affiliationWrap.hidden = !isSub;
+        document.querySelectorAll('input[name="subagency_scope"]').forEach(function (input) {
+            input.disabled = !isSub;
+        });
         if (parentWrap) parentWrap.hidden = !nested;
-        if (sloNote) sloNote.hidden = nested;
+        if (sloNote) sloNote.hidden = !isSub || nested;
         if (parentSelect) {
             parentSelect.disabled = !nested;
             parentSelect.required = nested;
         }
         if (filter) filter.disabled = !nested;
-        if (parentSlo) parentSlo.disabled = nested;
+        if (parentSlo) parentSlo.disabled = !isSub || nested;
+        if (logoWrap) logoWrap.hidden = !isSub;
+        if (nameLabel) {
+            nameLabel.textContent = isSub ? 'Nombre de la subagencia *' : 'Nombre del cliente *';
+        }
+        if (datosTitle) {
+            datosTitle.textContent = isSub ? 'Datos de la subagencia' : 'Datos del cliente';
+        }
+        if (nameInput) {
+            nameInput.placeholder = isSub ? 'Ej. Agencia Norte' : 'Ej. Juan Pérez o Empresa S.A.';
+        }
         syncCards();
     }
 
@@ -287,13 +398,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    document.querySelectorAll('input[name="subagency_scope"]').forEach(function (input) {
-        input.addEventListener('change', sync);
+    document.querySelectorAll('input[name="account_type"], input[name="subagency_scope"]').forEach(function (input) {
+        input.addEventListener('change', syncAffiliation);
     });
     if (filter) {
         filter.addEventListener('input', applyFilter);
     }
-    sync();
+    syncAffiliation();
 });
 </script>
 @endif

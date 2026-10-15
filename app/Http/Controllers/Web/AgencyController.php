@@ -231,19 +231,23 @@ class AgencyController extends Controller
 
     public function edit(string $id)
     {
-        $agency = Agency::with('parent')->findOrFail($id);
+        $agency = Agency::with(['parent', 'users'])->findOrFail($id);
         $departments = self::NICARAGUA_DEPARTMENTS;
-        $canReparent = ! $agency->isRootAccount() && ! $agency->isDirectClient();
+        $canChangeType = ! $agency->isRootAccount();
+        $hasChildren = $agency->children()->exists();
         $slo = $this->sloRoot();
-        $subagencyParents = $canReparent ? $agency->nestedParentOptions() : collect();
-        $currentScope = old('subagency_scope', $canReparent ? $agency->affiliationScope() : 'slo');
+        $subagencyParents = $canChangeType ? $agency->nestedParentOptions() : collect();
+        $currentType = old('account_type', $agency->isDirectClient() ? Agency::TYPE_DIRECT_CLIENT : Agency::TYPE_SUBAGENCY);
+        $currentScope = old('subagency_scope', $canChangeType ? $agency->affiliationScope() : 'slo');
 
         return view('agencies.edit', compact(
             'agency',
             'departments',
-            'canReparent',
+            'canChangeType',
+            'hasChildren',
             'slo',
             'subagencyParents',
+            'currentType',
             'currentScope'
         ));
     }
@@ -256,9 +260,22 @@ class AgencyController extends Controller
             'phone' => $request->filled('phone') ? trim((string) $request->input('phone')) : null,
             'address' => $request->filled('address') ? trim((string) $request->input('address')) : null,
         ]);
-        $canReparent = ! $agency->isRootAccount() && ! $agency->isDirectClient();
+        $canChangeType = ! $agency->isRootAccount();
         $slo = $this->sloRoot();
-        if ($canReparent && $request->input('subagency_scope') === 'slo' && $slo) {
+        $accountType = $agency->account_type;
+        if ($canChangeType) {
+            $requested = (string) $request->input('account_type', $agency->account_type);
+            if (in_array($requested, [Agency::TYPE_DIRECT_CLIENT, Agency::TYPE_SUBAGENCY], true)) {
+                $accountType = $requested;
+            }
+        }
+        $wantsSubagency = $accountType === Agency::TYPE_SUBAGENCY;
+        $needsAffiliation = $wantsSubagency && (
+            $agency->isDirectClient()
+            || $request->filled('subagency_scope')
+            || (string) $request->input('account_type') === Agency::TYPE_SUBAGENCY
+        );
+        if ($needsAffiliation && $request->input('subagency_scope') === 'slo' && $slo) {
             $request->merge(['parent_agency_id' => $slo->id]);
         }
 
@@ -277,23 +294,44 @@ class AgencyController extends Controller
             'billing_contact_phone' => 'nullable|string|max:40',
             'billing_email' => 'nullable|email|max:255',
         ];
-        if ($canReparent) {
+        if ($canChangeType) {
+            $rules['account_type'] = 'sometimes|in:subagency,direct_client';
+        }
+        if ($needsAffiliation) {
             $rules['subagency_scope'] = 'required|in:slo,nested';
             $rules['parent_agency_id'] = 'required|exists:agencies,id';
         }
 
+        $isClientType = $accountType === Agency::TYPE_DIRECT_CLIENT;
         $request->validate($rules, [
-            'name.required' => $agency->isDirectClient() ? 'El nombre del cliente es obligatorio.' : 'El nombre de la subagencia es obligatorio.',
-            'name.unique' => $agency->isDirectClient()
+            'name.required' => $isClientType ? 'El nombre del cliente es obligatorio.' : 'El nombre de la subagencia es obligatorio.',
+            'name.unique' => $isClientType
                 ? 'Ya existe otra cuenta con ese nombre. Elija otro nombre.'
                 : 'Ya existe otra subagencia con ese nombre. Elija otro nombre.',
+            'account_type.in' => 'Indique si es subagencia o cliente de SkyLink One.',
             'subagency_scope.required' => 'Indique si pertenece a SkyLink One o a otra subagencia.',
             'parent_agency_id.required' => 'Seleccione la subagencia padre.',
             'parent_agency_id.exists' => 'La cuenta padre seleccionada no es válida.',
         ]);
         $data = $request->only(['name', 'phone', 'address', 'department', 'credit_limit_usd', 'credit_days', 'tax_id', 'billing_contact_name', 'billing_contact_phone', 'billing_email']);
+        $oldType = $agency->account_type;
 
-        if ($canReparent) {
+        if ($canChangeType && $isClientType) {
+            if ($agency->children()->exists()) {
+                return redirect()->back()->withInput()->withErrors([
+                    'account_type' => 'No se puede pasar a cliente SLO mientras tenga subagencias colgadas.',
+                ]);
+            }
+            if (! $slo) {
+                return redirect()->back()->withInput()->withErrors([
+                    'account_type' => 'No se encontró SkyLink One para asignar el cliente.',
+                ]);
+            }
+            $data['account_type'] = Agency::TYPE_DIRECT_CLIENT;
+            $data['parent_agency_id'] = $slo->id;
+        }
+
+        if ($needsAffiliation) {
             $parent = $request->input('subagency_scope') === 'slo'
                 ? $slo
                 : Agency::find($request->parent_agency_id);
@@ -308,9 +346,11 @@ class AgencyController extends Controller
                     'parent_agency_id' => 'Elija la subagencia padre (no SkyLink One).',
                 ]);
             }
+            $data['account_type'] = Agency::TYPE_SUBAGENCY;
             $data['parent_agency_id'] = $parent->id;
         }
-        if (! $agency->isDirectClient()) {
+
+        if ($wantsSubagency) {
             if ($request->boolean('remove_logo') && $agency->logo_path) {
                 Storage::disk('public')->delete($agency->logo_path);
                 $data['logo_path'] = null;
@@ -325,8 +365,16 @@ class AgencyController extends Controller
             $data['is_active'] = (bool) $request->is_active;
         }
         $agency->update($data);
+        $agency->refresh();
 
-        return redirect()->route('agencies.show', $agency->id)->with('success', $agency->isDirectClient() ? 'Cliente actualizado.' : 'Subagencia actualizada.');
+        $message = $agency->isDirectClient() ? 'Cliente actualizado.' : 'Subagencia actualizada.';
+        if ($oldType !== $agency->account_type) {
+            $message = $agency->isDirectClient()
+                ? 'Cuenta convertida a cliente de SkyLink One. Los paquetes siguen en esta ficha; las etiquetas nuevas usan la marca de SkyLink One.'
+                : 'Cuenta convertida a subagencia. Los paquetes siguen en esta ficha y ya rotulan con el nombre de esta cuenta.';
+        }
+
+        return redirect()->route('agencies.show', $agency->id)->with('success', $message);
     }
 
     public function toggle(string $id)
@@ -460,10 +508,9 @@ class AgencyController extends Controller
 
         $userModel->update(['password' => Hash::make($request->password)]);
 
-        return redirect()->route('agencies.show', $agencyModel->id)
-            ->with('success', $agencyModel->isDirectClient()
-                ? 'Contraseña actualizada. El cliente ya puede iniciar sesión con la nueva contraseña.'
-                : 'Contraseña actualizada. La subagencia ya puede iniciar sesión con la nueva contraseña.');
+        return back()->with('success', $agencyModel->isDirectClient()
+            ? 'Contraseña actualizada. El cliente ya puede iniciar sesión con la nueva contraseña.'
+            : 'Contraseña actualizada. La subagencia ya puede iniciar sesión con la nueva contraseña.');
     }
 
     public function destroy(string $id)

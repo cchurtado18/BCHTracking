@@ -7,6 +7,13 @@
 .cx-page--wide { max-width: 96rem; }
 .cx-alert { padding: 0.85rem 1.05rem; border-radius: 0.7rem; margin-bottom: 1rem; font-size: 0.875rem; }
 .cx-alert-danger { background: #FDECEC; border: 1px solid #F6C9C9; color: #B03030; }
+.cx-alert-success { background: #E8F6EE; border: 1px solid #B7E0C7; color: #16794C; }
+.cx-access-item + .cx-access-item { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--cx-line); }
+.cx-access-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.65rem; }
+.cx-access-mail { margin: 0; font-size: 0.875rem; color: #0f172a; }
+.cx-reset-form { margin-top: 0.85rem; padding-top: 0.85rem; border-top: 1px solid var(--cx-line); }
+.cx-reset-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.cx-reset-row .cx-input { min-width: 10rem; flex: 1; }
 .cx-alert-list { margin: 0.4rem 0 0; padding-left: 1.15rem; }
 .cx-steps { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; margin: 0 0 1.15rem; padding: 0; }
 .cx-step { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; font-weight: 700; color: #94a3b8; }

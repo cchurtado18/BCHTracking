@@ -460,6 +460,15 @@ class ClientsModuleTest extends TestCase
             ->assertDontSee(route('users.edit', $access), false);
 
         $this->actingAs($admin)
+            ->get(route('agencies.edit', $client))
+            ->assertOk()
+            ->assertSee('Usuario de acceso')
+            ->assertSee('accesoedit@example.com')
+            ->assertSee(route('agencies.users.edit', [$client, $access]), false)
+            ->assertSee(route('agencies.users.reset-password', [$client->id, $access->id]), false)
+            ->assertDontSee(route('users.edit', $access), false);
+
+        $this->actingAs($admin)
             ->get(route('agencies.users.edit', [$client, $access]))
             ->assertOk()
             ->assertSee('Editar acceso del cliente')
@@ -584,8 +593,9 @@ class ClientsModuleTest extends TestCase
         $this->actingAs($admin)
             ->get(route('agencies.edit', $client))
             ->assertOk()
-            ->assertDontSee('name="logo"', false)
-            ->assertSee('Datos del cliente');
+            ->assertSee('Datos del cliente')
+            ->assertSee('name="account_type"', false)
+            ->assertSee('id="logo_field_wrap"', false);
 
         $this->actingAs($admin)
             ->put(route('agencies.users.update', [$client, $access]), [
@@ -693,8 +703,8 @@ class ClientsModuleTest extends TestCase
         $this->actingAs($admin)
             ->get(route('agencies.edit', $client))
             ->assertOk()
-            ->assertDontSee('name="logo"', false)
-            ->assertSee('Nombre del cliente');
+            ->assertSee('Nombre del cliente')
+            ->assertSee('id="logo_field_wrap"', false);
     }
 
     public function test_slo_direct_client_label_uses_skylink_one_branding(): void
@@ -946,7 +956,7 @@ class ClientsModuleTest extends TestCase
             ->assertDontSee('Norte Filtro Nested');
     }
 
-    public function test_direct_client_edit_does_not_offer_subagency_parent(): void
+    public function test_direct_client_edit_offers_type_change_to_subagency(): void
     {
         $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
         ['slo' => $slo] = $this->sloTree();
@@ -962,7 +972,167 @@ class ClientsModuleTest extends TestCase
         $this->actingAs($admin)
             ->get(route('agencies.edit', $client))
             ->assertOk()
-            ->assertDontSee('Hija de otra subagencia')
-            ->assertDontSee('name="subagency_scope"', false);
+            ->assertSee('name="account_type"', false)
+            ->assertSee('value="subagency"', false)
+            ->assertSee('Hija de otra subagencia')
+            ->assertSee('id="affiliation_wrap"', false);
+    }
+
+    public function test_admin_can_convert_direct_client_with_packages_to_slo_subagency(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        $user = User::factory()->create(['agency_id' => null]);
+        ['slo' => $slo] = $this->sloTree();
+        $client = Agency::create([
+            'name' => 'Cliente Ahora Subagencia',
+            'code' => '0924',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_DIRECT_CLIENT,
+            'parent_agency_id' => $slo->id,
+        ]);
+        $pkg = Preregistration::create([
+            'intake_type' => 'COURIER',
+            'tracking_external' => 'TRK-CONVERT-SLO-1',
+            'warehouse_code' => '924001',
+            'label_name' => 'Destinatario Convert',
+            'service_type' => 'AIR',
+            'intake_weight_lbs' => 3,
+            'status' => 'RECEIVED_MIAMI',
+            'agency_id' => $client->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('agencies.update', $client), [
+                'name' => $client->name,
+                'account_type' => Agency::TYPE_SUBAGENCY,
+                'subagency_scope' => 'slo',
+                'is_active' => '1',
+            ])
+            ->assertRedirect(route('agencies.show', $client));
+
+        $client->refresh();
+        $this->assertSame(Agency::TYPE_SUBAGENCY, $client->account_type);
+        $this->assertSame($slo->id, (int) $client->parent_agency_id);
+        $this->assertSame($client->id, (int) $pkg->fresh()->agency_id);
+
+        $html = $this->actingAs($user)
+            ->get(route('preregistrations.label', $pkg))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Cliente Ahora Subagencia', $html);
+        $this->assertStringNotContainsString('SkyLink One', $html);
+    }
+
+    public function test_admin_can_convert_direct_client_to_nested_subagency(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        ['slo' => $slo, 'ch' => $ch] = $this->sloTree();
+        $client = Agency::create([
+            'name' => 'Cliente a CH',
+            'code' => '0925',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_DIRECT_CLIENT,
+            'parent_agency_id' => $slo->id,
+        ]);
+        $pkg = Preregistration::create([
+            'intake_type' => 'COURIER',
+            'tracking_external' => 'TRK-CONVERT-CH-1',
+            'warehouse_code' => '925001',
+            'label_name' => 'Destinatario CH Convert',
+            'service_type' => 'AIR',
+            'intake_weight_lbs' => 2,
+            'status' => 'RECEIVED_MIAMI',
+            'agency_id' => $client->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('agencies.update', $client), [
+                'name' => $client->name,
+                'account_type' => Agency::TYPE_SUBAGENCY,
+                'subagency_scope' => 'nested',
+                'parent_agency_id' => $ch->id,
+                'is_active' => '1',
+            ])
+            ->assertRedirect(route('agencies.show', $client));
+
+        $client->refresh();
+        $this->assertSame(Agency::TYPE_SUBAGENCY, $client->account_type);
+        $this->assertSame($ch->id, (int) $client->parent_agency_id);
+        $this->assertSame($client->id, (int) $pkg->fresh()->agency_id);
+        $this->assertTrue($client->isNestedUnderPartner());
+    }
+
+    public function test_admin_can_convert_slo_subagency_to_direct_client(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        $user = User::factory()->create(['agency_id' => null]);
+        ['slo' => $slo] = $this->sloTree();
+        $partner = Agency::create([
+            'name' => 'Partner Vuelve Cliente',
+            'code' => '0926',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'parent_agency_id' => $slo->id,
+        ]);
+        $pkg = Preregistration::create([
+            'intake_type' => 'COURIER',
+            'tracking_external' => 'TRK-CONVERT-CLIENT-1',
+            'warehouse_code' => '926001',
+            'label_name' => 'Destinatario Cliente',
+            'service_type' => 'AIR',
+            'intake_weight_lbs' => 4,
+            'status' => 'RECEIVED_MIAMI',
+            'agency_id' => $partner->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('agencies.update', $partner), [
+                'name' => $partner->name,
+                'account_type' => Agency::TYPE_DIRECT_CLIENT,
+                'is_active' => '1',
+            ])
+            ->assertRedirect(route('agencies.show', $partner));
+
+        $partner->refresh();
+        $this->assertSame(Agency::TYPE_DIRECT_CLIENT, $partner->account_type);
+        $this->assertSame($slo->id, (int) $partner->parent_agency_id);
+        $this->assertSame($partner->id, (int) $pkg->fresh()->agency_id);
+
+        $html = $this->actingAs($user)
+            ->get(route('preregistrations.label', $pkg))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('SkyLink One', $html);
+        $this->assertStringNotContainsString('0926 - Partner Vuelve Cliente', $html);
+    }
+
+    public function test_cannot_convert_subagency_with_children_to_direct_client(): void
+    {
+        $admin = User::factory()->create(['agency_id' => null, 'is_admin' => true]);
+        ['slo' => $slo, 'ch' => $ch] = $this->sloTree();
+        $child = Agency::create([
+            'name' => 'Hija bloquea conversion',
+            'code' => '0927',
+            'is_active' => true,
+            'is_main' => false,
+            'account_type' => Agency::TYPE_SUBAGENCY,
+            'parent_agency_id' => $ch->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('agencies.update', $ch), [
+                'name' => $ch->name,
+                'account_type' => Agency::TYPE_DIRECT_CLIENT,
+                'is_active' => '1',
+            ])
+            ->assertSessionHasErrors('account_type');
+
+        $this->assertSame(Agency::TYPE_SUBAGENCY, $ch->fresh()->account_type);
+        $this->assertSame($ch->id, (int) $child->fresh()->parent_agency_id);
     }
 }
