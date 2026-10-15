@@ -324,6 +324,12 @@
                             <a href="{{ $photo->url }}" target="_blank" rel="noopener noreferrer" title="Clic para ver imagen completa">
                                 <img src="{{ $photo->url }}" alt="Foto del paquete" class="prd-photo-img">
                             </a>
+                            @if(! $isAgencyUser)
+                            @include('preregistrations.partials.photo-delete-overlay', [
+                                'photo' => $photo,
+                                'photoDeleteId' => $package->id,
+                            ])
+                            @endif
                         </div>
                         @endforeach
                     </div>
@@ -474,7 +480,7 @@
 /* ===== Evidencia ===== */
 .prd-photo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
 @media (max-width: 380px) { .prd-photo-grid { grid-template-columns: 1fr; } }
-.prd-photo-item { border: 1px solid #e2e8f0; border-radius: 0.7rem; overflow: hidden; background: #fff; }
+.prd-photo-item { position: relative; border: 1px solid #e2e8f0; border-radius: 0.7rem; overflow: hidden; background: #fff; }
 .prd-photo-item a { display: block; line-height: 0; }
 .prd-photo-item a:hover { opacity: 0.9; }
 .prd-photo-img { width: 100%; height: 8rem; object-fit: cover; display: block; }

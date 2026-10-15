@@ -256,6 +256,10 @@
                         <a href="{{ $photo->url }}" target="_blank" class="preregs-photo-link-block" title="Abrir foto {{ $idx + 1 }} en tamaño completo">
                             <img src="{{ $photo->url }}" alt="Foto del paquete {{ $idx + 1 }}" class="preregs-photo-img">
                         </a>
+                        @include('preregistrations.partials.photo-delete-overlay', [
+                            'photo' => $photo,
+                            'photoDeleteId' => $preregistration->id,
+                        ])
                         @if($photoTotal > 1)
                         <div class="preregs-photo-order-row" role="group" aria-label="Orden de la foto {{ $idx + 1 }}">
                             <form method="POST" action="{{ route('preregistrations.photos.move', ['id' => $preregistration->id, 'photo' => $photo->id]) }}" class="preregs-photo-order-form">
@@ -721,6 +725,7 @@
 }
 .preregs-edit-photos-list { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
 .preregs-photo-wrap {
+    position: relative;
     text-align: center;
     border: 1px solid var(--pt-line);
     border-radius: 0.75rem;

@@ -822,6 +822,26 @@ class PreregistrationController extends Controller
         }
     }
 
+    public function destroyPhoto(Request $request, string $id, PreregistrationPhoto $photo)
+    {
+        $preregistration = Preregistration::findOrFail($id);
+        if ((int) $photo->preregistration_id !== (int) $preregistration->id) {
+            abort(404);
+        }
+
+        $this->photoService->deletePhoto($photo);
+        $message = 'Foto eliminada.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+                'photos_count' => $preregistration->photos()->count(),
+            ]);
+        }
+
+        return back()->with('success', $message);
+    }
+
     public function movePhoto(Request $request, string $id, PreregistrationPhoto $photo)
     {
         if (! Schema::hasColumn('preregistration_photos', 'sort_order')) {
