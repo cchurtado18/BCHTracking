@@ -36,7 +36,7 @@ class ControlWarehouseLabelTest extends TestCase
         $response->assertJsonPath('redirect_url', route('preregistrations.show', $package->id));
     }
 
-    public function test_air_quick_capture_does_not_assign_warehouse(): void
+    public function test_air_quick_capture_assigns_warehouse_and_stays_on_preregistration(): void
     {
         Storage::fake('public');
         $user = User::factory()->create(['agency_id' => null]);
@@ -53,11 +53,11 @@ class ControlWarehouseLabelTest extends TestCase
 
         $package = Preregistration::where('tracking_external', '1ZCTRLAIR001')->first();
         $this->assertNotNull($package);
-        $this->assertNull($package->warehouse_code);
+        $this->assertMatchesRegularExpression('/^\d{6}$/', (string) $package->warehouse_code);
         $response->assertJsonPath('redirect_url', route('preregistrations.show', $package->id));
     }
 
-    public function test_control_label_shows_only_logo_and_warehouse_barcode(): void
+    public function test_control_label_shows_warehouse_service_mark_and_tracking(): void
     {
         $user = User::factory()->create(['agency_id' => null]);
         $package = $this->pendingMaritimePackage([
@@ -66,7 +66,7 @@ class ControlWarehouseLabelTest extends TestCase
             'label_name' => '[PENDIENTE]',
         ]);
 
-        $this->actingAs($user)
+        $html = $this->actingAs($user)
             ->get(route('preregistrations.control-label', $package->id))
             ->assertOk()
             ->assertSee('PrimeTrack Group', false)
@@ -77,11 +77,33 @@ class ControlWarehouseLabelTest extends TestCase
             ->assertSee('654321', false)
             ->assertSee('data-barcode="654321"', false)
             ->assertSee('barcode-'.$package->id.'-control', false)
-            ->assertDontSee('1ZCTRLHIDE001', false)
+            ->assertSee('TRACKING GLOBAL', false)
+            ->assertSee('1ZCTRLHIDE001', false)
+            ->assertSee('>M<', false)
             ->assertDontSee('[PENDIENTE]', false)
-            ->assertDontSee('TRACKING GLOBAL', false)
             ->assertDontSee('AGENCIA', false)
-            ->assertDontSee('sl-header-agency', false);
+            ->assertDontSee('sl-header-agency', false)
+            ->getContent();
+
+        $this->assertDoesNotMatchRegularExpression('/>A</', $html);
+    }
+
+    public function test_air_control_label_shows_a_and_tracking(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+        $package = $this->pendingMaritimePackage([
+            'warehouse_code' => '654322',
+            'tracking_external' => '1ZCTRLAIRTRACK',
+            'service_type' => 'AIR',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('preregistrations.control-label', $package->id))
+            ->assertOk()
+            ->assertSee('654322', false)
+            ->assertSee('1ZCTRLAIRTRACK', false)
+            ->assertSee('>A<', false)
+            ->assertDontSee('>M<', false);
     }
 
     public function test_main_label_redirects_pending_package_to_control_label(): void

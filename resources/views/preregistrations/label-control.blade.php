@@ -8,6 +8,11 @@
     $providerLogo = asset('images/primetrack-group-logo.png').'?v=2';
     $displayTz = config('app.display_timezone') ?: 'America/New_York';
     $dt = $preregistration->created_at ? $preregistration->created_at->timezone($displayTz) : null;
+    $serviceMark = \App\Support\ServiceType::routeMark($preregistration->service_type);
+    $tracking = trim((string) ($preregistration->tracking_external ?? ''));
+    if ($tracking === '') {
+        $tracking = '—';
+    }
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -76,8 +81,44 @@
             display: flex;
             justify-content: center;
         }
+        .ctrl-barcode-row {
+            display: inline-flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 12px;
+        }
         .ctrl-barcode canvas {
             max-width: 100%;
+        }
+        .ctrl-service-mark {
+            display: inline-block;
+            font-size: 60px;
+            font-weight: 900;
+            line-height: 0.9;
+            color: #111;
+            letter-spacing: 0.02em;
+            margin-bottom: 8px;
+        }
+        .ctrl-service-mark.is-tbc {
+            font-size: 28px;
+            letter-spacing: 0.06em;
+            margin-bottom: 14px;
+        }
+        .ctrl-tracking-title {
+            font-size: 12px;
+            font-weight: 800;
+            color: #6b7280;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            text-align: center;
+        }
+        .ctrl-tracking {
+            font-size: 18px;
+            font-weight: 800;
+            color: #111;
+            text-align: center;
+            letter-spacing: 0.02em;
+            word-break: break-all;
         }
         .no-print { text-align: center; margin-bottom: 16px; }
         .no-print button {
@@ -126,6 +167,10 @@
             font-size: 28px;
             letter-spacing: 0.05em;
         }
+        .label-paper-narrow .ctrl-service-mark { font-size: 28px; margin-bottom: 4px; }
+        .label-paper-narrow .ctrl-service-mark.is-tbc { font-size: 16px; }
+        .label-paper-narrow .ctrl-tracking-title { font-size: 9px; }
+        .label-paper-narrow .ctrl-tracking { font-size: 11px; }
         @page {
             size: {{ $pageSizeCss }};
             margin: 0;
@@ -174,8 +219,13 @@
         </div>
         <div class="ctrl-warehouse">{{ $preregistration->warehouse_code }}</div>
         <div class="ctrl-barcode">
-            <canvas id="barcode-{{ $preregistration->id }}-control" class="barcode-canvas" data-barcode="{{ $preregistration->warehouse_code }}"></canvas>
+            <div class="ctrl-barcode-row">
+                <canvas id="barcode-{{ $preregistration->id }}-control" class="barcode-canvas" data-barcode="{{ $preregistration->warehouse_code }}"></canvas>
+                <span class="ctrl-service-mark{{ $serviceMark === 'TBC' ? ' is-tbc' : '' }}" aria-label="Tipo de servicio">{{ $serviceMark }}</span>
+            </div>
         </div>
+        <div class="ctrl-tracking-title">TRACKING GLOBAL</div>
+        <div class="ctrl-tracking">{{ $tracking }}</div>
         <div class="ctrl-date">{{ $dt ? $dt->format('d/m/Y') : '—' }}</div>
     </div>
 

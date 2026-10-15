@@ -109,7 +109,7 @@ class QuickCourierCameraScanTest extends TestCase
         ]);
         $created = Preregistration::where('tracking_external', '1ZWEIGHTTEST001')->first();
         $this->assertNotNull($created);
-        $this->assertNull($created->warehouse_code);
+        $this->assertMatchesRegularExpression('/^\d{6}$/', (string) $created->warehouse_code);
     }
 
     public function test_quick_courier_store_defaults_to_air_and_can_save_sea(): void

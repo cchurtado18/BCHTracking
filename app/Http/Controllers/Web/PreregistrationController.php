@@ -747,9 +747,8 @@ class PreregistrationController extends Controller
         // Algunos campos de la tabla (como label_name) no permiten NULL,
         // así que usamos valores de marcador que luego se podrán editar.
         $serviceType = \App\Support\ServiceType::normalize($data['service_type']);
-        $isMaritime = ! \App\Support\ServiceType::isTbc($serviceType)
-            && \App\Support\ServiceType::route($serviceType) === \App\Support\ServiceType::SEA;
-        $warehouseCode = $isMaritime ? $this->warehouseService->generateWarehouseCode() : null;
+        $assignsWarehouse = ! \App\Support\ServiceType::isTbc($serviceType);
+        $warehouseCode = $assignsWarehouse ? $this->warehouseService->generateWarehouseCode() : null;
 
         $preregistration = Preregistration::create([
             'intake_type' => 'COURIER',
@@ -766,7 +765,7 @@ class PreregistrationController extends Controller
             $this->photoService->uploadPhoto($preregistration, $photoFile);
         }
 
-        $message = $isMaritime && filled($preregistration->warehouse_code)
+        $message = filled($preregistration->warehouse_code)
             ? 'Preregistro rápido creado. El código de almacén ya está asignado. Falta completar los datos de etiqueta y agencia.'
             : 'Preregistro rápido creado. Falta completar los datos de etiqueta y agencia.';
         if ($prealert) {
