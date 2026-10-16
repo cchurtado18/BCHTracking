@@ -71,7 +71,7 @@
                     <input type="text" id="csscan_input" class="csscan-input" placeholder="Enfocar aquí — listo para pistola" autocomplete="off" autocapitalize="characters" spellcheck="false" autofocus>
                     <p id="csscan_line_feedback" class="csscan-feedback" role="status"></p>
                 </div>
-                <p class="csscan-hint">Los duplicados se rechazan. El pistola suele enviar el código de corrido y se agrega al detenerse; también puede pulsar Enter o Tab. Use <strong>Eliminar</strong> en cada fila si se equivocó.</p>
+                <p class="csscan-hint">Si varios bultos Drop Off comparten el mismo warehouse, escanee una vez por cada bulto; el peso de cada uno suma al total. El pistola suele enviar el código de corrido y se agrega al detenerse; también puede pulsar Enter o Tab. Use <strong>Eliminar</strong> en cada fila si se equivocó.</p>
             </div>
 
             <div class="csscan-actions">
@@ -667,7 +667,6 @@
 (function() {
     const lookupUrl = document.getElementById('csscan-form')?.dataset.lookupUrl || '';
     const lookupCache = Object.create(null);
-    const inflight = new Set();
     const serviceSelect = document.getElementById('csscan_service_type');
     const input = document.getElementById('csscan_input');
     const list = document.getElementById('csscan_list');
@@ -711,23 +710,34 @@
         }
     }
 
-    function fetchLookup(code) {
+    function fetchLookup(code, claimed) {
+        claimed = claimed || 0;
         const n = norm(code);
         const st = serviceSelect.value;
-        const cached = lookupCache[n];
-        if (cached && cached._service === st) {
-            return Promise.resolve(cached);
+        const cacheKey = n + '|' + st + '|' + claimed;
+        if (lookupCache[cacheKey]) {
+            return Promise.resolve(lookupCache[cacheKey]);
         }
-        const url = lookupUrl + '?code=' + encodeURIComponent(n) + '&service_type=' + encodeURIComponent(st);
+        const url = lookupUrl + '?code=' + encodeURIComponent(n) + '&service_type=' + encodeURIComponent(st) + '&claimed=' + encodeURIComponent(claimed);
         return fetch(url, {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             credentials: 'same-origin'
         }).then(function(r) { return r.json(); }).then(function(data) {
-            lookupCache[n] = Object.assign({ _service: st }, data || {});
-            return lookupCache[n];
+            lookupCache[cacheKey] = Object.assign({ _service: st }, data || {});
+            return lookupCache[cacheKey];
         }).catch(function() {
-            return { found: false, service_mismatch: false, package: null };
+            return { found: false, service_mismatch: false, package: null, available_count: 0 };
         });
+    }
+
+    function applyLookupToEntry(entry, data) {
+        const hit = data && data.found ? data.package : null;
+        entry.matched = !!hit;
+        entry.label = hit ? (hit.label || '') : '';
+        entry.incomplete = !!(hit && hit.incomplete);
+        entry.weightLbs = hit ? weightFromHit(hit) : 0;
+        entry.availableCount = data && data.available_count != null ? Number(data.available_count) : (hit ? 1 : 0);
+        entry.bultoCaption = hit && hit.bulto_caption ? hit.bulto_caption : '';
     }
 
     /** Paquete existe en preregistro pero con otro tipo de servicio (p. ej. marítimo vs saco aéreo). */
@@ -746,18 +756,19 @@
     }
 
     function rematchAllFromLookup() {
-        const st = serviceSelect.value;
-        lines.forEach(function(entry) {
-            var cached = lookupCache[entry.display];
-            var pkg = cached && cached.found ? cached.package : null;
-            var hit = pkg && (!pkg.service_type || packageRoute(pkg.service_type) === packageRoute(st))
-                ? pkg
-                : null;
-            entry.matched = !!hit;
-            entry.label = hit ? hit.label : '';
-            entry.incomplete = !!(hit && hit.incomplete);
-            entry.weightLbs = hit ? weightFromHit(hit) : 0;
-        });
+        var claimedByCode = {};
+        return Promise.all(lines.map(function(entry) {
+            var n = norm(entry.display);
+            var claimed = claimedByCode[n] || 0;
+            claimedByCode[n] = claimed + 1;
+            return fetchLookup(entry.display, claimed).then(function(data) {
+                if (data && data.service_mismatch && data.package) {
+                    applyLookupToEntry(entry, { found: false, available_count: 0 });
+                    return;
+                }
+                applyLookupToEntry(entry, data);
+            });
+        }));
     }
 
     function syncHiddens() {
@@ -785,9 +796,12 @@
             const meta = document.createElement('div');
             meta.className = 'csscan-row-meta';
             if (entry.matched) {
-                meta.textContent = entry.incomplete
+                var bits = [];
+                if (entry.bultoCaption) bits.push(entry.bultoCaption);
+                bits.push(entry.incomplete
                     ? ((entry.label && entry.label !== '[PENDIENTE]') ? entry.label : 'Preregistro') + ' · datos pendientes'
-                    : (entry.label || 'Preregistro');
+                    : (entry.label || 'Preregistro'));
+                meta.textContent = bits.join(' · ');
             } else {
                 meta.textContent = 'No aparece en preregistro para este tipo de servicio; se guardará solo el código.';
             }
@@ -858,9 +872,16 @@
         if (!display) {
             return false;
         }
-        const dup = inflight.has(display) || lines.some(function(l) { return norm(l.display) === display; });
-        if (dup) {
+        const same = lines.filter(function(l) { return norm(l.display) === display; }).length;
+        const known = lines.filter(function(l) { return norm(l.display) === display && l.availableCount != null; });
+        const maxAvail = known.length ? known[0].availableCount : null;
+        if (maxAvail === 0 && same >= 1) {
             setFeedback('Ese código ya está en la lista.', 'err');
+            input.select();
+            return false;
+        }
+        if (maxAvail !== null && same >= maxAvail) {
+            setFeedback('Ya están en la lista todos los bultos de ' + display + ' (' + maxAvail + ').', 'err');
             input.select();
             return false;
         }
@@ -871,17 +892,18 @@
             matched: false,
             label: '',
             incomplete: false,
-            weightLbs: 0
+            weightLbs: 0,
+            availableCount: null,
+            bultoCaption: ''
         };
-        inflight.add(display);
+        const claimed = same;
         lines.push(entry);
         input.value = '';
         setFeedback('Agregado: sin preregistro — se guardará solo el código si no aparece en el sistema.', 'warn');
         render();
         input.focus();
 
-        fetchLookup(display).then(function(data) {
-            inflight.delete(display);
+        fetchLookup(display, claimed).then(function(data) {
             if (lines.indexOf(entry) === -1) {
                 return;
             }
@@ -894,15 +916,28 @@
                 render();
                 return;
             }
-            const hit = data && data.found ? data.package : null;
-            if (!hit) {
-                return;
+            applyLookupToEntry(entry, data);
+            if (entry.matched) {
+                var caption = entry.bultoCaption ? (' · ' + entry.bultoCaption) : '';
+                setFeedback('Confirmado en preregistro: ' + display + caption, 'ok');
             }
-            entry.matched = true;
-            entry.label = hit.label || '';
-            entry.incomplete = !!hit.incomplete;
-            entry.weightLbs = weightFromHit(hit);
-            setFeedback('Confirmado en preregistro: ' + display, 'ok');
+            if (entry.availableCount != null) {
+                var seen = 0;
+                for (var i = lines.length - 1; i >= 0; i--) {
+                    if (norm(lines[i].display) !== display) continue;
+                    seen++;
+                }
+                var keep = entry.availableCount === 0 ? 1 : entry.availableCount;
+                var extras = seen - keep;
+                if (extras > 0) {
+                    for (var j = lines.length - 1; j >= 0 && extras > 0; j--) {
+                        if (norm(lines[j].display) !== display) continue;
+                        if (lines[j] === entry) continue;
+                        lines.splice(j, 1);
+                        extras--;
+                    }
+                }
+            }
             render();
         });
         return true;
@@ -926,8 +961,7 @@
     serviceSelect.addEventListener('change', function() {
         clearScanDebounce();
         Object.keys(lookupCache).forEach(function(key) { delete lookupCache[key]; });
-        Promise.all(lines.map(function(entry) { return fetchLookup(entry.display); })).then(function() {
-            rematchAllFromLookup();
+        rematchAllFromLookup().then(function() {
             syncUnitLabels();
             render();
             setFeedback('Tipo de servicio cambiado. Se recalculó coincidencia y peso por fila.', '');

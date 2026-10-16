@@ -120,7 +120,7 @@
                                                 <input type="checkbox" name="preregistration_ids[]" value="{{ $preregistration->id }}" class="prereg-checkbox" data-weight="{{ $preregistration->intake_weight_lbs }}">
                                             </td>
                                             <td class="cons-td-name">{{ $preregistration->label_name }}</td>
-                                            <td class="cons-td-code">{{ $preregistration->warehouse_code ?? $preregistration->tracking_external ?? 'N/A' }}</td>
+                                            <td class="cons-td-code">{{ $preregistration->warehouse_code ?? $preregistration->tracking_external ?? 'N/A' }}{{ $preregistration->bultoCaption() ? ' · '.$preregistration->bultoCaption() : '' }}</td>
                                             <td class="cons-td-weight">{{ $preregistration->intake_weight_lbs }} lbs</td>
                                             <td class="cons-td-date">{{ $preregistration->created_at->format('d/m/Y') }}</td>
                                         </tr>
@@ -162,7 +162,7 @@
                                                 <input type="checkbox" name="preregistration_ids[]" value="{{ $preregistration->id }}" class="prereg-checkbox" data-weight="{{ $preregistration->intake_weight_lbs }}">
                                             </td>
                                             <td class="cons-td-name">{{ $preregistration->label_name }}@if(\App\Support\ServiceType::isCft($preregistration->service_type)) <span class="cons-cft-tag">Pie cúbico</span>@endif</td>
-                                            <td class="cons-td-code">{{ $preregistration->warehouse_code ?? $preregistration->tracking_external ?? 'N/A' }}</td>
+                                            <td class="cons-td-code">{{ $preregistration->warehouse_code ?? $preregistration->tracking_external ?? 'N/A' }}{{ $preregistration->bultoCaption() ? ' · '.$preregistration->bultoCaption() : '' }}</td>
                                             <td class="cons-td-weight">{{ \App\Support\ServiceType::isCft($preregistration->service_type) && $preregistration->cubic_feet !== null ? number_format((float) $preregistration->cubic_feet, 2).' pie³' : ($preregistration->intake_weight_lbs.' lbs') }}</td>
                                             <td class="cons-td-date">{{ $preregistration->created_at->format('d/m/Y') }}</td>
                                         </tr>

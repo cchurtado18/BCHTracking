@@ -390,4 +390,155 @@ class ConsolidationScanLookupTest extends TestCase
             'preregistration_id' => $package->id,
         ]);
     }
+
+    public function test_open_sack_can_scan_each_dropoff_bulto_sharing_a_warehouse(): void
+    {
+        $user = $this->centralUser();
+        $agency = $this->agency();
+        $first = $this->package($agency, [
+            'intake_type' => 'DROP_OFF',
+            'tracking_external' => null,
+            'warehouse_code' => '882201',
+            'label_name' => 'Drop Uno',
+            'intake_weight_lbs' => 4,
+            'bulto_index' => 1,
+            'bultos_total' => 2,
+        ]);
+        $second = $this->package($agency, [
+            'intake_type' => 'DROP_OFF',
+            'tracking_external' => null,
+            'warehouse_code' => '882201',
+            'label_name' => 'Drop Dos',
+            'intake_weight_lbs' => 6.5,
+            'bulto_index' => 2,
+            'bultos_total' => 2,
+        ]);
+        $sack = Consolidation::create([
+            'code' => 'SAC-SCAN-DROP',
+            'service_type' => 'AIR',
+            'status' => 'OPEN',
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('consolidations.scan-item', $sack->id), ['entry_code' => '882201'])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->actingAs($user)
+            ->post(route('consolidations.scan-item', $sack->id), ['entry_code' => '882201'])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('consolidation_items', [
+            'consolidation_id' => $sack->id,
+            'preregistration_id' => $first->id,
+        ]);
+        $this->assertDatabaseHas('consolidation_items', [
+            'consolidation_id' => $sack->id,
+            'preregistration_id' => $second->id,
+        ]);
+        $this->assertNull($first->fresh()->tracking_external);
+        $this->assertNull($second->fresh()->tracking_external);
+        $this->assertEquals(10.5, (float) app(\App\Services\ConsolidationService::class)
+            ->getReport($sack->fresh('items.preregistration'))['total_lbs']);
+
+        $this->actingAs($user)
+            ->from(route('consolidations.show', ['consolidation' => $sack->id, 'mode' => 'scan']))
+            ->post(route('consolidations.scan-item', $sack->id), ['entry_code' => '882201'])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $this->actingAs($user)
+            ->get(route('consolidations.show', ['consolidation' => $sack->id, 'mode' => 'scan']))
+            ->assertOk()
+            ->assertSee('Bulto 1 de 2')
+            ->assertSee('Bulto 2 de 2');
+    }
+
+    public function test_lookup_returns_next_dropoff_bulto_after_one_is_in_the_sack(): void
+    {
+        $user = $this->centralUser();
+        $agency = $this->agency();
+        $this->package($agency, [
+            'intake_type' => 'DROP_OFF',
+            'tracking_external' => null,
+            'warehouse_code' => '882202',
+            'label_name' => 'Drop Uno',
+            'intake_weight_lbs' => 3,
+            'bulto_index' => 1,
+            'bultos_total' => 2,
+        ]);
+        $second = $this->package($agency, [
+            'intake_type' => 'DROP_OFF',
+            'tracking_external' => null,
+            'warehouse_code' => '882202',
+            'label_name' => 'Drop Dos',
+            'intake_weight_lbs' => 8,
+            'bulto_index' => 2,
+            'bultos_total' => 2,
+        ]);
+        $sack = Consolidation::create([
+            'code' => 'SAC-SCAN-NEXT',
+            'service_type' => 'AIR',
+            'status' => 'OPEN',
+        ]);
+        ConsolidationItem::create([
+            'consolidation_id' => $sack->id,
+            'preregistration_id' => Preregistration::query()->where('warehouse_code', '882202')->where('bulto_index', 1)->value('id'),
+        ]);
+
+        $this->actingAs($user)
+            ->getJson(route('consolidations.scan-lookup', [
+                'code' => '882202',
+                'service_type' => 'AIR',
+            ]))
+            ->assertOk()
+            ->assertJson([
+                'found' => true,
+                'available_count' => 1,
+                'package' => [
+                    'id' => $second->id,
+                    'weight_lbs' => 8,
+                    'bulto_caption' => 'Bulto 2 de 2',
+                ],
+            ]);
+    }
+
+    public function test_store_scan_keeps_each_dropoff_bulto_when_warehouse_is_scanned_twice(): void
+    {
+        $user = $this->centralUser();
+        $agency = $this->agency();
+        $first = $this->package($agency, [
+            'intake_type' => 'DROP_OFF',
+            'tracking_external' => null,
+            'warehouse_code' => '882203',
+            'label_name' => 'Drop Uno',
+            'intake_weight_lbs' => 2.25,
+            'bulto_index' => 1,
+            'bultos_total' => 2,
+        ]);
+        $second = $this->package($agency, [
+            'intake_type' => 'DROP_OFF',
+            'tracking_external' => null,
+            'warehouse_code' => '882203',
+            'label_name' => 'Drop Dos',
+            'intake_weight_lbs' => 5.75,
+            'bulto_index' => 2,
+            'bultos_total' => 2,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('consolidations.store-scan'), [
+                'service_type' => 'AIR',
+                'entry_codes' => ['882203', '882203'],
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('consolidation_items', ['preregistration_id' => $first->id]);
+        $this->assertDatabaseHas('consolidation_items', ['preregistration_id' => $second->id]);
+        $sack = ConsolidationItem::query()->where('preregistration_id', $first->id)->first()?->consolidation;
+        $this->assertNotNull($sack);
+        $this->assertEquals(8.0, (float) app(\App\Services\ConsolidationService::class)
+            ->getReport($sack->fresh('items.preregistration'))['total_lbs']);
+    }
 }

@@ -243,40 +243,70 @@ class ConsolidationService
 
     public function findAvailableForScan(string $code, string $serviceType, bool $anyService = false): ?Preregistration
     {
-        return $this->findPackageByScanCode($code, $serviceType, false, $anyService, true);
+        return $this->availablePackagesForScan($code, $serviceType, $anyService)->first();
+    }
+
+    /**
+     * Paquetes de Miami que coinciden con el código y aún no están en un saco.
+     * Varios bultos Drop Off comparten warehouse: cada uno entra por separado.
+     *
+     * @return \Illuminate\Support\Collection<int, Preregistration>
+     */
+    public function availablePackagesForScan(string $code, ?string $sackService, bool $anyService = false)
+    {
+        return $this->packagesMatchingScanCode($code, $sackService, false, $anyService, true);
     }
 
     /**
      * Vista previa para pistola: un solo código, sin cargar el inventario de Miami.
      *
-     * @return array{found: bool, service_mismatch: bool, package: ?array<string, mixed>}
+     * @return array{found: bool, service_mismatch: bool, package: ?array<string, mixed>, available_count: int}
      */
-    public function scanPreview(string $code, string $serviceType): array
+    public function scanPreview(string $code, string $serviceType, int $claimed = 0): array
     {
         $normalized = self::normalizeScanCode($code);
+        $empty = ['found' => false, 'service_mismatch' => false, 'package' => null, 'available_count' => 0];
         if ($normalized === '') {
-            return ['found' => false, 'service_mismatch' => false, 'package' => null];
+            return $empty;
         }
 
-        $any = $this->findAvailableForScan($normalized, $serviceType, true);
-        if (! $any) {
-            return ['found' => false, 'service_mismatch' => false, 'package' => null];
+        $any = $this->availablePackagesForScan($normalized, $serviceType, true);
+        if ($any->isEmpty()) {
+            return $empty;
         }
 
-        $mismatch = ServiceType::isTbc($any->service_type)
-            || ($any->service_type && ! ServiceType::matchesRoute($any->service_type, $serviceType));
+        $matching = $any->filter(function (Preregistration $package) use ($serviceType) {
+            return ! ServiceType::isTbc($package->service_type)
+                && (! $package->service_type || ServiceType::matchesRoute($package->service_type, $serviceType));
+        })->values();
+
+        if ($matching->isEmpty()) {
+            $mismatch = $any->first();
+
+            return [
+                'found' => false,
+                'service_mismatch' => true,
+                'package' => $mismatch ? $this->packageScanPayload($mismatch, $any->count()) : null,
+                'available_count' => 0,
+            ];
+        }
+
+        $claimed = max(0, $claimed);
+        $package = $matching->get($claimed);
+        $count = $matching->count();
 
         return [
-            'found' => ! $mismatch,
-            'service_mismatch' => $mismatch,
-            'package' => $this->packageScanPayload($any),
+            'found' => $package !== null,
+            'service_mismatch' => false,
+            'package' => $package ? $this->packageScanPayload($package, $count) : null,
+            'available_count' => $count,
         ];
     }
 
     /**
      * @return array<string, mixed>
      */
-    public function packageScanPayload(Preregistration $package): array
+    public function packageScanPayload(Preregistration $package, ?int $availableCount = null): array
     {
         return [
             'id' => $package->id,
@@ -286,6 +316,8 @@ class ConsolidationService
             'service_type' => $package->service_type,
             'weight_lbs' => round((float) ($package->verified_weight_lbs ?? $package->intake_weight_lbs ?? 0), 2),
             'incomplete' => $package->status === 'PHOTO_PENDING',
+            'bulto_caption' => $package->bultoCaption(),
+            'available_count' => $availableCount ?? 1,
         ];
     }
 
@@ -312,43 +344,62 @@ class ConsolidationService
         bool $anyService = false,
         bool $miamiOnly = false
     ): ?Preregistration {
+        return $this->packagesMatchingScanCode($code, $sackService, $alreadyInSack, $anyService, $miamiOnly)->first();
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, Preregistration>
+     */
+    private function packagesMatchingScanCode(
+        string $code,
+        ?string $sackService,
+        bool $alreadyInSack,
+        bool $anyService = false,
+        bool $miamiOnly = false
+    ) {
         $normalized = self::normalizeScanCode($code);
         if ($normalized === '') {
-            return null;
+            return collect();
         }
 
         $candidates = $this->candidatesByExactScanCode($normalized);
         if ($candidates->isEmpty()) {
-            return null;
+            return collect();
         }
 
         $candidates->load('consolidationItem');
 
-        return $candidates->first(function (Preregistration $package) use ($normalized, $sackService, $anyService, $alreadyInSack, $miamiOnly) {
-            if ($package->status === 'CANCELLED') {
-                return false;
-            }
-            if (ServiceType::isTbc($package->service_type) && ! $anyService) {
-                return false;
-            }
-            if ($miamiOnly && ! in_array($package->status, ['RECEIVED_MIAMI', 'PHOTO_PENDING'], true)) {
-                return false;
-            }
+        return $candidates
+            ->filter(function (Preregistration $package) use ($normalized, $sackService, $anyService, $alreadyInSack, $miamiOnly) {
+                if ($package->status === 'CANCELLED') {
+                    return false;
+                }
+                if (ServiceType::isTbc($package->service_type) && ! $anyService) {
+                    return false;
+                }
+                if ($miamiOnly && ! in_array($package->status, ['RECEIVED_MIAMI', 'PHOTO_PENDING'], true)) {
+                    return false;
+                }
 
-            $inSack = $package->relationLoaded('consolidationItem')
-                ? $package->consolidationItem !== null
-                : $package->consolidationItem()->exists();
+                $inSack = $package->relationLoaded('consolidationItem')
+                    ? $package->consolidationItem !== null
+                    : $package->consolidationItem()->exists();
 
-            if ($alreadyInSack !== $inSack) {
-                return false;
-            }
+                if ($alreadyInSack !== $inSack) {
+                    return false;
+                }
 
-            if (! $anyService && $package->service_type && $sackService && ! ServiceType::matchesRoute($package->service_type, $sackService)) {
-                return false;
-            }
+                if (! $anyService && $package->service_type && $sackService && ! ServiceType::matchesRoute($package->service_type, $sackService)) {
+                    return false;
+                }
 
-            return $this->packageMatchesCode($package, $normalized);
-        });
+                return $this->packageMatchesCode($package, $normalized);
+            })
+            ->sortBy([
+                fn (Preregistration $package) => (int) ($package->bulto_index ?? 999),
+                fn (Preregistration $package) => (int) $package->id,
+            ])
+            ->values();
     }
 
     /**
@@ -373,7 +424,6 @@ class ConsolidationService
         return $byTracking
             ->concat($byWarehouse)
             ->unique('id')
-            ->sortBy('id')
             ->values();
     }
 }

@@ -100,7 +100,9 @@ class ConsolidationController extends Controller
             $serviceType = ServiceType::AIR;
         }
 
-        return response()->json($this->consolidationService->scanPreview($code, $serviceType));
+        $claimed = max(0, (int) $request->query('claimed', 0));
+
+        return response()->json($this->consolidationService->scanPreview($code, $serviceType, $claimed));
     }
 
     public function store(StoreConsolidationRequest $request)
@@ -134,7 +136,6 @@ class ConsolidationController extends Controller
         $codes = collect($request->input('entry_codes', []))
             ->map(fn ($c) => strtoupper(trim((string) $c)))
             ->filter()
-            ->unique()
             ->values();
 
         if ($codes->isEmpty()) {
@@ -177,22 +178,25 @@ class ConsolidationController extends Controller
             foreach ($codes as $code) {
                 $pre = $this->consolidationService->findAvailableForScan($code, $consolidation->service_type);
                 if ($pre) {
-                    if (! filled($pre->tracking_external)) {
-                        $pre->tracking_external = $code;
-                        $pre->save();
-                    }
+                    $this->fillTrackingFromScanIfMissing($pre, $code);
                     ConsolidationItem::create([
                         'consolidation_id' => $consolidation->id,
                         'preregistration_id' => $pre->id,
                         'unmatched_code' => null,
                     ]);
-                } else {
-                    ConsolidationItem::create([
-                        'consolidation_id' => $consolidation->id,
-                        'preregistration_id' => null,
-                        'unmatched_code' => $code,
-                    ]);
+
+                    continue;
                 }
+
+                if ($this->codeAlreadyInConsolidation($consolidation, $code)) {
+                    continue;
+                }
+
+                ConsolidationItem::create([
+                    'consolidation_id' => $consolidation->id,
+                    'preregistration_id' => null,
+                    'unmatched_code' => $code,
+                ]);
             }
 
             return $consolidation;
@@ -245,7 +249,7 @@ class ConsolidationController extends Controller
                 ->whereIn('service_type', ServiceType::servicesForRoute($consolidation->service_type))
                 ->whereDoesntHave('consolidationItem')
                 ->orderBy('created_at', 'desc')
-                ->get(['id', 'warehouse_code', 'tracking_external', 'label_name', 'service_type', 'intake_weight_lbs', 'created_at']);
+                ->get(['id', 'warehouse_code', 'tracking_external', 'label_name', 'service_type', 'intake_weight_lbs', 'bulto_index', 'bultos_total', 'created_at']);
         }
 
         return view('consolidations.show', compact('consolidation', 'report', 'availablePreregistrations', 'mode'));
@@ -347,31 +351,6 @@ class ConsolidationController extends Controller
                 ->with('error', 'Debe ingresar un código.');
         }
 
-        $lookupValues = TrackingCode::lookupValues($code);
-        $uspsSuffix = TrackingCode::uspsSuffixForLike($code);
-        $warehouseCode = preg_match('/^\d{6}$/', $code) ? $code : null;
-        $duplicateInSack = $consolidation->items()->where(function ($q) use ($lookupValues, $uspsSuffix, $warehouseCode) {
-            $q->whereIn('unmatched_code', $lookupValues);
-            if ($uspsSuffix !== null) {
-                $q->orWhere('unmatched_code', 'like', '%'.$uspsSuffix);
-            }
-            $q->orWhereHas('preregistration', function ($qq) use ($lookupValues, $uspsSuffix, $warehouseCode) {
-                $qq->where(function ($inner) use ($lookupValues, $uspsSuffix, $warehouseCode) {
-                    $inner->whereIn('tracking_external', $lookupValues);
-                    if ($uspsSuffix !== null) {
-                        $inner->orWhere('tracking_external', 'like', '%'.$uspsSuffix);
-                    }
-                    if ($warehouseCode !== null) {
-                        $inner->orWhere('warehouse_code', $warehouseCode);
-                    }
-                });
-            });
-        })->exists();
-        if ($duplicateInSack) {
-            return redirect()->route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'scan'])
-                ->with('error', "El código {$code} ya está en este {$unit}.");
-        }
-
         $anyMatch = $this->consolidationService->findAvailableForScan($code, $consolidation->service_type, true);
         if ($anyMatch && ServiceType::isTbc($anyMatch->service_type)) {
             return redirect()->route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'scan'])
@@ -393,18 +372,25 @@ class ConsolidationController extends Controller
             : null;
 
         if ($pre) {
-            if (! filled($pre->tracking_external)) {
-                $pre->tracking_external = $code;
-                $pre->save();
-            }
+            $this->fillTrackingFromScanIfMissing($pre, $code);
             ConsolidationItem::create([
                 'consolidation_id' => $consolidation->id,
                 'preregistration_id' => $pre->id,
                 'unmatched_code' => null,
             ]);
 
+            $caption = $pre->bultoCaption();
+            $message = $caption
+                ? "{$caption} ({$code}) agregado al {$unit}."
+                : "Paquete {$code} agregado al {$unit}.";
+
             return redirect()->route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'scan'])
-                ->with('success', "Paquete {$code} agregado al {$unit}.");
+                ->with('success', $message);
+        }
+
+        if ($this->codeAlreadyInConsolidation($consolidation, $code)) {
+            return redirect()->route('consolidations.show', ['consolidation' => $consolidation->id, 'mode' => 'scan'])
+                ->with('error', "Todos los bultos de {$code} ya están en este {$unit}.");
         }
 
         ConsolidationItem::create([
@@ -508,6 +494,41 @@ class ConsolidationController extends Controller
 
         return redirect()->route('consolidations.label', $consolidation->id)
             ->with('success', $consolidation->unitNounTitle().' unitario creado (1 caja). Imprime la etiqueta y pégala.');
+    }
+
+    private function fillTrackingFromScanIfMissing(Preregistration $pre, string $code): void
+    {
+        if (filled($pre->tracking_external)) {
+            return;
+        }
+        if (preg_match('/^\d{6}$/', $code)) {
+            return;
+        }
+
+        $pre->tracking_external = $code;
+        $pre->save();
+    }
+
+    private function codeAlreadyInConsolidation(Consolidation $consolidation, string $code): bool
+    {
+        $normalized = ConsolidationService::normalizeScanCode($code);
+        if ($normalized === '') {
+            return false;
+        }
+
+        return $consolidation->items()
+            ->where(function ($query) use ($normalized) {
+                $query->where('unmatched_code', $normalized)
+                    ->orWhereHas('preregistration', function ($prereg) use ($normalized) {
+                        $prereg->where(function ($inner) use ($normalized) {
+                            $inner->where('warehouse_code', $normalized)
+                                ->orWhere(function ($track) use ($normalized) {
+                                    TrackingCode::constrainLookup($track, 'tracking_external', $normalized);
+                                });
+                        });
+                    });
+            })
+            ->exists();
     }
 
     private function loadResolvedConsolidation(string $id): Consolidation

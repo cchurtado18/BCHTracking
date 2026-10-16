@@ -208,7 +208,7 @@
                         @endphp
                         <tr class="{{ $package ? '' : 'unmatched' }}">
                             <td class="center">{{ $i + 1 }}</td>
-                            <td class="mono">{{ $package?->warehouse_code ?? '—' }}</td>
+                            <td class="mono">{{ $package?->warehouse_code ?? '—' }}{{ $package?->bultoCaption() ? ' · '.$package->bultoCaption() : '' }}</td>
                             <td class="mono">{{ $trackingValue ? \Illuminate\Support\Str::limit($trackingValue, 24) : '—' }}</td>
                             <td>{{ $package ? (\Illuminate\Support\Str::limit($package->label_name ?? '', 28) ?: '—') : 'Sin preregistro asociado' }}</td>
                             <td>{{ $package?->agency?->name ? \Illuminate\Support\Str::limit($package->agency->name, 24) : '—' }}</td>

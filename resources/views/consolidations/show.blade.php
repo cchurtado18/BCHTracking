@@ -593,8 +593,8 @@
                             <div class="cons-show-item cons-show-item--row {{ $item->scanned_at ? 'cons-show-item--ok' : '' }}">
                                 <div class="cons-show-item-main">
                                     <div class="cons-show-item-name">{{ $item->preregistration->label_name }}</div>
-                                    <div class="cons-show-item-code">{{ $item->preregistration->warehouse_code ?? $item->preregistration->tracking_external ?? 'N/A' }}</div>
-                                    <div class="cons-show-item-meta">{{ $item->preregistration->intake_weight_lbs }} lbs</div>
+                                    <div class="cons-show-item-code">{{ $item->preregistration->warehouse_code ?? $item->preregistration->tracking_external ?? 'N/A' }}{{ $item->preregistration->bultoCaption() ? ' · '.$item->preregistration->bultoCaption() : '' }}</div>
+                                    <div class="cons-show-item-meta">{{ $item->preregistration->verified_weight_lbs ?? $item->preregistration->intake_weight_lbs }} lbs</div>
                                     @if($item->preregistration->status === 'PHOTO_PENDING')
                                         <div class="cons-show-item-tag">Datos pendientes · el peso ya suma al {{ $unit }}</div>
                                     @endif
@@ -669,16 +669,21 @@
 
             @if($mode === 'scan')
                 @php
+                    $scanService = app(\App\Services\ConsolidationService::class);
+                    $scanCodes = $consolidation->items->map(function ($it) {
+                        if ($it->preregistration) {
+                            return strtoupper(trim((string) ($it->preregistration->warehouse_code ?: $it->preregistration->tracking_external ?: '')));
+                        }
+
+                        return strtoupper(trim((string) ($it->unmatched_code ?? '')));
+                    })->filter()->unique()->values();
                     $scanMeta = [
                         'service_type' => $consolidation->service_type,
                         'unit_noun' => $consolidation->unitNoun(),
-                        'existing_codes' => $consolidation->items->map(function ($it) {
-                            if ($it->preregistration) {
-                                return strtoupper(trim((string) ($it->preregistration->warehouse_code ?? $it->preregistration->tracking_external ?? '')));
-                            }
-
-                            return strtoupper(trim((string) ($it->unmatched_code ?? '')));
-                        })->filter()->values(),
+                        'existing_codes' => $scanCodes,
+                        'remaining_by_code' => $scanCodes->mapWithKeys(function ($code) use ($scanService, $consolidation) {
+                            return [$code => $scanService->availablePackagesForScan($code, $consolidation->service_type)->count()];
+                        }),
                     ];
                 @endphp
                 <script type="application/json" id="cons-show-scan-meta">@json($scanMeta)</script>
@@ -696,7 +701,7 @@
                                     autocomplete="off" autocapitalize="characters" spellcheck="false" autofocus>
                                 <p id="cons-show-scan-feedback" class="cons-show-scan-feedback" role="status"></p>
                             </div>
-                            <p class="cons-show-scan-hint">Cada Enter o ráfaga de pistola agrega el código al {{ $unit }}. Si no coincide con un preregistro del mismo servicio, se guarda como código sin preregistro. Usa <strong>Eliminar</strong> en cada ítem si te equivocaste.</p>
+                            <p class="cons-show-scan-hint">Cada Enter o ráfaga de pistola agrega el código al {{ $unit }}. Si varios bultos Drop Off comparten el mismo warehouse, escanee una vez por cada bulto (1/20, 2/20…). El peso de cada uno suma al {{ $unit }}. Si no coincide con un preregistro del mismo servicio, se guarda como código sin preregistro. Usa <strong>Eliminar</strong> en cada ítem si te equivocaste.</p>
                         </form>
                     </div>
                 </div>
@@ -719,7 +724,7 @@
                                     <tbody>
                                         @foreach($availablePreregistrations as $preregistration)
                                         <tr>
-                                            <td class="font-mono text-gray-600">{{ $preregistration->warehouse_code ?? $preregistration->tracking_external ?? 'N/A' }}</td>
+                                            <td class="font-mono text-gray-600">{{ $preregistration->warehouse_code ?? $preregistration->tracking_external ?? 'N/A' }}{{ $preregistration->bultoCaption() ? ' · '.$preregistration->bultoCaption() : '' }}</td>
                                             <td class="font-medium text-gray-900">{{ $preregistration->label_name }}@if(\App\Support\ServiceType::isCft($preregistration->service_type)) <span class="cons-cft-tag">Pie cúbico</span>@endif</td>
                                             <td class="text-gray-500">{{ $preregistration->intake_weight_lbs }} lbs</td>
                                             <td class="text-gray-500">{{ $preregistration->created_at->format('d/m/Y') }}</td>
@@ -761,6 +766,7 @@
     var meta = metaEl ? JSON.parse(metaEl.textContent || '{}') : {};
     var unitNoun = meta.unit_noun || 'saco';
     var existingCodes = Array.isArray(meta.existing_codes) ? meta.existing_codes : [];
+    var remainingByCode = meta.remaining_by_code || {};
 
     var scanDebounceTimer = null;
     var SCAN_DEBOUNCE_MS = 250;
@@ -786,8 +792,9 @@
         if (submitting) return;
         var code = norm(input.value);
         if (!code) return;
-        if (existingCodes.indexOf(code) !== -1) {
-            setFeedback('Ese código ya está en el ' + unitNoun + '.', 'err');
+        var remaining = remainingByCode[code];
+        if (existingCodes.indexOf(code) !== -1 && !(remaining > 0)) {
+            setFeedback('Todos los bultos de ese código ya están en el ' + unitNoun + '.', 'err');
             input.select();
             return;
         }

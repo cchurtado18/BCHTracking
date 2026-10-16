@@ -242,6 +242,16 @@ class Preregistration extends Model
             && (int) $this->bultos_total > 1;
     }
 
+    public function bultoCaption(): ?string
+    {
+        $total = (int) $this->bultos_total;
+        if ($total < 2) {
+            return null;
+        }
+
+        return 'Bulto '.((int) ($this->bulto_index ?: 1)).' de '.$total;
+    }
+
     /**
      * Índice del siguiente bulto que falta en este Drop Off, o null si ya está completo.
      */
