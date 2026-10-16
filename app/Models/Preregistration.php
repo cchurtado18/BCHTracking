@@ -235,6 +235,56 @@ class Preregistration extends Model
         return $this->status === 'PHOTO_PENDING' && filled($this->warehouse_code);
     }
 
+    public function isDropoffGroup(): bool
+    {
+        return $this->intake_type === 'DROP_OFF'
+            && filled($this->warehouse_code)
+            && (int) $this->bultos_total > 1;
+    }
+
+    /**
+     * Índice del siguiente bulto que falta en este Drop Off, o null si ya está completo.
+     */
+    public function nextMissingDropoffIndex(): ?int
+    {
+        if (! $this->isDropoffGroup()) {
+            return null;
+        }
+
+        $total = (int) $this->bultos_total;
+        $existing = $this->dropoffGroupQuery()
+            ->pluck('bulto_index')
+            ->map(fn ($index) => (int) $index)
+            ->all();
+        $existing = array_flip($existing);
+        for ($i = 1; $i <= $total; $i++) {
+            if (! isset($existing[$i])) {
+                return $i;
+            }
+        }
+
+        return null;
+    }
+
+    public function dropoffGroupMembers()
+    {
+        if (! $this->isDropoffGroup()) {
+            return collect();
+        }
+
+        return $this->dropoffGroupQuery()
+            ->orderBy('bulto_index')
+            ->orderBy('id')
+            ->get();
+    }
+
+    private function dropoffGroupQuery()
+    {
+        return static::query()
+            ->where('intake_type', 'DROP_OFF')
+            ->where('warehouse_code', $this->warehouse_code);
+    }
+
     /**
      * Capturas pendientes pueden quedarse sin fotos.
      * Un paquete ya completo debe conservar al menos una foto de respaldo.

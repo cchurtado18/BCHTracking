@@ -458,7 +458,7 @@
 
         @if(!empty($dropoffNextStep) && !empty($dropoffTotal))
             <p style="margin-top: 14px;">
-                <a href="{{ route('preregistrations.create') }}" style="display: inline-block; padding: 8px 14px; background: #0A2D6F; color: #fff; border-radius: 6px; font-weight: 600; text-decoration: none;">
+                <a href="{{ route('preregistrations.continue-dropoff', $preregistration->id) }}" style="display: inline-block; padding: 8px 14px; background: #0A2D6F; color: #fff; border-radius: 6px; font-weight: 600; text-decoration: none;">
                     Continuar con el siguiente bulto ({{ $dropoffNextStep }}/{{ $dropoffTotal }})
                 </a>
             </p>

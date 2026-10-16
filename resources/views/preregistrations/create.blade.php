@@ -31,6 +31,11 @@
         </ul>
     </div>
     @endif
+    @if(session('success'))
+    <div class="preregs-alert preregs-alert-success" role="status">
+        <p class="preregs-alert-title">{{ session('success') }}</p>
+    </div>
+    @endif
 
     @if(isset($dropoffContinuation) && $dropoffContinuation)
     <div class="preregs-create-layout">
@@ -48,9 +53,16 @@
                     </div>
                 </div>
                 <div class="preregs-card-body preregs-form-body">
-                    @if($dropoffAgencyName)
-                    <p class="preregs-dropoff-meta"><strong>Agencia:</strong> {{ $dropoffAgencyName }} · <strong>Servicio:</strong> {{ \App\Support\ServiceType::label($dropoffServiceType) }}</p>
-                    @endif
+                    <p class="preregs-dropoff-meta">
+                        @if(!empty($dropoffWarehouseCode))
+                        <strong>Warehouse:</strong> {{ $dropoffWarehouseCode }}
+                        @endif
+                        @if($dropoffAgencyName)
+                        · <strong>Agencia:</strong> {{ $dropoffAgencyName }}
+                        @endif
+                        · <strong>Servicio:</strong> {{ \App\Support\ServiceType::label($dropoffServiceType) }}
+                    </p>
+                    <p class="preregs-hint">Si sales, abre cualquiera de los bultos ya guardados con este warehouse y pulsa Continuar Drop Off.</p>
                     <form action="{{ route('preregistrations.store') }}" method="POST" enctype="multipart/form-data" id="preregFormDropoffStep" class="preregs-create-formwrap" novalidate>
                         @csrf
                         <input type="hidden" name="intake_type" value="DROP_OFF">
@@ -88,7 +100,7 @@
                         <div class="preregs-form-actions">
                             <a href="{{ route('preregistrations.create', ['cancel_dropoff' => 1]) }}" class="preregs-btn preregs-btn-secondary">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
-                                Cancelar
+                                Dejar para después
                             </a>
                             <button type="submit" class="preregs-btn preregs-btn-primary">Guardar e imprimir etiqueta {{ $dropoffStep }}/{{ $dropoffTotal }}</button>
                         </div>
@@ -491,6 +503,7 @@
 
 .preregs-alert { padding: 0.9rem 1.1rem; border-radius: 0.7rem; margin-bottom: 1rem; font-size: 0.875rem; }
 .preregs-alert-danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+.preregs-alert-success { background: #F4F8FD; border: 1px solid #C5D4EB; color: #0A2D6F; }
 .preregs-alert-title { font-weight: 700; margin-bottom: 0.3rem; }
 .preregs-alert-list { margin: 0; padding-left: 1.2rem; }
 

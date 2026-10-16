@@ -20,6 +20,7 @@
     $canChangeIntake = auth()->user()?->hasPermission(\App\Support\Permission::ACTION_CHANGE_INTAKE_TYPE);
     $canResetToMiami = auth()->user()?->hasPermission(\App\Support\Permission::ACTION_RESET_TO_MIAMI);
     $showAdmin = $canChangeIntake || $canResetToMiami;
+    $dropoffNextStep = $preregistration->nextMissingDropoffIndex();
 
     $stageIndex = match ($preregistration->status) {
         'RECEIVED_MIAMI' => 1,
@@ -82,6 +83,9 @@
                     <button type="button" class="mb-btn mb-btn-secondary" onclick="document.getElementById('rn-quick-modal').style.display='flex';document.getElementById('rn-quick-delivered-by').focus();">Comprobante recepción</button>
                 @endif
             @endif
+            @if($dropoffNextStep)
+            <a href="{{ route('preregistrations.continue-dropoff', $preregistration->id) }}" class="mb-btn mb-btn-primary">Continuar bulto {{ $dropoffNextStep }}/{{ $preregistration->bultos_total }}</a>
+            @endif
             <a href="{{ route('preregistrations.edit', $preregistration->id) }}" class="mb-btn mb-btn-secondary">Editar</a>
             @if($preregistration->warehouse_code)
                 @if($preregistration->usesControlWarehouseLabel())
@@ -110,6 +114,9 @@
             @if($preregistration->relationLoaded('prealert') && $preregistration->prealert)
             <span class="mb-pill mb-pill--ok">Prealertado</span>
             @endif
+            @if($preregistration->isDropoffGroup())
+            <span class="mb-pill">Bulto {{ $preregistration->bulto_index }} de {{ $preregistration->bultos_total }}</span>
+            @endif
             <span class="mb-pill">{{ \App\Support\ServiceType::label($preregistration->service_type) }}</span>
             <span class="mb-pill">{{ $statusLabel }}</span>
         </x-slot:strip>
@@ -123,6 +130,12 @@
     @enderror
     @if(session('error'))
     <div class="prd-flash-err" role="alert">{{ session('error') }}</div>
+    @endif
+    @if(!empty($dropoffNextStep))
+    <div class="prd-flash-ok" role="status">
+        Este Drop Off está incompleto: van {{ $preregistration->dropoffGroupMembers()->count() }} de {{ $preregistration->bultos_total }} bultos con warehouse {{ $preregistration->warehouse_code }}.
+        <a href="{{ route('preregistrations.continue-dropoff', $preregistration->id) }}" class="prd-inline-link">Continuar con el bulto {{ $dropoffNextStep }}</a>
+    </div>
     @endif
     @if($preregistration->relationLoaded('prealert') && $preregistration->prealert)
     <div class="prd-flash-ok" role="status">
@@ -589,6 +602,7 @@
     background: #ecfdf3; color: #14532d; border: 1px solid #86c9a4;
     font-size: 0.875rem; font-weight: 600;
 }
+.prd-inline-link { color: #0A2D6F; font-weight: 800; margin-left: 0.35rem; }
 @media (min-width: 768px) { .preregs-show-page { padding: 1.5rem 1.5rem 2.5rem; } }
 
 .prd-inline { display: inline; margin: 0; }

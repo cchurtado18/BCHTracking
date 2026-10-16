@@ -178,6 +178,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('preregistrations/{id}/label', [PreregistrationController::class, 'label'])->name('preregistrations.label');
         Route::get('preregistrations/{id}/control-label', [PreregistrationController::class, 'controlLabel'])->name('preregistrations.control-label');
         Route::get('preregistrations-dropoff-labels', [PreregistrationController::class, 'dropoffLabels'])->name('preregistrations.dropoff-labels');
+        Route::get('preregistrations/{id}/continue-dropoff', [PreregistrationController::class, 'continueDropoff'])->name('preregistrations.continue-dropoff');
         Route::post('preregistrations/{id}/photos', [PreregistrationController::class, 'uploadPhoto'])->name('preregistrations.upload-photo');
         Route::post('preregistrations/{id}/photos/{photo}/move', [PreregistrationController::class, 'movePhoto'])->name('preregistrations.photos.move');
         Route::delete('preregistrations/{id}/photos/{photo}', [PreregistrationController::class, 'destroyPhoto'])->name('preregistrations.photos.destroy');

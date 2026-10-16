@@ -68,6 +68,10 @@
             <a href="{{ route('packages.process', $package->id) }}" class="mb-btn mb-btn-secondary">Procesar paquete</a>
             @endif
             @if(!$isAgencyUser)
+            @php $dropoffNextStep = $package->nextMissingDropoffIndex(); @endphp
+            @if($dropoffNextStep)
+            <a href="{{ route('preregistrations.continue-dropoff', $package->id) }}" class="mb-btn mb-btn-primary">Continuar bulto {{ $dropoffNextStep }}/{{ $package->bultos_total }}</a>
+            @endif
             <a href="{{ route('preregistrations.edit', $package->id) }}" class="mb-btn mb-btn-secondary">Editar</a>
             @endif
             @if($package->warehouse_code && !$isAgencyUser)

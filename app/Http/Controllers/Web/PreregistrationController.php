@@ -172,14 +172,21 @@ class PreregistrationController extends Controller
         $dropoffTotal = 1;
         $dropoffAgencyName = null;
         $dropoffServiceType = 'AIR';
+        $dropoffWarehouseCode = null;
 
-        if (session('dropoff_warehouse_code') && session('dropoff_bultos_total') && session('dropoff_created_ids')) {
-            $created = count(session('dropoff_created_ids', []));
-            $total = (int) session('dropoff_bultos_total');
-            if ($created < $total) {
+        $sessionWarehouse = session('dropoff_warehouse_code');
+        if (is_string($sessionWarehouse) && $sessionWarehouse !== '') {
+            $anchor = Preregistration::query()
+                ->where('intake_type', 'DROP_OFF')
+                ->where('warehouse_code', $sessionWarehouse)
+                ->orderBy('bulto_index')
+                ->orderBy('id')
+                ->first();
+            if ($anchor && $this->hydrateDropoffSession($anchor)) {
                 $dropoffContinuation = true;
-                $dropoffStep = $created + 1;
-                $dropoffTotal = $total;
+                $dropoffStep = (int) $anchor->nextMissingDropoffIndex();
+                $dropoffTotal = (int) $anchor->bultos_total;
+                $dropoffWarehouseCode = $anchor->warehouse_code;
                 $agencyId = session('dropoff_agency_id');
                 if ($agencyId) {
                     $agency = Agency::find($agencyId);
@@ -201,9 +208,24 @@ class PreregistrationController extends Controller
                 'dropoffStep',
                 'dropoffTotal',
                 'dropoffAgencyName',
-                'dropoffServiceType'
+                'dropoffServiceType',
+                'dropoffWarehouseCode'
             ))
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    }
+
+    public function continueDropoff(string $id)
+    {
+        $preregistration = Preregistration::findOrFail($id);
+        if (! $this->hydrateDropoffSession($preregistration)) {
+            return redirect()->route('preregistrations.show', $preregistration->id)
+                ->with('error', 'Este Drop Off ya tiene todos los bultos o no se puede continuar.');
+        }
+
+        $next = $preregistration->nextMissingDropoffIndex();
+
+        return redirect()->route('preregistrations.create')
+            ->with('success', 'Continuando el Drop Off '.$preregistration->warehouse_code.': bulto '.$next.' de '.$preregistration->bultos_total.'.');
     }
 
     public function store(StorePreregistrationRequest $request)
@@ -343,8 +365,15 @@ class PreregistrationController extends Controller
         $trackingExternal = session('dropoff_tracking_external');
         $createdIds = session('dropoff_created_ids', []);
         $sessionTotal = (int) session('dropoff_bultos_total', 0);
+        $alreadyHasStep = $warehouseCode
+            ? Preregistration::query()
+                ->where('intake_type', 'DROP_OFF')
+                ->where('warehouse_code', $warehouseCode)
+                ->where('bulto_index', $step)
+                ->exists()
+            : true;
 
-        if (! $warehouseCode || $sessionTotal < 2 || $step > $sessionTotal || $step !== count($createdIds) + 1) {
+        if (! $warehouseCode || $sessionTotal < 2 || $step < 2 || $step > $sessionTotal || $alreadyHasStep) {
             session()->forget(['dropoff_warehouse_code', 'dropoff_bultos_total', 'dropoff_agency_id', 'dropoff_service_type', 'dropoff_tracking_external', 'dropoff_created_ids']);
 
             return $this->storeRedirect(
@@ -976,16 +1005,8 @@ class PreregistrationController extends Controller
         if (empty($preregistration->warehouse_code)) {
             $this->warehouseService->ensureWarehouseCode($preregistration);
         }
-        $dropoffNextStep = null;
-        $dropoffTotal = null;
-        if (session('dropoff_warehouse_code') && session('dropoff_bultos_total') && session('dropoff_created_ids')) {
-            $created = count(session('dropoff_created_ids'));
-            $total = (int) session('dropoff_bultos_total');
-            if ($created < $total) {
-                $dropoffNextStep = $created + 1;
-                $dropoffTotal = $total;
-            }
-        }
+        $dropoffNextStep = $preregistration->nextMissingDropoffIndex();
+        $dropoffTotal = $dropoffNextStep ? (int) $preregistration->bultos_total : null;
 
         $labelFormat = $this->resolveLabelPaperFormat($request);
 
@@ -1030,6 +1051,27 @@ class PreregistrationController extends Controller
         $labelFormat = $this->resolveLabelPaperFormat($request);
 
         return view('preregistrations.dropoff-labels', compact('preregistrations', 'labelFormat'));
+    }
+
+    private function hydrateDropoffSession(Preregistration $preregistration): bool
+    {
+        $next = $preregistration->nextMissingDropoffIndex();
+        if ($next === null) {
+            return false;
+        }
+
+        $members = $preregistration->dropoffGroupMembers();
+        $first = $members->first() ?? $preregistration;
+        session([
+            'dropoff_warehouse_code' => $preregistration->warehouse_code,
+            'dropoff_bultos_total' => (int) $preregistration->bultos_total,
+            'dropoff_agency_id' => $first->agency_id,
+            'dropoff_service_type' => $first->service_type,
+            'dropoff_tracking_external' => $first->tracking_external,
+            'dropoff_created_ids' => $members->pluck('id')->all(),
+        ]);
+
+        return true;
     }
 
     /**
