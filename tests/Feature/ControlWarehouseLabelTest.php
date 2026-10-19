@@ -7,6 +7,7 @@ use App\Models\Preregistration;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -163,6 +164,58 @@ class ControlWarehouseLabelTest extends TestCase
             ->get(route('preregistrations.index'))
             ->assertOk()
             ->assertSee(route('preregistrations.control-label', $package->id), false);
+    }
+
+    public function test_control_label_keeps_date_inside_the_sticker(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+        $package = $this->pendingMaritimePackage([
+            'warehouse_code' => '667788',
+            'tracking_external' => '1ZCTRLDATE001',
+        ]);
+
+        $html = $this->actingAs($user)
+            ->get(route('preregistrations.control-label', $package->id))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('height: 6in', $html);
+        $this->assertStringContainsString('max-height: 6in', $html);
+        $this->assertStringContainsString('overflow: hidden', $html);
+
+        $sheet = substr($html, (int) strpos($html, 'class="label-sheet"'));
+        $this->assertLessThan(
+            strpos($sheet, 'TRACKING GLOBAL'),
+            strpos($sheet, 'ctrl-date'),
+            'La fecha debe ir arriba del tracking para no caer en la siguiente etiqueta térmica'
+        );
+    }
+
+    public function test_control_label_uses_only_that_package_reception_date(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+        $older = $this->pendingMaritimePackage([
+            'warehouse_code' => '111222',
+            'tracking_external' => '1ZCTRLDATEOLD',
+        ]);
+        $newer = $this->pendingMaritimePackage([
+            'warehouse_code' => '333444',
+            'tracking_external' => '1ZCTRLDATENEW',
+        ]);
+        $older->forceFill(['created_at' => Carbon::parse('2026-01-15 17:00:00', 'UTC')])->save();
+        $newer->forceFill(['created_at' => Carbon::parse('2026-10-19 17:00:00', 'UTC')])->save();
+
+        $this->actingAs($user)
+            ->get(route('preregistrations.control-label', $older->id))
+            ->assertOk()
+            ->assertSee('15/01/2026', false)
+            ->assertDontSee('19/10/2026', false);
+
+        $this->actingAs($user)
+            ->get(route('preregistrations.control-label', $newer->id))
+            ->assertOk()
+            ->assertSee('19/10/2026', false)
+            ->assertDontSee('15/01/2026', false);
     }
 
     public function test_narrow_control_label_opens(): void

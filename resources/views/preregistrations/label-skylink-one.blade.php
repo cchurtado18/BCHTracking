@@ -23,12 +23,16 @@
         /* Contenedor 4x6 */
         .label-sheet {
             width: 4in;
-            min-height: 6in;
+            height: 6in;
+            max-height: 6in;
+            min-height: 0;
             margin: 0 auto;
             background: #fff;
             border: none;
             border-radius: 0;
             padding: 12px 14px;
+            overflow: hidden;
+            box-sizing: border-box;
         }
 
         .sl-header {
@@ -354,8 +358,11 @@
          */
         .label-paper-narrow .label-sheet {
             width: 2.25in;
-            min-height: 4in;
+            height: 4in;
+            max-height: 4in;
+            min-height: 0;
             padding: 6px 8px;
+            overflow: hidden;
         }
         .label-paper-narrow .sl-header { min-height: 0; gap: 6px; margin-bottom: 6px; padding-bottom: 6px; }
         .label-paper-narrow .sl-header-provider img { max-width: 118px; max-height: 30px; }
@@ -415,7 +422,9 @@
             .no-print { display: none !important; }
             .label-sheet {
                 width: {{ $sheetWidthCss }} !important;
-                min-height: {{ $sheetMinHeightCss }};
+                height: {{ $sheetMinHeightCss }} !important;
+                max-height: {{ $sheetMinHeightCss }} !important;
+                min-height: 0;
                 max-width: none;
                 margin: 0;
                 padding: 8px 10px;
@@ -423,6 +432,7 @@
                 border-radius: 0;
                 box-sizing: border-box;
                 page-break-inside: avoid;
+                overflow: hidden;
                 box-shadow: none;
             }
 

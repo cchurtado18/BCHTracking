@@ -29,52 +29,59 @@
         }
         .label-sheet {
             width: 4in;
-            min-height: 6in;
+            height: 6in;
+            max-height: 6in;
+            min-height: 0;
             margin: 0 auto;
             background: #fff;
-            padding: 14px 12px 18px;
+            padding: 12px 12px 10px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            gap: 16px;
+            justify-content: flex-start;
+            gap: 8px;
+            overflow: hidden;
+            box-sizing: border-box;
         }
         .ctrl-brand {
             width: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 10px;
+            gap: 6px;
+            flex: 0 0 auto;
         }
         .ctrl-logo {
             width: 100%;
-            max-width: 360px;
-            height: 210px;
+            max-width: 280px;
+            height: 96px;
             object-fit: contain;
             object-position: center;
         }
         .ctrl-address {
-            font-size: 18px;
+            font-size: 14px;
             font-weight: 800;
             color: #111;
             text-align: center;
-            line-height: 1.25;
+            line-height: 1.2;
             letter-spacing: 0.01em;
         }
         .ctrl-date {
-            font-size: 20px;
+            font-size: 16px;
             font-weight: 800;
             color: #111;
             text-align: center;
             letter-spacing: 0.02em;
+            flex: 0 0 auto;
         }
         .ctrl-warehouse {
-            font-size: 56px;
+            font-size: 44px;
             font-weight: 900;
             color: #111;
             letter-spacing: 0.08em;
             line-height: 1;
             text-align: center;
+            flex: 0 0 auto;
         }
         .ctrl-barcode {
             width: 100%;
@@ -89,20 +96,21 @@
         }
         .ctrl-barcode canvas {
             max-width: 100%;
+            height: 72px !important;
         }
         .ctrl-service-mark {
             display: inline-block;
-            font-size: 60px;
+            font-size: 44px;
             font-weight: 900;
             line-height: 0.9;
             color: #111;
             letter-spacing: 0.02em;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
         .ctrl-service-mark.is-tbc {
             font-size: 28px;
             letter-spacing: 0.06em;
-            margin-bottom: 14px;
+            margin-bottom: 4px;
         }
         .ctrl-tracking-title {
             font-size: 12px;
@@ -113,12 +121,14 @@
             text-align: center;
         }
         .ctrl-tracking {
-            font-size: 18px;
+            font-size: 15px;
             font-weight: 800;
             color: #111;
             text-align: center;
             letter-spacing: 0.02em;
             word-break: break-all;
+            max-height: 2.6em;
+            overflow: hidden;
         }
         .no-print { text-align: center; margin-bottom: 16px; }
         .no-print button {
@@ -148,25 +158,27 @@
         }
         .label-paper-narrow .label-sheet {
             width: 2.25in;
-            min-height: 4in;
+            height: 4in;
+            max-height: 4in;
             padding: 8px 6px;
-            gap: 8px;
+            gap: 6px;
         }
-        .label-paper-narrow .ctrl-brand { gap: 6px; }
+        .label-paper-narrow .ctrl-brand { gap: 4px; }
         .label-paper-narrow .ctrl-logo {
-            max-width: 200px;
-            height: 92px;
+            max-width: 160px;
+            height: 52px;
         }
         .label-paper-narrow .ctrl-address {
-            font-size: 11px;
+            font-size: 10px;
         }
         .label-paper-narrow .ctrl-date {
-            font-size: 12px;
+            font-size: 11px;
         }
         .label-paper-narrow .ctrl-warehouse {
-            font-size: 28px;
+            font-size: 24px;
             letter-spacing: 0.05em;
         }
+        .label-paper-narrow .ctrl-barcode canvas { height: 42px !important; }
         .label-paper-narrow .ctrl-service-mark { font-size: 28px; margin-bottom: 4px; }
         .label-paper-narrow .ctrl-service-mark.is-tbc { font-size: 16px; }
         .label-paper-narrow .ctrl-tracking-title { font-size: 9px; }
@@ -188,11 +200,14 @@
             .no-print { display: none !important; }
             .label-sheet {
                 width: {{ $sheetWidthCss }} !important;
-                min-height: {{ $sheetMinHeightCss }};
+                height: {{ $sheetMinHeightCss }} !important;
+                max-height: {{ $sheetMinHeightCss }} !important;
+                min-height: 0;
                 margin: 0;
-                padding: {{ $isNarrow ? '10px 8px' : '16px 14px' }};
+                padding: {{ $isNarrow ? '8px 6px' : '12px 12px 10px' }};
                 border: none;
                 box-shadow: none;
+                overflow: hidden;
             }
         }
     </style>
@@ -216,6 +231,7 @@
         <div class="ctrl-brand">
             <img src="{{ $providerLogo }}" alt="PrimeTrack Group" class="ctrl-logo">
             <div class="ctrl-address">8307 NW 68th St<br>Miami, FL 33166</div>
+            <div class="ctrl-date">{{ $dt ? $dt->format('d/m/Y') : '—' }}</div>
         </div>
         <div class="ctrl-warehouse">{{ $preregistration->warehouse_code }}</div>
         <div class="ctrl-barcode">
@@ -226,7 +242,6 @@
         </div>
         <div class="ctrl-tracking-title">TRACKING GLOBAL</div>
         <div class="ctrl-tracking">{{ $tracking }}</div>
-        <div class="ctrl-date">{{ $dt ? $dt->format('d/m/Y') : '—' }}</div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
@@ -237,13 +252,13 @@
             JsBarcode(el, el.dataset.barcode, labelNarrow ? {
                 format: 'CODE128',
                 width: 1.4,
-                height: 48,
+                height: 42,
                 displayValue: false,
                 margin: 0
             } : {
                 format: 'CODE128',
-                width: 2.6,
-                height: 88,
+                width: 2.2,
+                height: 72,
                 displayValue: false,
                 margin: 0
             });

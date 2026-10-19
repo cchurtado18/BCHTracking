@@ -6,6 +6,7 @@ use App\Models\Agency;
 use App\Models\Preregistration;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class PackageLabelRegressionTest extends TestCase
@@ -114,6 +115,81 @@ class PackageLabelRegressionTest extends TestCase
             ->assertSee('TRK-NO-AGENCY', false)
             ->assertSee('SIN AGENCIA', false)
             ->assertSee('PrimeTrack Group', false);
+    }
+
+    public function test_full_label_clips_to_one_sticker_and_uses_own_reception_date(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+        $older = $this->package($this->subagency('Fecha Vieja', 'F201'), [
+            'warehouse_code' => '201111',
+            'tracking_external' => 'TRK-DATE-OLD',
+        ]);
+        $newer = $this->package($this->subagency('Fecha Nueva', 'F202'), [
+            'warehouse_code' => '202222',
+            'tracking_external' => 'TRK-DATE-NEW',
+        ]);
+        $older->forceFill(['created_at' => Carbon::parse('2026-01-15 17:00:00', 'UTC')])->save();
+        $newer->forceFill(['created_at' => Carbon::parse('2026-10-19 17:00:00', 'UTC')])->save();
+
+        $olderHtml = $this->actingAs($user)
+            ->get(route('preregistrations.label', $older))
+            ->assertOk()
+            ->assertSee('RECEPCIÓN', false)
+            ->assertSee('15/01/2026', false)
+            ->assertDontSee('19/10/2026', false)
+            ->getContent();
+
+        $this->assertStringContainsString('overflow: hidden', $olderHtml);
+        $this->assertStringContainsString('max-height: 6in', $olderHtml);
+
+        $this->actingAs($user)
+            ->get(route('preregistrations.label', $newer))
+            ->assertOk()
+            ->assertSee('19/10/2026', false)
+            ->assertDontSee('15/01/2026', false);
+    }
+
+    public function test_dropoff_batch_prints_each_bulto_own_date_inside_its_sheet(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+        $agency = $this->subagency('Dropoff Fecha', 'D204');
+        $first = $this->package($agency, [
+            'warehouse_code' => '204111',
+            'tracking_external' => 'TRK-DROP-DATE-1',
+            'intake_type' => 'DROP_OFF',
+            'bulto_index' => 1,
+            'bultos_total' => 2,
+            'label_name' => 'Bulto Uno',
+        ]);
+        $second = $this->package($agency, [
+            'warehouse_code' => '204111',
+            'tracking_external' => '',
+            'intake_type' => 'DROP_OFF',
+            'bulto_index' => 2,
+            'bultos_total' => 2,
+            'label_name' => 'Bulto Dos',
+        ]);
+        $first->forceFill(['created_at' => Carbon::parse('2026-01-15 17:00:00', 'UTC')])->save();
+        $second->forceFill(['created_at' => Carbon::parse('2026-10-19 17:00:00', 'UTC')])->save();
+
+        $html = $this->actingAs($user)
+            ->get(route('preregistrations.dropoff-labels', ['ids' => $first->id.','.$second->id]))
+            ->assertOk()
+            ->assertSee('15/01/2026', false)
+            ->assertSee('19/10/2026', false)
+            ->getContent();
+
+        $this->assertStringContainsString('overflow: hidden', $html);
+        $this->assertStringContainsString('max-height: 6in', $html);
+
+        $uno = strpos($html, 'BULTO UNO');
+        $dos = strpos($html, 'BULTO DOS');
+        $oldDate = strpos($html, '15/01/2026');
+        $newDate = strpos($html, '19/10/2026');
+        $this->assertNotFalse($uno);
+        $this->assertNotFalse($dos);
+        $this->assertTrue($oldDate > $uno && $oldDate < $dos);
+        $this->assertTrue($newDate > $dos);
     }
 
     public function test_guest_cannot_open_the_label(): void
