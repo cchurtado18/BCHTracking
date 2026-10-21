@@ -34,12 +34,12 @@
             min-height: 0;
             margin: 0 auto;
             background: #fff;
-            padding: 12px 12px 10px;
+            padding: 14px 12px 28px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-start;
-            gap: 8px;
+            justify-content: space-evenly;
+            gap: 10px;
             overflow: hidden;
             box-sizing: border-box;
         }
@@ -48,26 +48,26 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
             flex: 0 0 auto;
         }
         .ctrl-logo {
             width: 100%;
-            max-width: 280px;
-            height: 96px;
+            max-width: 340px;
+            height: 176px;
             object-fit: contain;
             object-position: center;
         }
         .ctrl-address {
-            font-size: 14px;
+            font-size: 18px;
             font-weight: 800;
             color: #111;
             text-align: center;
-            line-height: 1.2;
+            line-height: 1.25;
             letter-spacing: 0.01em;
         }
         .ctrl-date {
-            font-size: 16px;
+            font-size: 20px;
             font-weight: 800;
             color: #111;
             text-align: center;
@@ -75,7 +75,7 @@
             flex: 0 0 auto;
         }
         .ctrl-warehouse {
-            font-size: 44px;
+            font-size: 56px;
             font-weight: 900;
             color: #111;
             letter-spacing: 0.08em;
@@ -95,17 +95,18 @@
             gap: 12px;
         }
         .ctrl-barcode canvas {
+            display: block;
             max-width: 100%;
-            height: 72px !important;
+            height: 84px !important;
         }
         .ctrl-service-mark {
             display: inline-block;
-            font-size: 44px;
+            font-size: 58px;
             font-weight: 900;
             line-height: 0.9;
             color: #111;
             letter-spacing: 0.02em;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
         }
         .ctrl-service-mark.is-tbc {
             font-size: 28px;
@@ -113,7 +114,7 @@
             margin-bottom: 4px;
         }
         .ctrl-tracking-title {
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 800;
             color: #6b7280;
             letter-spacing: 0.06em;
@@ -121,7 +122,7 @@
             text-align: center;
         }
         .ctrl-tracking {
-            font-size: 15px;
+            font-size: 18px;
             font-weight: 800;
             color: #111;
             text-align: center;
@@ -160,36 +161,39 @@
             width: 2.25in;
             height: 4in;
             max-height: 4in;
-            padding: 8px 6px;
-            gap: 6px;
+            padding: 8px 6px 14px;
+            gap: 8px;
         }
-        .label-paper-narrow .ctrl-brand { gap: 4px; }
+        .label-paper-narrow .ctrl-brand { gap: 6px; }
         .label-paper-narrow .ctrl-logo {
-            max-width: 160px;
-            height: 52px;
+            max-width: 200px;
+            height: 88px;
         }
         .label-paper-narrow .ctrl-address {
-            font-size: 10px;
-        }
-        .label-paper-narrow .ctrl-date {
             font-size: 11px;
         }
+        .label-paper-narrow .ctrl-date {
+            font-size: 12px;
+        }
         .label-paper-narrow .ctrl-warehouse {
-            font-size: 24px;
+            font-size: 28px;
             letter-spacing: 0.05em;
         }
-        .label-paper-narrow .ctrl-barcode canvas { height: 42px !important; }
-        .label-paper-narrow .ctrl-service-mark { font-size: 28px; margin-bottom: 4px; }
+        .label-paper-narrow .ctrl-barcode canvas { height: 48px !important; }
+        .label-paper-narrow .ctrl-service-mark { font-size: 32px; margin-bottom: 4px; }
         .label-paper-narrow .ctrl-service-mark.is-tbc { font-size: 16px; }
         .label-paper-narrow .ctrl-tracking-title { font-size: 9px; }
-        .label-paper-narrow .ctrl-tracking { font-size: 11px; }
+        .label-paper-narrow .ctrl-tracking { font-size: 12px; }
         @page {
             size: {{ $pageSizeCss }};
             margin: 0;
         }
         @media print {
             html, body {
-                width: {{ $sheetWidthCss }};
+                width: {{ $sheetWidthCss }} !important;
+                height: {{ $sheetMinHeightCss }} !important;
+                max-height: {{ $sheetMinHeightCss }} !important;
+                overflow: hidden !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 background: #fff !important;
@@ -204,10 +208,14 @@
                 max-height: {{ $sheetMinHeightCss }} !important;
                 min-height: 0;
                 margin: 0;
-                padding: {{ $isNarrow ? '8px 6px' : '12px 12px 10px' }};
+                padding: {{ $isNarrow ? '8px 6px 14px' : '14px 12px 28px' }};
                 border: none;
                 box-shadow: none;
                 overflow: hidden;
+                page-break-after: avoid;
+                page-break-inside: avoid;
+                break-after: avoid;
+                break-inside: avoid;
             }
         }
     </style>
@@ -252,13 +260,13 @@
             JsBarcode(el, el.dataset.barcode, labelNarrow ? {
                 format: 'CODE128',
                 width: 1.4,
-                height: 42,
+                height: 48,
                 displayValue: false,
                 margin: 0
             } : {
                 format: 'CODE128',
-                width: 2.2,
-                height: 72,
+                width: 2.6,
+                height: 84,
                 displayValue: false,
                 margin: 0
             });

@@ -182,6 +182,11 @@ class ControlWarehouseLabelTest extends TestCase
         $this->assertStringContainsString('height: 6in', $html);
         $this->assertStringContainsString('max-height: 6in', $html);
         $this->assertStringContainsString('overflow: hidden', $html);
+        $this->assertStringContainsString('page-break-inside: avoid', $html);
+        $this->assertStringContainsString('height: 176px', $html);
+        $this->assertStringContainsString('font-size: 56px', $html);
+        $this->assertStringContainsString('justify-content: space-evenly', $html);
+        $this->assertStringContainsString('padding: 14px 12px 28px', $html);
 
         $sheet = substr($html, (int) strpos($html, 'class="label-sheet"'));
         $this->assertLessThan(
