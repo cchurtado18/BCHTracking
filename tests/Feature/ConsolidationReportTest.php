@@ -63,12 +63,75 @@ class ConsolidationReportTest extends TestCase
             ->assertSee('Agencia Reporte')
             ->assertSee('12.50')
             ->assertSee('Cantidad de bultos')
+            ->assertSee('Peso total')
             ->assertSee('Manejar con cuidado')
             ->assertDontSee('Kilos')
             ->assertDontSee('>Bulto<', false)
             ->assertSee('3.25')
-            ->assertDontSee('Escaneado')
+            ->assertSee('>NIC<', false)
+            ->assertSee('nic-no', false)
             ->assertDontSee('api.qrserver.com');
+    }
+
+    public function test_sack_report_shows_total_weight_and_nicaragua_scan_column(): void
+    {
+        $user = User::factory()->create(['agency_id' => null]);
+        $agency = Agency::create([
+            'name' => 'Agencia NIC Reporte',
+            'code' => 'R007',
+            'phone' => '555-0107',
+            'is_active' => true,
+            'is_main' => false,
+        ]);
+        $scanned = Preregistration::create([
+            'intake_type' => 'COURIER',
+            'tracking_external' => 'TRK-NIC-YES',
+            'warehouse_code' => '003333',
+            'label_name' => 'Ya llego NIC',
+            'service_type' => 'AIR',
+            'intake_weight_lbs' => 4,
+            'verified_weight_lbs' => 4.25,
+            'status' => 'IN_WAREHOUSE_NIC',
+            'received_nic_at' => now(),
+            'agency_id' => $agency->id,
+        ]);
+        $pending = Preregistration::create([
+            'intake_type' => 'COURIER',
+            'tracking_external' => 'TRK-NIC-NO',
+            'warehouse_code' => '002222',
+            'label_name' => 'Pendiente NIC',
+            'service_type' => 'AIR',
+            'intake_weight_lbs' => 6,
+            'verified_weight_lbs' => 6.75,
+            'status' => 'IN_TRANSIT',
+            'agency_id' => $agency->id,
+        ]);
+        $consolidation = Consolidation::create([
+            'code' => 'SAC-202610-7777',
+            'service_type' => 'AIR',
+            'status' => 'SENT',
+            'sent_at' => now(),
+        ]);
+        ConsolidationItem::create([
+            'consolidation_id' => $consolidation->id,
+            'preregistration_id' => $scanned->id,
+            'scanned_at' => now(),
+        ]);
+        ConsolidationItem::create([
+            'consolidation_id' => $consolidation->id,
+            'preregistration_id' => $pending->id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('consolidations.report', $consolidation->id))
+            ->assertOk()
+            ->assertSee('Peso total')
+            ->assertSee('11.00')
+            ->assertSee('>NIC<', false)
+            ->assertSee('nic-yes', false)
+            ->assertSee('nic-no', false)
+            ->assertSee('003333')
+            ->assertSee('002222');
     }
 
     public function test_cubic_foot_package_goes_into_maritime_sack(): void

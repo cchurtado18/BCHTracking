@@ -50,12 +50,13 @@
 
         /* Banda de metadatos */
         .strip {
-            display: grid; grid-template-columns: repeat(5, 1fr) auto;
+            display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
             border: 1px solid #cbd5e1; margin-bottom: 6px;
         }
         .strip-cell {
-            padding: 4px 9px;
+            padding: 4px 7px;
             border-right: 1px solid #cbd5e1;
+            min-width: 0;
         }
         .strip-cell:last-child { border-right: none; }
         .strip-service {
@@ -68,7 +69,7 @@
 
         /* Tabla principal */
         .tbl-wrap { border: 1px solid #cbd5e1; }
-        table.tbl { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+        table.tbl { width: 100%; border-collapse: collapse; font-size: 8pt; }
         table.tbl thead { display: table-header-group; }
         table.tbl thead th {
             padding: 4px 5px; text-align: left; font-size: 7.5pt; font-weight: 700;
@@ -88,6 +89,8 @@
         .center { text-align: center; }
         .mono { font-family: ui-monospace, monospace; font-size: 8pt; }
         tr.unmatched td { background: #fffbeb; color: #92400e; }
+        .nic-yes { color: #166534; font-weight: 800; }
+        .nic-no { color: #9a3412; font-weight: 800; }
 
         .notes-row {
             margin-top: 6px; padding: 4px 0;
@@ -183,6 +186,10 @@
                 <span class="lbl">Cantidad de bultos</span>
                 <div class="val">{{ $report['expected_packages'] }}</div>
             </div>
+            <div class="strip-cell">
+                <span class="lbl">Peso total</span>
+                <div class="val">{{ number_format((float) $report['total_lbs'], 2) }} lbs</div>
+            </div>
             <div class="strip-service">{{ $serviceWord }}</div>
         </div>
 
@@ -192,11 +199,12 @@
                     <tr>
                         <th class="center" style="width: 4%;">#</th>
                         <th style="width: 12%;">Warehouse</th>
-                        <th style="width: 20%;">Tracking</th>
-                        <th style="width: 25%;">Cliente</th>
-                        <th style="width: 22%;">Agencia</th>
-                        <th class="num" style="width: 9%;">Peso lbs</th>
-                        <th class="num" style="width: 8%;">Pie³</th>
+                        <th style="width: 18%;">Tracking</th>
+                        <th style="width: 22%;">Cliente</th>
+                        <th style="width: 18%;">Agencia</th>
+                        <th class="num" style="width: 8%;">Peso lbs</th>
+                        <th class="num" style="width: 7%;">Pie³</th>
+                        <th class="center" style="width: 7%;">NIC</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -205,18 +213,28 @@
                             $package = $item->preregistration;
                             $weight = $package?->verified_weight_lbs ?? $package?->intake_weight_lbs;
                             $trackingValue = $package?->tracking_external ?? $item->unmatched_code;
+                            $scannedNic = $package && $item->scanned_at;
                         @endphp
                         <tr class="{{ $package ? '' : 'unmatched' }}">
                             <td class="center">{{ $i + 1 }}</td>
                             <td class="mono">{{ $package?->warehouse_code ?? '—' }}{{ $package?->bultoCaption() ? ' · '.$package->bultoCaption() : '' }}</td>
                             <td class="mono">{{ $trackingValue ? \Illuminate\Support\Str::limit($trackingValue, 24) : '—' }}</td>
-                            <td>{{ $package ? (\Illuminate\Support\Str::limit($package->label_name ?? '', 28) ?: '—') : 'Sin preregistro asociado' }}</td>
-                            <td>{{ $package?->agency?->name ? \Illuminate\Support\Str::limit($package->agency->name, 24) : '—' }}</td>
+                            <td>{{ $package ? (\Illuminate\Support\Str::limit($package->label_name ?? '', 24) ?: '—') : 'Sin preregistro asociado' }}</td>
+                            <td>{{ $package?->agency?->name ? \Illuminate\Support\Str::limit($package->agency->name, 20) : '—' }}</td>
                             <td class="num">{{ $weight !== null ? number_format((float) $weight, 2) : '—' }}</td>
                             <td class="num">{{ $package?->cubic_feet !== null ? number_format((float) $package->cubic_feet, 2) : '—' }}</td>
+                            <td class="center">
+                                @if(! $package)
+                                    —
+                                @elseif($scannedNic)
+                                    <span class="nic-yes">Sí</span>
+                                @else
+                                    <span class="nic-no">No</span>
+                                @endif
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="center" style="padding: 14px 0; color: #94a3b8;">Este {{ $unit }} todavía no contiene ítems.</td></tr>
+                        <tr><td colspan="8" class="center" style="padding: 14px 0; color: #94a3b8;">Este {{ $unit }} todavía no contiene ítems.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -232,7 +250,7 @@
 
         <div class="foot">
             <div class="disclaimer">
-                Reporte del contenido del {{ $unit }} al momento de su generación. Los pesos corresponden al peso verificado o, en su defecto, al peso de ingreso registrado en Miami. Las líneas resaltadas corresponden a códigos escaneados sin preregistro asociado.
+                Reporte del contenido del {{ $unit }} al momento de su generación. Los pesos corresponden al peso verificado o, en su defecto, al peso de ingreso registrado en Miami. La columna NIC indica si el paquete ya se escaneó en Nicaragua. Las líneas resaltadas corresponden a códigos escaneados sin preregistro asociado.
             </div>
             <div class="sigs">
                 <div class="sig">
