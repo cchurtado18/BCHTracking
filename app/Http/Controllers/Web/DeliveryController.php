@@ -9,9 +9,12 @@ use App\Models\Delivery;
 use App\Models\DeliveryNote;
 use App\Models\Preregistration;
 use App\Support\AuditRecorder;
+use App\Support\ServiceType;
 use App\Support\TrackingCode;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class DeliveryController extends Controller
@@ -403,19 +406,13 @@ class DeliveryController extends Controller
         $includesDeliveryFamily = false;
 
         if ($selectedAgency && ! $needsClientPick) {
-            $availableQuery = Preregistration::with('agency.parent')
-                ->where('status', 'READY')
-                ->whereDoesntHave('delivery')
-                ->whereIn('agency_id', $selectedAgency->deliveryNetworkIds());
-            $this->applyConsigneeFilter($availableQuery, $consignee);
             $includesDeliveryFamily = count($selectedAgency->deliveryNetworkIds()) > 1;
-
-            $allPackages = $availableQuery->orderBy('agency_id')->orderBy('warehouse_code')->get();
+            $allPackages = $this->readyPackagesForAccount($selectedAgency, $consignee);
             $availableAir = $allPackages->where('service_type', 'AIR')->count();
-            $availableSea = $allPackages->whereIn('service_type', \App\Support\ServiceType::servicesForRoute('SEA'))->count();
+            $availableSea = $allPackages->whereIn('service_type', ServiceType::servicesForRoute('SEA'))->count();
             $availableCft = $allPackages->where('service_type', 'CFT')->count();
             $availablePackages = $serviceType
-                ? $allPackages->whereIn('service_type', \App\Support\ServiceType::operationalFilter($serviceType))->values()
+                ? $allPackages->whereIn('service_type', ServiceType::operationalFilter($serviceType))->values()
                 : $allPackages;
             $availableTotal = $availablePackages->count();
         }
@@ -445,6 +442,79 @@ class DeliveryController extends Controller
             'includesDeliveryFamily',
             'mixedNotesToSplit'
         ));
+    }
+
+    public function readyReport(Request $request)
+    {
+        if ($redirect = $this->denyAgencyDeliveryWrite()) {
+            return $redirect;
+        }
+
+        $agencyId = (int) $request->input('agency_id');
+        if ($agencyId <= 0) {
+            return redirect()->route('salidas.create')
+                ->with('error', 'Elija un cliente para descargar el reporte.');
+        }
+
+        $agency = Agency::find($agencyId);
+        if (! $agency) {
+            return redirect()->route('salidas.create')
+                ->with('error', 'No se encontró la cuenta.');
+        }
+        $this->ensureUserCanAccessAgency($agency);
+
+        $consignee = trim((string) $request->input('consignee', ''));
+        $serviceType = $request->filled('service_type') && ServiceType::isValid($request->service_type)
+            ? $request->service_type
+            : null;
+
+        $slo = $this->sloDeliveryAccountOptions()['slo'];
+        if ($slo && $agency->isDirectClient() && (int) $agency->parent_agency_id === (int) $slo->id) {
+            $this->claimSloPackagesForClient($slo, $agency);
+        }
+
+        $allPackages = $this->readyPackagesForAccount($agency, $consignee);
+        $packages = $serviceType
+            ? $allPackages->whereIn('service_type', ServiceType::operationalFilter($serviceType))->values()
+            : $allPackages;
+
+        if ($packages->isEmpty()) {
+            return redirect()
+                ->route('salidas.create', array_filter([
+                    'agency_id' => $agency->id,
+                    'consignee' => $consignee !== '' ? $consignee : null,
+                    'service_type' => $serviceType,
+                ]))
+                ->with('error', 'Esta cuenta no tiene paquetes listos para retiro.');
+        }
+
+        $accountName = $consignee !== '' ? $consignee : $agency->listingAccountLabel();
+        $printedAt = now()->timezone((string) (config('app.display_timezone') ?: config('app.timezone')));
+        $weightOf = static fn (Preregistration $p): float => (float) ($p->verified_weight_lbs ?? $p->intake_weight_lbs ?? 0);
+        $totals = [
+            'count' => $packages->count(),
+            'lbs' => $packages->sum($weightOf),
+            'air_count' => $packages->where('service_type', 'AIR')->count(),
+            'air_lbs' => $packages->where('service_type', 'AIR')->sum($weightOf),
+            'sea_count' => $packages->whereIn('service_type', ServiceType::servicesForRoute('SEA'))->count(),
+            'sea_lbs' => $packages->whereIn('service_type', ServiceType::servicesForRoute('SEA'))->sum($weightOf),
+            'cft_count' => $packages->where('service_type', 'CFT')->count(),
+            'cft_lbs' => $packages->where('service_type', 'CFT')->sum($weightOf),
+        ];
+
+        $pdf = Pdf::loadView('deliveries.ready-report-pdf', [
+            'agency' => $agency,
+            'accountName' => $accountName,
+            'consignee' => $consignee,
+            'serviceType' => $serviceType,
+            'packages' => $packages,
+            'totals' => $totals,
+            'printedAt' => $printedAt,
+        ])->setPaper('letter', 'portrait');
+
+        $code = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) ($agency->code ?: $agency->id)) ?: (string) $agency->id;
+
+        return $pdf->download('listos-retiro-'.$code.'-'.$printedAt->format('Ymd').'.pdf');
     }
 
     /**
@@ -529,6 +599,22 @@ class DeliveryController extends Controller
         $partnerAgencies = $agencies->filter(fn (Agency $a) => ! $a->isDirectClient())->values();
 
         return compact('slo', 'sloClients', 'partnerAgencies');
+    }
+
+    /**
+     * Paquetes READY sin salida para la red de la cuenta (y consignatario opcional).
+     *
+     * @return Collection<int, Preregistration>
+     */
+    private function readyPackagesForAccount(Agency $agency, string $consignee = ''): Collection
+    {
+        $query = Preregistration::with('agency.parent')
+            ->where('status', 'READY')
+            ->whereDoesntHave('delivery')
+            ->whereIn('agency_id', $agency->deliveryNetworkIds());
+        $this->applyConsigneeFilter($query, $consignee);
+
+        return $query->orderBy('agency_id')->orderBy('warehouse_code')->get();
     }
 
     private function applyConsigneeFilter($query, string $consignee): void

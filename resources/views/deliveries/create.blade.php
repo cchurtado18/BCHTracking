@@ -98,6 +98,7 @@
                         <td class="inv-num"><span class="inv-paq">{{ $client->ready_count }}</span></td>
                         <td class="inv-actions">
                             <a href="{{ route('salidas.create', ['agency_id' => $client->id]) }}" class="inv-btn inv-btn-primary inv-btn-sm">Ver paquetes</a>
+                            <a href="{{ route('salidas.ready-report', ['agency_id' => $client->id]) }}" class="inv-btn inv-btn-secondary inv-btn-sm">PDF</a>
                         </td>
                     </tr>
                     @endforeach
@@ -107,6 +108,7 @@
                         <td class="inv-num"><span class="inv-paq">{{ $row->ready_count }}</span></td>
                         <td class="inv-actions">
                             <a href="{{ route('salidas.create', ['agency_id' => $slo->id, 'consignee' => $row->label_name]) }}" class="inv-btn inv-btn-primary inv-btn-sm">Ver paquetes</a>
+                            <a href="{{ route('salidas.ready-report', ['agency_id' => $slo->id, 'consignee' => $row->label_name]) }}" class="inv-btn inv-btn-secondary inv-btn-sm">PDF</a>
                         </td>
                     </tr>
                     @endforeach
@@ -120,7 +122,10 @@
         <div class="inv-table-head">
             <span class="inv-table-head-note">Paquetes listos para retiro — {{ $packageHead }}</span>
             @if($availableTotal > 0)
-            <a href="{{ route('salidas.batch', array_filter(['agency_id' => $selectedAgency->id, 'service_type' => $serviceType, 'consignee' => $consignee !== '' ? $consignee : null])) }}" class="inv-btn inv-btn-primary inv-btn-sm">Iniciar salida</a>
+            <div class="inv-table-head-actions">
+                <a href="{{ route('salidas.ready-report', array_filter(['agency_id' => $selectedAgency->id, 'service_type' => $serviceType, 'consignee' => $consignee !== '' ? $consignee : null])) }}" class="inv-btn inv-btn-secondary inv-btn-sm">Descargar PDF</a>
+                <a href="{{ route('salidas.batch', array_filter(['agency_id' => $selectedAgency->id, 'service_type' => $serviceType, 'consignee' => $consignee !== '' ? $consignee : null])) }}" class="inv-btn inv-btn-primary inv-btn-sm">Iniciar salida</a>
+            </div>
             @endif
         </div>
         @if(($availableAir + $availableSea + ($availableCft ?? 0)) === 0)
@@ -227,8 +232,11 @@
 .inv-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.58rem 1.05rem; font-size: 0.875rem; font-weight: 700; border-radius: 0.6rem; border: 1px solid transparent; cursor: pointer; text-decoration: none; white-space: nowrap; }
 .inv-btn-primary { background: var(--inv-navy); color: #fff; border-color: var(--inv-navy); box-shadow: 0 5px 14px rgba(10, 45, 111, 0.25); }
 .inv-btn-primary:hover { background: var(--inv-blue); border-color: var(--inv-blue); color: #fff; }
+.inv-btn-secondary { background: #fff; color: #334155; border-color: #d1d9e6; }
+.inv-btn-secondary:hover { background: #f8fafc; color: var(--inv-navy); border-color: var(--inv-navy); }
 .inv-btn-sm { padding: 0.42rem 0.85rem; font-size: 0.8rem; }
 .inv-table-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.7rem; padding: 0.85rem 1.1rem; border-bottom: 1px solid var(--inv-line); }
+.inv-table-head-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
 .inv-table-head-note { font-size: 0.85rem; font-weight: 700; color: #334155; }
 .inv-card-body { padding: 1rem 1.1rem 0.25rem; }
 .inv-service-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.85rem; }
@@ -246,6 +254,7 @@
 .inv-table tbody tr:hover td { background: var(--inv-soft); }
 .inv-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .inv-th-actions, .inv-actions { text-align: right; white-space: nowrap; }
+.inv-actions { display: flex; justify-content: flex-end; gap: 0.4rem; }
 .inv-nowrap { white-space: nowrap; }
 .inv-muted { color: #94a3b8; font-size: 0.75rem; }
 .inv-empty { padding: 1.4rem 1rem; text-align: center; color: #94a3b8; font-size: 0.85rem; }

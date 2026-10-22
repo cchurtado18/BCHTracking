@@ -245,6 +245,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/batch/retirer-session', [DeliveryController::class, 'storeBatchRetirerSession'])->name('batch-retirer-session');
         Route::post('/batch/clear-retirer-session', [DeliveryController::class, 'clearBatchRetirerSession'])->name('batch-clear-retirer-session');
         Route::get('/print-report', [DeliveryController::class, 'printReport'])->name('print-report');
+        Route::get('/ready-report', [DeliveryController::class, 'readyReport'])->name('ready-report');
         Route::get('/scan', [DeliveryController::class, 'scan'])->name('scan');
         Route::post('/scan/retirer-session', [DeliveryController::class, 'storeScanRetirerSession'])->name('scan-retirer-session');
         Route::post('/scan/clear-retirer-session', [DeliveryController::class, 'clearScanRetirerSession'])->name('scan-clear-retirer-session');
