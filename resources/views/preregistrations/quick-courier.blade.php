@@ -150,6 +150,7 @@ window.skylinkApplyPreregService = function (service) {
     if (route !== 'AIR' && route !== 'SEA') return;
     el.value = route;
     el.dispatchEvent(new Event('change'));
+};
 
 document.addEventListener('DOMContentLoaded', function() {
     var scanThenPhoto = @json($scanThenPhoto);

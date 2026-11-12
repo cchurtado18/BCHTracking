@@ -35,6 +35,12 @@ class QuickCourierCameraScanTest extends TestCase
             ->assertSee('value="AIR" selected', false)
             ->assertSee('Aéreo')
             ->assertSee('Marítimo');
+
+        $html = $this->actingAs($user)->get(route('preregistrations.quick-courier'))->getContent();
+        $this->assertMatchesRegularExpression(
+            '/skylinkApplyPreregService = function[\s\S]*dispatchEvent\(new Event\(\'change\'\)\);\s*\};\s*document\.addEventListener\(/',
+            $html
+        );
     }
 
     public function test_tracking_photo_page_includes_scan_then_photo_camera(): void
