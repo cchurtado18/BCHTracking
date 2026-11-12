@@ -73,7 +73,7 @@
                         @enderror
                     </div>
                     <div class="quick-field quick-field-weight">
-                        <label for="intake_weight_lbs" class="preregs-label">Peso (lb) <span class="preregs-req">*</span></label>
+                        <label for="intake_weight_lbs" class="preregs-label">Peso (lb) <span id="weightRequiredMark" class="preregs-req" hidden>*</span></label>
                         <div class="quick-weight-affix">
                             <input
                                 type="number"
@@ -85,11 +85,10 @@
                                 value="{{ old('intake_weight_lbs') }}"
                                 class="preregs-input"
                                 placeholder="0.00"
-                                required
                             >
                             <span class="quick-weight-unit">lb</span>
                         </div>
-                        <p class="quick-help">Según la báscula.</p>
+                        <p class="quick-help" id="weightHelpText">Opcional en aéreo. En marítimo es obligatorio.</p>
                         @error('intake_weight_lbs')
                         <p class="preregs-field-error">{{ $message }}</p>
                         @enderror
@@ -150,18 +149,46 @@ window.skylinkApplyPreregService = function (service) {
     var route = String(service || '').toUpperCase() === 'CFT' ? 'SEA' : String(service || '').toUpperCase();
     if (route !== 'AIR' && route !== 'SEA') return;
     el.value = route;
-};
+    el.dispatchEvent(new Event('change'));
 
 document.addEventListener('DOMContentLoaded', function() {
     var scanThenPhoto = @json($scanThenPhoto);
     var form = document.getElementById('quickCourierForm');
     var defaultService = document.getElementById('service_type');
-    if (defaultService) {
-        var currentService = String(defaultService.value || '').toUpperCase();
-        if (currentService !== 'AIR' && currentService !== 'SEA' && currentService !== 'TBC') {
-            defaultService.value = 'AIR';
+    var weightInput = document.getElementById('intake_weight_lbs');
+    var weightMark = document.getElementById('weightRequiredMark');
+    var weightHelp = document.getElementById('weightHelpText');
+
+    function currentService() {
+        var el = document.getElementById('service_type');
+        var value = el ? String(el.value || '').toUpperCase() : 'AIR';
+        if (value !== 'AIR' && value !== 'SEA' && value !== 'TBC') return 'AIR';
+        return value;
+    }
+
+    function syncWeightRequirement() {
+        var sea = currentService() === 'SEA';
+        if (weightInput) {
+            weightInput.required = sea;
+            if (sea) weightInput.setAttribute('min', '0.01');
+            else weightInput.removeAttribute('min');
+        }
+        if (weightMark) weightMark.hidden = !sea;
+        if (weightHelp) {
+            weightHelp.textContent = sea
+                ? 'En marítimo el peso es obligatorio, según la báscula.'
+                : 'Opcional en aéreo. En marítimo es obligatorio.';
         }
     }
+
+    if (defaultService) {
+        var currentSvc = String(defaultService.value || '').toUpperCase();
+        if (currentSvc !== 'AIR' && currentSvc !== 'SEA' && currentSvc !== 'TBC') {
+            defaultService.value = 'AIR';
+        }
+        defaultService.addEventListener('change', syncWeightRequirement);
+    }
+    syncWeightRequirement();
     var input = document.getElementById('photo');
     var btnTake = document.getElementById('quickTakePhoto');
     var btnStop = document.getElementById('quickStopCamera');
@@ -289,15 +316,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Toma al menos una foto antes de guardar.');
                 return;
             }
-            var serviceInput = document.getElementById('service_type');
-            var service = serviceInput ? String(serviceInput.value || '').toUpperCase() : '';
-            if (service !== 'AIR' && service !== 'SEA') {
-                service = 'AIR';
-            }
-            var weightInput = document.getElementById('intake_weight_lbs');
+            var service = currentService();
             var weight = weightInput ? parseFloat(weightInput.value) : NaN;
-            if (!weightInput || isNaN(weight) || weight <= 0) {
-                alert('Indique el peso del paquete en libras.');
+            var hasWeight = weightInput && !isNaN(weight) && weight > 0;
+            if (service === 'SEA' && !hasWeight) {
+                alert('En marítimo el peso es obligatorio.');
                 if (weightInput) weightInput.focus();
                 return;
             }
@@ -308,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function() {
             fd.append('_token', form.querySelector('input[name="_token"]').value);
             fd.append('tracking_external', (document.getElementById('tracking_external') || {}).value || '');
             fd.append('service_type', service);
-            fd.append('intake_weight_lbs', weightInput.value);
+            if (hasWeight) fd.append('intake_weight_lbs', weightInput.value);
             files.forEach(function(item) { fd.append('photos[]', item.file); });
 
             fetch(form.action, {

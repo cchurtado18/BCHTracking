@@ -29,6 +29,7 @@ class QuickCourierCameraScanTest extends TestCase
             ->assertSee('id="quickTakePhoto"', false)
             ->assertSee('Peso (lb)')
             ->assertSee('id="intake_weight_lbs"', false)
+            ->assertSee('Opcional en aéreo', false)
             ->assertSee('Servicio')
             ->assertSee('id="service_type"', false)
             ->assertSee('value="AIR" selected', false)
@@ -71,6 +72,7 @@ class QuickCourierCameraScanTest extends TestCase
             ->assertSee('Si el tracking está vacío')
             ->assertSee('Peso (lb)')
             ->assertSee('id="intake_weight_lbs"', false)
+            ->assertSee('Opcional en aéreo', false)
             ->assertSee('Servicio')
             ->assertSee('id="service_type"', false)
             ->assertSee('value="AIR" selected', false)
@@ -78,7 +80,7 @@ class QuickCourierCameraScanTest extends TestCase
             ->assertSee('Marítimo');
     }
 
-    public function test_quick_courier_store_requires_and_saves_package_weight(): void
+    public function test_quick_courier_air_weight_is_optional_and_sea_weight_is_required(): void
     {
         Storage::fake('public');
         $user = User::factory()->create(['agency_id' => null]);
@@ -86,30 +88,41 @@ class QuickCourierCameraScanTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('preregistrations.store-quick-courier'), [
-                'tracking_external' => '1ZWEIGHTTEST001',
+                'tracking_external' => '1ZWEIGHTAIR001',
                 'service_type' => 'AIR',
+                'photos' => [$photo],
+            ])
+            ->assertRedirect();
+
+        $air = Preregistration::where('tracking_external', '1ZWEIGHTAIR001')->first();
+        $this->assertNotNull($air);
+        $this->assertNull($air->intake_weight_lbs);
+        $this->assertSame('AIR', $air->service_type);
+        $this->assertMatchesRegularExpression('/^\d{6}$/', (string) $air->warehouse_code);
+
+        $this->actingAs($user)
+            ->post(route('preregistrations.store-quick-courier'), [
+                'tracking_external' => '1ZWEIGHTSEA001',
+                'service_type' => 'SEA',
                 'photos' => [$photo],
             ])
             ->assertSessionHasErrors('intake_weight_lbs');
 
         $this->actingAs($user)
             ->post(route('preregistrations.store-quick-courier'), [
-                'tracking_external' => '1ZWEIGHTTEST001',
-                'service_type' => 'AIR',
+                'tracking_external' => '1ZWEIGHTSEA001',
+                'service_type' => 'SEA',
                 'intake_weight_lbs' => 12.75,
                 'photos' => [$photo],
             ])
             ->assertRedirect();
 
         $this->assertDatabaseHas('preregistrations', [
-            'tracking_external' => '1ZWEIGHTTEST001',
+            'tracking_external' => '1ZWEIGHTSEA001',
             'intake_weight_lbs' => 12.75,
-            'service_type' => 'AIR',
+            'service_type' => 'SEA',
             'status' => 'PHOTO_PENDING',
         ]);
-        $created = Preregistration::where('tracking_external', '1ZWEIGHTTEST001')->first();
-        $this->assertNotNull($created);
-        $this->assertMatchesRegularExpression('/^\d{6}$/', (string) $created->warehouse_code);
     }
 
     public function test_quick_courier_store_defaults_to_air_and_can_save_sea(): void

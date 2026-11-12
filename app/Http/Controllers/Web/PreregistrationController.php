@@ -741,6 +741,9 @@ class PreregistrationController extends Controller
         if (! $request->filled('service_type')) {
             $request->merge(['service_type' => \App\Support\ServiceType::AIR]);
         }
+        if (! $request->filled('intake_weight_lbs')) {
+            $request->merge(['intake_weight_lbs' => null]);
+        }
         $data = $request->validate([
             'tracking_external' => [
                 'nullable',
@@ -752,11 +755,17 @@ class PreregistrationController extends Controller
             'photo' => 'nullable|file|image|mimes:jpg,jpeg,png,webp|max:10240',
             'photos' => 'nullable|array|max:3',
             'photos.*' => 'file|image|mimes:jpg,jpeg,png,webp|max:10240',
-            'intake_weight_lbs' => 'required|numeric|min:0.01|max:999999.99',
+            'intake_weight_lbs' => [
+                Rule::requiredIf(fn () => strtoupper((string) $request->input('service_type')) === \App\Support\ServiceType::SEA),
+                'nullable',
+                'numeric',
+                'min:0.01',
+                'max:999999.99',
+            ],
         ], [
             'service_type.required' => 'Seleccione aéreo, marítimo o TBC si aún no está confirmado.',
             'service_type.in' => 'Seleccione aéreo, marítimo o TBC si aún no está confirmado.',
-            'intake_weight_lbs.required' => 'Indique el peso del paquete en libras.',
+            'intake_weight_lbs.required' => 'En marítimo el peso es obligatorio.',
             'intake_weight_lbs.min' => 'El peso debe ser mayor a 0.',
         ]);
 
@@ -785,7 +794,7 @@ class PreregistrationController extends Controller
             'warehouse_code' => $warehouseCode,
             'label_name' => '[PENDIENTE]',
             'service_type' => $serviceType,
-            'intake_weight_lbs' => $data['intake_weight_lbs'],
+            'intake_weight_lbs' => $data['intake_weight_lbs'] ?? null,
             'status' => 'PHOTO_PENDING',
         ]);
         $prealert = $this->attachPrealertMatch($preregistration);
