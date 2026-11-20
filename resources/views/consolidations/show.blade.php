@@ -163,6 +163,10 @@
     .cons-show-dt { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--cs-muted); }
     .cons-show-dd { margin: 0.25rem 0 0; font-size: 0.9375rem; font-weight: 600; color: #0f172a; }
     .cons-show-dd-notes { font-weight: 500; line-height: 1.5; }
+    .cons-auto-badge {
+        display: inline-flex; margin-left: 0.35rem; padding: 0.1rem 0.45rem; border-radius: 999px;
+        background: #ECFDF3; color: #166534; font-size: 0.7rem; font-weight: 700; border: 1px solid #BBF7D0;
+    }
 
     .cons-show-badge {
         display: inline-flex;
@@ -509,7 +513,12 @@
                 <dl class="cons-show-dl">
                     <div>
                         <dt class="cons-show-dt">Código</dt>
-                        <dd class="cons-show-dd">{{ $consolidation->code }}</dd>
+                        <dd class="cons-show-dd">
+                            {{ $consolidation->code }}
+                            @if($consolidation->is_auto)
+                                <span class="cons-auto-badge">Automático</span>
+                            @endif
+                        </dd>
                     </div>
                     <div>
                         <dt class="cons-show-dt">Tipo de servicio</dt>

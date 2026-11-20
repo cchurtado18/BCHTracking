@@ -118,6 +118,9 @@
                     <tr>
                         <td>
                             <a href="{{ route('consolidations.show', $consolidation->id) }}" class="cx-folio">{{ $consolidation->code }}</a>
+                            @if($consolidation->is_auto)
+                                <span class="cx-auto-badge">Automático</span>
+                            @endif
                         </td>
                         <td>
                             <span class="cx-muted">{{ $consolidation->unitNounTitle() }}</span>
@@ -251,6 +254,10 @@
 .cx-empty { padding: 1.4rem 1rem; text-align: center; color: #94a3b8; }
 .cx-folio { font-weight: 800; color: var(--cx-blue); text-decoration: none; }
 .cx-folio:hover { color: var(--cx-navy); text-decoration: underline; }
+.cx-auto-badge {
+    display: inline-flex; margin-left: 0.35rem; padding: 0.1rem 0.45rem; border-radius: 999px;
+    background: #ECFDF3; color: #166534; font-size: 0.66rem; font-weight: 700; border: 1px solid #BBF7D0;
+}
 .cx-type-badge {
     display: inline-flex; padding: 0.12rem 0.5rem; border-radius: 999px;
     background: #EAF1FC; color: var(--cx-blue); font-size: 0.66rem; font-weight: 700; border: 1px solid #C9DAF3;

@@ -36,6 +36,8 @@ class QuickCourierCameraScanTest extends TestCase
             ->assertSee('Aéreo')
             ->assertSee('Marítimo');
 
+        $this->assertSaveNextButtons($user, 'preregistrations.quick-courier');
+
         $html = $this->actingAs($user)->get(route('preregistrations.quick-courier'))->getContent();
         $this->assertMatchesRegularExpression(
             '/skylinkApplyPreregService = function[\s\S]*dispatchEvent\(new Event\(\'change\'\)\);\s*\};\s*document\.addEventListener\(/',
@@ -84,6 +86,24 @@ class QuickCourierCameraScanTest extends TestCase
             ->assertSee('value="AIR" selected', false)
             ->assertSee('Aéreo')
             ->assertSee('Marítimo');
+
+        $this->assertSaveNextButtons($user, 'preregistrations.tracking-photo');
+    }
+
+    private function assertSaveNextButtons(User $user, string $routeName): void
+    {
+        $this->actingAs($user)
+            ->get(route($routeName))
+            ->assertOk()
+            ->assertSee('id="quickSaveNext"', false)
+            ->assertSee('Guardar y siguiente')
+            ->assertSee('id="quickFinish"', false)
+            ->assertSee('Terminar')
+            ->assertSee(e(route('preregistrations.index', ['clear_filters' => 1])), false)
+            ->assertSee('clearForm', false)
+            ->assertSee('todavía se está guardando un paquete', false)
+            ->assertSee('Hay un paquete sin guardar', false)
+            ->assertDontSee('Guardar preregistro rápido');
     }
 
     public function test_quick_courier_air_weight_is_optional_and_sea_weight_is_required(): void

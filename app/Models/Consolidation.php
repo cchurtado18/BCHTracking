@@ -7,10 +7,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Consolidation extends Model
 {
-    protected $fillable = ['code', 'service_type', 'status', 'notes', 'sent_at', 'transport_number'];
+    protected $fillable = ['code', 'service_type', 'status', 'is_auto', 'is_single', 'notes', 'sent_at', 'transport_number'];
 
     protected $casts = [
         'sent_at' => 'datetime',
+        'is_auto' => 'boolean',
+        'is_single' => 'boolean',
     ];
 
     public function items(): HasMany

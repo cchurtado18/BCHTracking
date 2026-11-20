@@ -124,9 +124,9 @@
                 </div>
 
                 <div class="preregs-form-actions">
-                    <a href="{{ route('preregistrations.index') }}" class="preregs-btn preregs-btn-secondary">Cancelar</a>
-                    <button type="submit" class="preregs-btn preregs-btn-primary">
-                        Guardar preregistro rápido
+                    <a href="{{ route('preregistrations.index', ['clear_filters' => 1]) }}" id="quickFinish" class="preregs-btn preregs-btn-secondary">Terminar</a>
+                    <button type="button" id="quickSaveNext" class="preregs-btn preregs-btn-primary">
+                        Guardar y siguiente
                     </button>
                 </div>
             </form>
@@ -274,13 +274,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 openNativeCamera();
                 return;
             }
-            @if($scanThenPhoto)
-            window.skylinkOpenScanPhotoCamera({
-                trackingInput: trackingInput,
-                skipScan: false,
-                onPhoto: addPhoto,
-            }).catch(function () {});
-            @endif
+            openScanCamera();
         });
     }
 
@@ -310,9 +304,102 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    var btnSaveNext = document.getElementById('quickSaveNext');
+    var btnFinish = document.getElementById('quickFinish');
+    var prealertNotice = document.getElementById('prealertNotice');
+    var saving = false;
+
+    var touchDevice = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+
+    // En teléfono, enfocar sin abrir el teclado en pantalla; al tocar el campo vuelve el teclado.
+    function focusTrackingForScan() {
+        if (!trackingInput) return;
+        if (touchDevice) trackingInput.setAttribute('inputmode', 'none');
+        trackingInput.focus();
+    }
+
+    if (trackingInput && touchDevice) {
+        trackingInput.addEventListener('pointerdown', function() {
+            if (trackingInput.getAttribute('inputmode') !== 'none') return;
+            trackingInput.removeAttribute('inputmode');
+            if (document.activeElement === trackingInput) trackingInput.blur();
+        });
+    }
+
+    var pendingSaves = 0;
+
+    function clearForm() {
+        files.forEach(function(item) { URL.revokeObjectURL(item.previewUrl); });
+        files = [];
+        renderGrid();
+        if (trackingInput) trackingInput.value = '';
+        if (weightInput) weightInput.value = '';
+        if (typeof window.skylinkRenderPrealertNotice === 'function') {
+            window.skylinkRenderPrealertNotice(prealertNotice, null);
+        }
+        syncWeightRequirement();
+        refreshCounter();
+    }
+
+    function openScanCamera() {
+        @if($scanThenPhoto)
+        window.skylinkOpenScanPhotoCamera({
+            trackingInput: trackingInput,
+            skipScan: false,
+            onPhoto: addPhoto,
+        }).catch(function () {});
+        @endif
+    }
+
+    function sendPackage(snapshot) {
+        var fd = new FormData();
+        fd.append('_token', form.querySelector('input[name="_token"]').value);
+        fd.append('tracking_external', snapshot.tracking);
+        fd.append('service_type', snapshot.service);
+        if (snapshot.weight) fd.append('intake_weight_lbs', snapshot.weight);
+        snapshot.files.forEach(function(file) { fd.append('photos[]', file); });
+
+        pendingSaves++;
+        return fetch(form.action, {
+            method: 'POST',
+            body: fd,
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(async function(res) {
+            var data = await res.json().catch(function() { return {}; });
+            if (!res.ok) {
+                var firstError = data.errors && Object.values(data.errors)[0];
+                throw new Error((firstError && firstError[0]) || data.message || 'No se pudo guardar.');
+            }
+            return data;
+        })
+        .finally(function() {
+            pendingSaves--;
+        });
+    }
+
     if (form) {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
+        });
+    }
+
+    if (btnFinish) {
+        btnFinish.addEventListener('click', function(e) {
+            if (pendingSaves > 0) {
+                e.preventDefault();
+                alert('Espere un momento, todavía se está guardando un paquete.');
+                return;
+            }
+            if (files.length > 0 && !confirm('Hay un paquete sin guardar. ¿Salir sin guardarlo?')) {
+                e.preventDefault();
+            }
+        });
+    }
+
+    if (form && btnSaveNext) {
+        btnSaveNext.addEventListener('click', function() {
+            if (saving) return;
             if (files.length === 0) {
                 alert('Toma al menos una foto antes de guardar.');
                 return;
@@ -325,38 +412,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (weightInput) weightInput.focus();
                 return;
             }
-            var submitBtn = form.querySelector('button[type="submit"]');
-            if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Guardando...'; }
+            var snapshot = {
+                tracking: trackingInput ? String(trackingInput.value || '') : '',
+                service: service,
+                weight: hasWeight ? weightInput.value : '',
+                files: files.map(function(item) { return item.file; }),
+            };
 
-            var fd = new FormData();
-            fd.append('_token', form.querySelector('input[name="_token"]').value);
-            fd.append('tracking_external', (document.getElementById('tracking_external') || {}).value || '');
-            fd.append('service_type', service);
-            if (hasWeight) fd.append('intake_weight_lbs', weightInput.value);
-            files.forEach(function(item) { fd.append('photos[]', item.file); });
-
-            fetch(form.action, {
-                method: 'POST',
-                body: fd,
-                headers: { 'Accept': 'application/json' }
-            })
-            .then(async function(res) {
-                var data = await res.json().catch(function() { return {}; });
-                if (!res.ok) {
-                    var firstError = data.errors && Object.values(data.errors)[0];
-                    throw new Error((firstError && firstError[0]) || data.message || 'No se pudo guardar.');
-                }
-                if (data.redirect_url) window.location.href = data.redirect_url;
-                else window.location.reload();
-            })
-            .catch(function(err) {
-                alert(err.message || 'Error al guardar');
-                if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Guardar preregistro rápido'; }
-            });
+            saving = true;
+            btnSaveNext.disabled = true;
+            btnSaveNext.textContent = 'Guardando...';
+            sendPackage(snapshot)
+                .then(function() {
+                    clearForm();
+                    focusTrackingForScan();
+                })
+                .catch(function(err) {
+                    alert(err.message || 'Error al guardar');
+                })
+                .finally(function() {
+                    saving = false;
+                    btnSaveNext.disabled = false;
+                    btnSaveNext.textContent = 'Guardar y siguiente';
+                });
         });
     }
 
     refreshCounter();
+    focusTrackingForScan();
 });
 </script>
 @endpush

@@ -9,6 +9,7 @@ use App\Models\Prealert;
 use App\Models\Preregistration;
 use App\Models\PreregistrationPhoto;
 use App\Services\ClientPackageStatusMailer;
+use App\Services\ConsolidationService;
 use App\Services\PreregistrationPhotoService;
 use App\Services\WarehouseService;
 use Illuminate\Database\Eloquent\Builder;
@@ -27,14 +28,18 @@ class PreregistrationController extends Controller
 
     protected ClientPackageStatusMailer $clientMailer;
 
+    protected ConsolidationService $consolidationService;
+
     public function __construct(
         WarehouseService $warehouseService,
         PreregistrationPhotoService $photoService,
         ClientPackageStatusMailer $clientMailer,
+        ConsolidationService $consolidationService,
     ) {
         $this->warehouseService = $warehouseService;
         $this->photoService = $photoService;
         $this->clientMailer = $clientMailer;
+        $this->consolidationService = $consolidationService;
     }
 
     public function index(Request $request)
@@ -696,6 +701,10 @@ class PreregistrationController extends Controller
             ]);
         }
 
+        if (! \App\Support\ServiceType::matchesRoute($data['service_type'], \App\Support\ServiceType::AIR)) {
+            $this->consolidationService->releaseFromOpenAirSack($preregistration);
+        }
+
         $preregistration->update($data);
         $preregistration->refresh();
 
@@ -801,6 +810,12 @@ class PreregistrationController extends Controller
 
         foreach ($photoFiles as $photoFile) {
             $this->photoService->uploadPhoto($preregistration, $photoFile);
+        }
+
+        try {
+            $this->consolidationService->addToOpenAirSack($preregistration);
+        } catch (\Throwable $e) {
+            report($e);
         }
 
         $message = filled($preregistration->warehouse_code)
@@ -953,23 +968,40 @@ class PreregistrationController extends Controller
             return redirect()->route('preregistrations.show', $preregistration->id)
                 ->with('error', 'Confirme si el paquete es aéreo o marítimo.');
         }
-        if (! $this->canEditServiceType($preregistration)) {
-            return redirect()->route('preregistrations.show', $preregistration->id)
-                ->with('error', 'No se puede cambiar el servicio de un paquete que ya está en saco, en entrega o más adelante en el proceso.');
-        }
-
         $oldType = \App\Support\ServiceType::normalize($preregistration->service_type);
         if ($oldType === $newType) {
             return redirect()->route('preregistrations.show', $preregistration->id)
                 ->with('success', 'El servicio ya era '.\App\Support\ServiceType::label($newType).'.');
         }
 
+        $leavesAirSack = ! \App\Support\ServiceType::matchesRoute($newType, \App\Support\ServiceType::AIR)
+            && $this->isInOpenAirSack($preregistration);
+        if (! $leavesAirSack && ! $this->canEditServiceType($preregistration)) {
+            return redirect()->route('preregistrations.show', $preregistration->id)
+                ->with('error', 'No se puede cambiar el servicio de un paquete que ya está en saco, en entrega o más adelante en el proceso.');
+        }
+
+        if ($leavesAirSack) {
+            $this->consolidationService->releaseFromOpenAirSack($preregistration);
+        }
         $preregistration->update(['service_type' => $newType]);
 
         return redirect()->route('preregistrations.show', $preregistration->id)
             ->with('success', \App\Support\ServiceType::isTbc($oldType)
                 ? 'Vía confirmada: '.\App\Support\ServiceType::label($newType).'. Ya puede ir a un saco.'
                 : 'Servicio actualizado: '.\App\Support\ServiceType::label($oldType).' → '.\App\Support\ServiceType::label($newType).'.');
+    }
+
+    private function isInOpenAirSack(Preregistration $preregistration): bool
+    {
+        $sack = $preregistration->consolidationItem?->consolidation;
+
+        return $sack
+            && $sack->service_type === \App\Support\ServiceType::AIR
+            && $sack->status === 'OPEN'
+            && ! $sack->is_single
+            && ! $preregistration->delivery
+            && in_array($preregistration->status, ['PHOTO_PENDING', 'RECEIVED_MIAMI'], true);
     }
 
     private function canEditServiceType(Preregistration $preregistration): bool
@@ -1113,18 +1145,19 @@ class PreregistrationController extends Controller
                 ->with('error', 'No se puede eliminar un preregistro en proceso (solo se permite pendiente por completar, Recibido Miami o Cancelado).');
         }
 
-        if ($preregistration->consolidationItem()->exists()) {
+        if ($preregistration->delivery()->exists()) {
+            return redirect()->route('preregistrations.index', session('preregistrations_index_filters', []))
+                ->with('error', 'No se puede eliminar: el preregistro ya tiene entrega.');
+        }
+
+        if ($preregistration->consolidationItem()->exists() && ! $this->isInOpenAirSack($preregistration)) {
             $unit = $preregistration->consolidationItem?->consolidation?->unitNoun() ?? 'saco o contenedor';
 
             return redirect()->route('preregistrations.index', session('preregistrations_index_filters', []))
                 ->with('error', 'No se puede eliminar: el preregistro está en un '.$unit.'.');
         }
 
-        if ($preregistration->delivery()->exists()) {
-            return redirect()->route('preregistrations.index', session('preregistrations_index_filters', []))
-                ->with('error', 'No se puede eliminar: el preregistro ya tiene entrega.');
-        }
-
+        $this->consolidationService->releaseFromOpenAirSack($preregistration);
         $preregistration->delete();
 
         return redirect()->route('preregistrations.index', session('preregistrations_index_filters', []))

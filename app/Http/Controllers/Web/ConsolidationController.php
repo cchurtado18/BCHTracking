@@ -486,6 +486,7 @@ class ConsolidationController extends Controller
             'service_type' => $serviceType === ServiceType::SEA ? ServiceType::SEA : ServiceType::AIR,
             'transport_number' => $transport !== '' ? $transport : null,
             'status' => 'OPEN',
+            'is_single' => true,
         ]);
         ConsolidationItem::create([
             'consolidation_id' => $consolidation->id,

@@ -7,6 +7,7 @@ use App\Models\ConsolidationItem;
 use App\Models\Preregistration;
 use App\Support\ServiceType;
 use App\Support\TrackingCode;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class ConsolidationService
@@ -14,6 +15,73 @@ class ConsolidationService
     public function __construct(protected WarehouseService $warehouseService)
     {
     }
+
+    /**
+     * Mete un paquete aéreo de captura rápida en el saco aéreo abierto más reciente
+     * (manual o automático, nunca uno de una sola caja), o crea uno automático si no hay.
+     */
+    public function addToOpenAirSack(Preregistration $package): ?Consolidation
+    {
+        if (ServiceType::isTbc($package->service_type)
+            || ServiceType::route($package->service_type) !== ServiceType::AIR
+            || ! in_array($package->status, ['PHOTO_PENDING', 'RECEIVED_MIAMI'], true)
+            || $package->consolidationItem()->exists()) {
+            return null;
+        }
+
+        return Cache::lock('auto-air-sack', 10)->block(5, function () use ($package) {
+            return DB::transaction(function () use ($package) {
+                $sack = Consolidation::query()
+                    ->where('service_type', ServiceType::AIR)
+                    ->where('status', 'OPEN')
+                    ->where('is_single', false)
+                    ->orderByDesc('id')
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $sack) {
+                    $sack = Consolidation::create([
+                        'code' => $this->generateCode(ServiceType::AIR),
+                        'service_type' => ServiceType::AIR,
+                        'status' => 'OPEN',
+                        'is_auto' => true,
+                        'notes' => 'Saco aéreo automático',
+                    ]);
+                }
+
+                ConsolidationItem::create([
+                    'consolidation_id' => $sack->id,
+                    'preregistration_id' => $package->id,
+                ]);
+
+                return $sack;
+            });
+        });
+    }
+
+    /**
+     * Saca el paquete del saco aéreo en que está si ese saco sigue abierto.
+     */
+    public function releaseFromOpenAirSack(Preregistration $package): bool
+    {
+        $item = ConsolidationItem::query()
+            ->where('preregistration_id', $package->id)
+            ->whereHas('consolidation', fn ($q) => $q
+                ->where('service_type', ServiceType::AIR)
+                ->where('status', 'OPEN')
+                ->where('is_single', false))
+            ->first();
+
+        if (! $item) {
+            return false;
+        }
+
+        $item->delete();
+        $package->unsetRelation('consolidationItem');
+
+        return true;
+    }
+
     /**
      * Código único: SAC-YYYYMM-0001 (aéreo) o CNT-YYYYMM-0001 (marítimo).
      */
