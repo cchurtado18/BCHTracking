@@ -114,7 +114,11 @@
                                     $selectedPartnerId = $currentIsSloClient ? $current->parent_agency_id : $current?->id;
                                 @endphp
                                 <div class="preregs-field preregs-field--full">
+                                    @if($preregistration->status === 'PHOTO_PENDING')
+                                    <label for="agency_combobox" class="preregs-field-label">Subagencia o SkyLink One <span class="preregs-opt">(opcional mientras está pendiente)</span></label>
+                                    @else
                                     <label for="agency_combobox" class="preregs-field-label">Subagencia o SkyLink One <span class="preregs-req">*</span></label>
+                                    @endif
                                     <div id="agency_combobox_wrap" class="preregs-combo-wrap">
                                         <input type="text" id="agency_combobox" class="preregs-input" placeholder="Escriba para buscar o baje la lista…" autocomplete="off">
                                         <input type="hidden" id="partner_agency_id" value="{{ $selectedPartnerId }}">
@@ -128,7 +132,10 @@
                                         <div id="slo_client_dropdown" class="preregs-combo-dropdown" role="listbox"></div>
                                     </div>
                                 </div>
-                                <input type="hidden" name="agency_id" id="agency_id" value="{{ old('agency_id', $preregistration->agency_id) }}" required>
+                                <input type="hidden" name="agency_id" id="agency_id" value="{{ old('agency_id', $preregistration->agency_id) }}" @unless($preregistration->status === 'PHOTO_PENDING') required @endunless>
+                                @if($preregistration->status === 'PHOTO_PENDING')
+                                <p class="preregs-field-hint preregs-field--full">Sin agencia se guardan los cambios (servicio, pie cúbico, dimensión, peso, tracking) y el paquete sigue pendiente. Al elegir la agencia, el paquete se completa.</p>
+                                @endif
                                 <script type="application/json" id="agencies-data">@json($partnerAgenciesJson ?? [])</script>
                                 <script type="application/json" id="slo-clients-data">@json($sloClientsJson ?? [])</script>
                                 @error('agency_id')
@@ -174,9 +181,10 @@
                                 </div>
 
                                 <div class="preregs-field">
-                                    <label for="intake_weight_lbs" class="preregs-field-label">Peso (lb) <span class="preregs-req">*</span></label>
+                                    @php $pendingEdit = $preregistration->status === 'PHOTO_PENDING'; @endphp
+                                    <label for="intake_weight_lbs" class="preregs-field-label">Peso (lb) @if($pendingEdit)<span class="preregs-opt">(obligatorio al completar)</span>@else<span class="preregs-req">*</span>@endif</label>
                                     <div class="preregs-input-affix">
-                                        <input type="number" step="0.01" name="intake_weight_lbs" id="intake_weight_lbs" value="{{ old('intake_weight_lbs', $preregistration->intake_weight_lbs) }}" required class="preregs-input">
+                                        <input type="number" step="0.01" name="intake_weight_lbs" id="intake_weight_lbs" value="{{ old('intake_weight_lbs', $preregistration->intake_weight_lbs) }}" @unless($pendingEdit) required @endunless class="preregs-input">
                                         <span class="preregs-affix">lb</span>
                                     </div>
                                     @error('intake_weight_lbs')
@@ -644,6 +652,7 @@
 }
 .preregs-edit-page .preregs-select { cursor: pointer; appearance: auto; }
 .preregs-edit-page .preregs-field-error { font-size: 0.78rem; color: #D64545; margin-top: 0.28rem; }
+.preregs-edit-page .preregs-field-hint { font-size: 0.78rem; color: #64748b; margin: 0.1rem 0 0; line-height: 1.4; }
 .preregs-edit-page .preregs-form-card input:focus,
 .preregs-edit-page .preregs-form-card select:focus,
 .preregs-edit-page .preregs-form-card textarea:focus {

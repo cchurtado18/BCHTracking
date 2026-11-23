@@ -183,6 +183,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('preregistrations/{id}/photos/{photo}/move', [PreregistrationController::class, 'movePhoto'])->name('preregistrations.photos.move');
         Route::delete('preregistrations/{id}/photos/{photo}', [PreregistrationController::class, 'destroyPhoto'])->name('preregistrations.photos.destroy');
         Route::patch('preregistrations/{id}/service-type', [PreregistrationController::class, 'updateServiceType'])->name('preregistrations.service-type');
+        Route::patch('preregistrations/{id}/tracking', [PreregistrationController::class, 'updateTracking'])->name('preregistrations.tracking');
         Route::post('preregistrations/{preregistration}/create-single-consolidation', [ConsolidationController::class, 'createSingleFromPreregistration'])->name('preregistrations.create-single-consolidation');
         Route::post('preregistrations/{preregistration}/quick-receipt', [ReceiptNoteController::class, 'quickFromPreregistration'])->name('preregistrations.quick-receipt');
     });

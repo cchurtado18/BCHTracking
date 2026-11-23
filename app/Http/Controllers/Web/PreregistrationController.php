@@ -664,13 +664,19 @@ class PreregistrationController extends Controller
         if ($request->filled('tracking_external')) {
             $trackingRules[] = \Illuminate\Validation\Rule::unique('preregistrations', 'tracking_external')->ignore($preregistration->id);
         }
+        $savesPendingWithoutAgency = $wasPhotoPending && ! $request->filled('agency_id');
+        $weightRule = match (true) {
+            $savesPendingWithoutAgency => 'nullable|numeric|min:0|max:999999.99',
+            $wasPhotoPending => 'required|numeric|min:0|max:999999.99',
+            default => 'sometimes|numeric|min:0|max:999999.99',
+        };
         $data = $request->validate([
-            'agency_id' => 'required|exists:agencies,id',
+            'agency_id' => ($wasPhotoPending ? 'nullable' : 'required').'|exists:agencies,id',
             'label_name' => 'sometimes|string|max:255',
             'service_type' => 'required|'.\App\Support\ServiceType::persistRule(),
             'service_route' => 'nullable|'.\App\Support\ServiceType::captureRouteRule(),
             'sea_billing' => 'required_if:service_route,SEA|nullable|in:LBS,CFT',
-            'intake_weight_lbs' => 'sometimes|numeric|min:0|max:999999.99',
+            'intake_weight_lbs' => $weightRule,
             'tracking_external' => $trackingRules,
             'dimension' => \App\Support\ServiceType::isCft($request->input('service_type'))
                 ? 'required|string|max:100'
@@ -682,19 +688,24 @@ class PreregistrationController extends Controller
             'service_type.in' => 'Debe elegir el tipo de servicio.',
             'sea_billing.required_if' => 'En marítimo elija si se cobra por libra o por pie cúbico.',
             'dimension.required' => 'En pie cúbico la dimensión es obligatoria.',
+            'intake_weight_lbs.required' => 'Indique el peso para completar el paquete.',
         ]);
         unset($data['service_route'], $data['sea_billing']);
 
-        // Cuando estaba en PHOTO_PENDING y ya se completan los datos,
-        // pasarlo a RECEIVED_MIAMI y generar código de almacén si aún no tiene.
-        if ($wasPhotoPending) {
+        // Un pendiente sin agencia guarda los cambios y sigue pendiente;
+        // con agencia se completa (RECEIVED_MIAMI + código de almacén si falta).
+        $completes = $wasPhotoPending && filled($data['agency_id'] ?? null);
+        if (! filled($data['agency_id'] ?? null)) {
+            unset($data['agency_id']);
+        }
+        if ($completes) {
             $data['status'] = 'RECEIVED_MIAMI';
         }
-        if ($wasPhotoPending && ! filled($preregistration->warehouse_code) && empty($data['warehouse_code'])) {
+        if ($completes && ! filled($preregistration->warehouse_code) && empty($data['warehouse_code'])) {
             $data['warehouse_code'] = $this->warehouseService->generateWarehouseCode();
         }
 
-        $assigned = Agency::find((int) $data['agency_id']);
+        $assigned = isset($data['agency_id']) ? Agency::find((int) $data['agency_id']) : null;
         if ($assigned && $assigned->isRootAccount()) {
             return redirect()->back()->withInput()->withErrors([
                 'agency_id' => 'Si el paquete es de SkyLink One, seleccione un cliente propio de SLO.',
@@ -714,9 +725,14 @@ class PreregistrationController extends Controller
 
         // Si venía de captura rápida, al completar mandamos directo a la etiqueta,
         // igual que cuando se guarda un preregistro normal.
-        if ($wasPhotoPending && $preregistration->warehouse_code) {
+        if ($completes && $preregistration->warehouse_code) {
             return redirect()->route('preregistrations.label', $preregistration->id)
                 ->with('success', 'Preregistro completado. Imprime la etiqueta para pegarla al paquete.');
+        }
+
+        if ($wasPhotoPending && ! $completes) {
+            return redirect()->route('preregistrations.show', $preregistration->id)
+                ->with('success', 'Cambios guardados. El paquete sigue pendiente hasta que se le asigne la agencia.');
         }
 
         return redirect()->route('preregistrations.show', $preregistration->id)
@@ -944,6 +960,42 @@ class PreregistrationController extends Controller
 
         return redirect()->route('preregistrations.edit', $preregistration->id)
             ->with('success', 'Orden de las fotos actualizado.');
+    }
+
+    /**
+     * Corrige solo el tracking de un paquete de captura rápida que sigue pendiente de datos.
+     */
+    public function updateTracking(Request $request, string $id)
+    {
+        $preregistration = Preregistration::findOrFail($id);
+        if ($preregistration->status !== 'PHOTO_PENDING') {
+            return redirect()->route('preregistrations.show', $preregistration->id)
+                ->with('error', 'Solo se puede corregir el tracking aquí mientras el paquete está pendiente de datos. Use Editar.');
+        }
+
+        $request->merge([
+            'tracking_external' => Preregistration::normalizeTrackingExternal((string) $request->input('tracking_external', '')),
+        ]);
+        $data = $request->validate([
+            'tracking_external' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('preregistrations', 'tracking_external')
+                    ->ignore($preregistration->id)
+                    ->whereNull('deleted_at'),
+            ],
+        ], [
+            'tracking_external.unique' => 'Este tracking ya está registrado en otro paquete.',
+        ]);
+
+        $preregistration->update(['tracking_external' => $data['tracking_external'] ?? null]);
+        if (filled($preregistration->tracking_external)) {
+            $this->attachPrealertMatch($preregistration);
+        }
+
+        return redirect()->route('preregistrations.show', $preregistration->id)
+            ->with('success', filled($preregistration->tracking_external) ? 'Tracking actualizado.' : 'Tracking borrado.');
     }
 
     public function updateServiceType(Request $request, string $id)

@@ -221,10 +221,34 @@
                             <span class="prd-field-label">Nombre en etiqueta</span>
                             <span class="prd-field-value">{{ $preregistration->label_name }}</span>
                         </div>
+                        @if($preregistration->status === 'PHOTO_PENDING')
+                        <div class="prd-field prd-field-span">
+                            <label for="tracking_external_show" class="prd-field-label">Tracking externo</label>
+                            <form method="POST" action="{{ route('preregistrations.tracking', $preregistration->id) }}" class="prd-tracking-form">
+                                @csrf
+                                @method('PATCH')
+                                <input
+                                    type="text"
+                                    name="tracking_external"
+                                    id="tracking_external_show"
+                                    value="{{ old('tracking_external', $preregistration->tracking_external) }}"
+                                    class="prd-tracking-input preregs-input-upper"
+                                    autocapitalize="characters"
+                                    spellcheck="false"
+                                    placeholder="Escanee o escriba el tracking"
+                                >
+                                <button type="submit" class="prd-service-save">Guardar tracking</button>
+                            </form>
+                            @error('tracking_external')
+                            <p class="prd-tracking-error">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        @else
                         <div class="prd-field">
                             <span class="prd-field-label">Tracking externo</span>
                             <span class="prd-field-value prd-mono">{{ $preregistration->tracking_external ?? '—' }}</span>
                         </div>
+                        @endif
                         @php
                             $canEditService = in_array($preregistration->status, ['PHOTO_PENDING', 'RECEIVED_MIAMI', 'CANCELLED'], true)
                                 && ! $preregistration->consolidationItem
@@ -725,6 +749,14 @@
     color: #fff; background: #0A2D6F; border: 0; border-radius: 0.55rem; cursor: pointer;
 }
 .prd-service-save:hover { background: #1E4FA8; }
+.prd-tracking-form { display: flex; flex-wrap: wrap; align-items: center; gap: 0.55rem; margin-top: 0.15rem; width: 100%; }
+.prd-tracking-input {
+    flex: 1 1 14rem; max-width: 28rem; padding: 0.5rem 0.7rem; font-size: 0.9rem; font-weight: 700;
+    font-family: ui-monospace, 'Courier New', monospace;
+    border: 1px solid #cbd5e1; border-radius: 0.55rem; background: #fff; color: #0f172a;
+}
+.prd-tracking-input.preregs-input-upper { text-transform: uppercase; }
+.prd-tracking-error { margin: 0.3rem 0 0; font-size: 0.8rem; color: #b91c1c; font-weight: 600; }
 .prd-weight-hint { margin: 0.15rem 0 0; font-size: 0.75rem; color: #64748b; font-weight: 600; line-height: 1.35; }
 .sr-only {
     position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
