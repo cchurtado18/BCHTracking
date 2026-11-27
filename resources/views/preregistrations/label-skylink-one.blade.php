@@ -476,12 +476,12 @@
         @endif
 
         <p style="margin-top: 12px; font-size: 14px;">
-            <a href="{{ route('preregistrations.show', $preregistration->id) }}" style="color:#2563eb;text-decoration:none;font-weight:600;">← Volver al preregistro</a>
+            <a href="{{ $labelBackUrl ?? route('preregistrations.show', $preregistration->id) }}" style="color:#2563eb;text-decoration:none;font-weight:600;">← {{ $labelBackText ?? 'Volver al preregistro' }}</a>
         </p>
         @if($isNarrow)
-        <p style="margin-top: 10px; font-size: 12px; color: #6b7280; max-width: 52ch; margin-left: auto; margin-right: auto;">Esta vista es para papel <strong>2.25×4&nbsp;pulgadas</strong> (lo que muestra su driver). En impresión: mismo tamaño en «Tamaño del papel», escala <strong>100&nbsp;%</strong> o «Predeterminado», márgenes <strong>ninguno</strong>. Si en realidad usa rollo <strong>4×6</strong>, cierre esta pestaña y abra <a href="{{ route('preregistrations.label', $preregistration->id) }}">etiqueta 4×6</a>.</p>
+        <p style="margin-top: 10px; font-size: 12px; color: #6b7280; max-width: 52ch; margin-left: auto; margin-right: auto;">Esta vista es para papel <strong>2.25×4&nbsp;pulgadas</strong> (lo que muestra su driver). En impresión: mismo tamaño en «Tamaño del papel», escala <strong>100&nbsp;%</strong> o «Predeterminado», márgenes <strong>ninguno</strong>. Si en realidad usa rollo <strong>4×6</strong>, cierre esta pestaña y abra <a href="{{ route($labelRouteName ?? 'preregistrations.label', $preregistration->id) }}">etiqueta 4×6</a>.</p>
         @else
-        <p style="margin-top: 10px; font-size: 12px; color: #6b7280; max-width: 52ch; margin-left: auto; margin-right: auto;">En el diálogo elija <strong>tamaño 4×6&nbsp;pulgadas</strong> (no 2.25×4). Escala <strong>100&nbsp;%</strong>, márgenes <strong>cero</strong>, sin ajustar a página. Si su impresora <strong>solo ofrece 2.25×4</strong>, use <a href="{{ route('preregistrations.label', ['id' => $preregistration->id, 'format' => 'narrow']) }}">etiqueta 2.25×4</a>.</p>
+        <p style="margin-top: 10px; font-size: 12px; color: #6b7280; max-width: 52ch; margin-left: auto; margin-right: auto;">En el diálogo elija <strong>tamaño 4×6&nbsp;pulgadas</strong> (no 2.25×4). Escala <strong>100&nbsp;%</strong>, márgenes <strong>cero</strong>, sin ajustar a página. Si su impresora <strong>solo ofrece 2.25×4</strong>, use <a href="{{ route($labelRouteName ?? 'preregistrations.label', ['id' => $preregistration->id, 'format' => 'narrow']) }}">etiqueta 2.25×4</a>.</p>
         @endif
     </div>
     

@@ -3,7 +3,22 @@
 @section('title', 'Crear Preregistro')
 
 @section('content')
+@php $arrivedSack = $arrivedSack ?? null; @endphp
 <div class="preregs-page preregs-form-page">
+    @if($arrivedSack)
+    <x-module-banner
+        section="Operaciones"
+        current="Registrar paquete llegado"
+        title="Registrar paquete llegado en {{ $arrivedSack->code }}"
+        subtitle="Paquete que llegó a Nicaragua sin estar registrado. Complete todos los datos y la foto."
+        back-href="{{ route('nic-consolidations.show', $arrivedSack->id) }}"
+        back-label="Volver al {{ $arrivedSack->unitNoun() }}"
+    >
+        <x-slot:icon>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        </x-slot:icon>
+    </x-module-banner>
+    @else
     <x-module-banner
         section="General"
         current="Nuevo preregistro"
@@ -20,6 +35,7 @@
             <a href="{{ route('preregistrations.tracking-photo') }}" class="mb-btn mb-btn-secondary">Captura tracking + foto</a>
         </x-slot:actions>
     </x-module-banner>
+    @endif
 
     @if($errors->any())
     <div class="preregs-alert preregs-alert-danger">
@@ -154,8 +170,18 @@
                     </div>
                 </div>
                 <div class="preregs-card-body preregs-form-body">
-        <form action="{{ route('preregistrations.store') }}" method="POST" enctype="multipart/form-data" class="preregs-create-formwrap" id="preregForm" novalidate>
+        @php $arrivedRoute = $arrivedSack ? \App\Support\ServiceType::route($arrivedSack->service_type) : null; @endphp
+        @if($arrivedSack)
+        <div class="preregs-alert preregs-arrived-alert" role="status">
+            <p class="preregs-alert-title">Paquete que llegó en {{ $arrivedSack->unitNoun() }} {{ $arrivedSack->code }} sin estar registrado</p>
+            <p class="preregs-arrived-text">Se guardará dentro de ese {{ $arrivedSack->unitNoun() }} como recibido en Nicaragua. No entra al saco abierto de Miami. Todos los datos y la foto son obligatorios.</p>
+        </div>
+        @endif
+        <form action="{{ $arrivedSack ? route('nic-consolidations.store-arrived') : route('preregistrations.store') }}" method="POST" enctype="multipart/form-data" class="preregs-create-formwrap" id="preregForm" novalidate>
             @csrf
+            @if($arrivedSack)
+            <input type="hidden" name="arrived_consolidation_id" value="{{ $arrivedSack->id }}">
+            @endif
             <input type="hidden" name="service_type" id="service_type_post" value="{{ old('service_type') }}">
             <input type="hidden" name="service_route" id="service_route_post" value="{{ old('service_route', in_array(old('service_type'), ['SEA', 'CFT'], true) ? 'SEA' : (old('service_type') === 'TBC' ? 'TBC' : old('service_type'))) }}">
             <input type="hidden" name="sea_billing" id="sea_billing_post" value="{{ old('sea_billing', \App\Support\ServiceType::seaBillingValue(old('service_type'))) }}">
@@ -210,13 +236,15 @@
                     <label for="intake_type" class="preregs-field-label">Tipo de ingreso <span class="preregs-req">*</span></label>
                     <select name="intake_type" id="intake_type" class="preregs-input preregs-select" required>
                         <option value="COURIER">Courier</option>
+                        @unless($arrivedSack)
                         <option value="DROP_OFF">Drop Off</option>
+                        @endunless
                     </select>
                 </div>
 
                 <div id="wrap_tracking" class="preregs-field">
                     <label for="tracking_external" class="preregs-field-label">Tracking externo</label>
-                    <input type="text" name="tracking_external" id="tracking_external" class="preregs-input preregs-input-upper" autocapitalize="characters" spellcheck="false" placeholder="1Z999AA10123456784">
+                    <input type="text" name="tracking_external" id="tracking_external" class="preregs-input preregs-input-upper" autocapitalize="characters" spellcheck="false" placeholder="1Z999AA10123456784" value="{{ $arrivedTracking ?? '' }}">
                     <p class="preregs-hint">Obligatorio en Courier.</p>
                     @include('preregistrations.partials.prealert-lookup')
                 </div>
@@ -246,6 +274,7 @@
                         'selectId' => 'service_type',
                         'named' => false,
                         'currentService' => old('service_type'),
+                        'onlyRoute' => $arrivedRoute,
                     ])
                     <div class="preregs-field">
                         <label for="intake_weight_lbs" class="preregs-field-label">Peso (lb) <span class="preregs-req">*</span></label>
@@ -272,6 +301,7 @@
                         'selectId' => 'service_type_multi',
                         'named' => false,
                         'currentService' => old('service_type'),
+                        'onlyRoute' => $arrivedRoute,
                     ])
                     <div id="bultos_container" class="preregs-bultos-container"></div>
                     <input type="hidden" name="dropoff_step" id="dropoff_step_input" value="1">
@@ -330,7 +360,7 @@
             </div>
 
             <div class="preregs-form-actions preregs-form-actions--footer">
-                <a href="{{ route('preregistrations.index') }}" class="preregs-btn preregs-btn-secondary">
+                <a href="{{ $arrivedSack ? route('nic-consolidations.show', $arrivedSack->id) : route('preregistrations.index') }}" class="preregs-btn preregs-btn-secondary">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
                     Cancelar
                 </a>
@@ -822,6 +852,8 @@
     flex-shrink: 0;
 }
 .preregs-photo-lead { font-size: 0.875rem; color: #64748b; margin: 0 0 0.95rem; }
+.preregs-arrived-alert { background: #FFF6E8; border: 1px solid #F3D19C; color: #7a5200; }
+.preregs-arrived-text { margin: 0.3rem 0 0; font-size: 0.85rem; font-weight: 500; line-height: 1.45; }
 .preregs-photo-preview { margin-top: 0.95rem; display: none; }
 .preregs-photo-preview img,
 .preregs-photo-preview-img {

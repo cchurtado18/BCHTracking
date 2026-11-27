@@ -216,6 +216,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [NicConsolidationController::class, 'index'])->name('index');
         Route::get('/{id}', [NicConsolidationController::class, 'show'])->name('show');
         Route::post('/{id}/scan', [NicConsolidationController::class, 'scan'])->name('scan');
+        Route::get('/{id}/registrar-paquete', [PreregistrationController::class, 'createArrived'])->name('register-arrived');
+        Route::post('/registrar-paquete', [PreregistrationController::class, 'storeArrived'])->name('store-arrived');
+        Route::get('/paquete/{id}/etiqueta', [PreregistrationController::class, 'arrivedLabel'])->name('arrived-label');
     });
 
     // Prealerta: cliente (subagencia) y almacén

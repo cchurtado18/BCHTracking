@@ -312,6 +312,7 @@
 .preregs-status.status-delivered { background: #e5e7eb; color: #374151; }
 .preregs-status.status-danger { background: #fee2e2; color: #991b1b; }
 .preregs-status.status-default { background: #f3f4f6; color: #4b5563; }
+.preregs-nic-badge { background: #FFF6E8; color: #9A6700; border: 1px solid #F3D19C; margin-top: 0.25rem; }
 
 .preregs-th-actions { text-align: right; width: 1%; }
 .preregs-actions { text-align: right; white-space: nowrap; }
@@ -561,6 +562,13 @@
                         data-label-air="En saco"
                         data-label-sea="En contenedor"
                     >Ya agregados</option>
+                    <option
+                        value="registered_nic"
+                        {{ request('consolidation') == 'registered_nic' ? 'selected' : '' }}
+                        data-label-all="Registrados en Nicaragua"
+                        data-label-air="Registrados en Nicaragua"
+                        data-label-sea="Registrados en Nicaragua"
+                    >Registrados en Nicaragua</option>
                 </select>
             </div>
             <div class="preregs-field preregs-field-select">
@@ -658,6 +666,9 @@
                                 $sl = $statusLabels[$preregistration->status ?? ''] ?? [$preregistration->status ?? '—', 'status-default'];
                             @endphp
                             <span class="preregs-badge preregs-status {{ $sl[1] }}">{{ $sl[0] }}</span>
+                            @if($preregistration->registered_in_nic)
+                            <span class="preregs-badge preregs-nic-badge">Registrado en Nicaragua</span>
+                            @endif
                         </td>
                         <td>
                             @if($preregistration->photos->count() > 0)

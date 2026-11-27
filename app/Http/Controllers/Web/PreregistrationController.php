@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePreregistrationRequest;
 use App\Models\Agency;
+use App\Models\Consolidation;
+use App\Models\ConsolidationItem;
 use App\Models\Prealert;
 use App\Models\Preregistration;
 use App\Models\PreregistrationPhoto;
@@ -16,6 +18,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Response;
@@ -155,6 +158,18 @@ class PreregistrationController extends Controller
             return redirect()->route('preregistrations.create');
         }
 
+        $arrivedSack = null;
+        if ($request->filled('arrived_consolidation_id')) {
+            $arrivedSack = Consolidation::find((int) $request->input('arrived_consolidation_id'));
+            if (! $arrivedSack || $arrivedSack->status !== 'SENT') {
+                return redirect()->route('nic-consolidations.index')
+                    ->with('error', 'Solo se pueden registrar paquetes llegados en un saco o contenedor ya enviado.');
+            }
+        }
+        $arrivedTracking = $arrivedSack
+            ? Preregistration::normalizeTrackingExternal((string) $request->input('tracking', ''))
+            : null;
+
         $agencies = Agency::where('is_active', true)->orderBy('name')->get();
         $slo = $agencies->first(fn (Agency $a) => $a->isRootAccount());
         $sloClients = $slo
@@ -180,7 +195,7 @@ class PreregistrationController extends Controller
         $dropoffWarehouseCode = null;
 
         $sessionWarehouse = session('dropoff_warehouse_code');
-        if (is_string($sessionWarehouse) && $sessionWarehouse !== '') {
+        if (! $arrivedSack && is_string($sessionWarehouse) && $sessionWarehouse !== '') {
             $anchor = Preregistration::query()
                 ->where('intake_type', 'DROP_OFF')
                 ->where('warehouse_code', $sessionWarehouse)
@@ -214,7 +229,9 @@ class PreregistrationController extends Controller
                 'dropoffTotal',
                 'dropoffAgencyName',
                 'dropoffServiceType',
-                'dropoffWarehouseCode'
+                'dropoffWarehouseCode',
+                'arrivedSack',
+                'arrivedTracking'
             ))
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     }
@@ -238,6 +255,10 @@ class PreregistrationController extends Controller
         $data = $request->validated();
         $data['intake_type'] = $data['intake_type'] ?? 'COURIER';
         $data['status'] = 'RECEIVED_MIAMI';
+
+        if ($request->isArrivedInNic()) {
+            return $this->storeArrivedInNic($request, $data);
+        }
 
         // Drop off multi-bulto paso a paso: un bulto por vez, imprimir etiqueta y continuar
         if ($request->isDropoffStepSubmission()) {
@@ -297,6 +318,70 @@ class PreregistrationController extends Controller
             route('preregistrations.label', $preregistration->id),
             'Preregistro creado. Imprime la etiqueta.',
             'No se subió foto.'
+        );
+    }
+
+    /**
+     * Paquete que llegó a Nicaragua en un saco ya enviado sin registrarse en Miami:
+     * queda dentro de ese saco, escaneado y en bodega NIC, sin pasar por el saco aéreo abierto.
+     */
+    protected function storeArrivedInNic(StorePreregistrationRequest $request, array $data): Response
+    {
+        $sack = Consolidation::findOrFail((int) $data['arrived_consolidation_id']);
+        unset($data['arrived_consolidation_id']);
+
+        try {
+            $preregistration = DB::transaction(function () use ($data, $sack) {
+                $now = now();
+                $preregistration = Preregistration::create(array_merge($data, [
+                    'status' => 'IN_WAREHOUSE_NIC',
+                    'received_nic_at' => $now,
+                    'registered_in_nic' => true,
+                    'warehouse_code' => $this->warehouseService->generateWarehouseCode(),
+                ]));
+
+                $item = $preregistration->consolidationItem()->first();
+                if ($item) {
+                    $item->update(['scanned_at' => $now]);
+                } else {
+                    ConsolidationItem::create([
+                        'consolidation_id' => $sack->id,
+                        'preregistration_id' => $preregistration->id,
+                        'scanned_at' => $now,
+                    ]);
+                }
+
+                return $preregistration;
+            });
+            $this->attachPrealertMatch($preregistration);
+        } catch (\Throwable $e) {
+            \Log::error('Preregistration arrived-in-NIC store failed', ['exception' => $e->getMessage(), 'sack' => $sack->id]);
+
+            return $this->storeError($request, 'No se pudo guardar el paquete. '.$e->getMessage());
+        }
+
+        $linkedSack = $preregistration->consolidationItem()->with('consolidation')->first()?->consolidation ?? $sack;
+        $user = $request->user();
+        $viaNic = $user?->hasPermission(\App\Support\Permission::MODULE_NIC) ?? false;
+
+        try {
+            $this->photoService->uploadPhoto($preregistration, $request->file('photo'));
+        } catch (\Throwable $e) {
+            return $this->storeRedirect(
+                $request,
+                $viaNic
+                    ? route('nic-consolidations.show', $linkedSack->id)
+                    : route('preregistrations.show', $preregistration->id),
+                'Paquete registrado en '.$linkedSack->code.', pero hubo un error al subir la foto: '.$e->getMessage()
+            );
+        }
+
+        return $this->storeRedirect(
+            $request,
+            $viaNic
+                ? route('nic-consolidations.arrived-label', $preregistration->id)
+                : route('preregistrations.label', $preregistration->id),
+            'Paquete registrado en '.$linkedSack->code.' y recibido en Nicaragua. Imprime la etiqueta.'
         );
     }
 
@@ -1076,12 +1161,60 @@ class PreregistrationController extends Controller
 
         if ($value === 'assigned') {
             $query->whereHas('consolidationItem');
+
+            return;
         }
+
+        if ($value === 'registered_nic') {
+            $query->where('registered_in_nic', true);
+        }
+    }
+
+    public function createArrived(Request $request, string $id)
+    {
+        $request->merge(['arrived_consolidation_id' => $id]);
+
+        return $this->create($request);
+    }
+
+    public function storeArrived(StorePreregistrationRequest $request)
+    {
+        abort_unless($request->isArrivedInNic(), 404);
+
+        return $this->store($request);
+    }
+
+    public function arrivedLabel(Request $request, string $id)
+    {
+        $preregistration = Preregistration::with(['agency', 'agency.parent', 'consolidationItem'])->findOrFail($id);
+        abort_unless($preregistration->registered_in_nic, 404);
+
+        $sackId = $preregistration->consolidationItem?->consolidation_id;
+
+        return $this->renderLabel(
+            $request,
+            $preregistration,
+            'nic-consolidations.arrived-label',
+            $sackId ? route('nic-consolidations.show', $sackId) : route('nic-consolidations.index'),
+            'Volver al saco'
+        );
     }
 
     public function label(Request $request, string $id)
     {
         $preregistration = Preregistration::with(['agency', 'agency.parent'])->findOrFail($id);
+
+        return $this->renderLabel(
+            $request,
+            $preregistration,
+            'preregistrations.label',
+            route('preregistrations.show', $preregistration->id),
+            'Volver al preregistro'
+        );
+    }
+
+    private function renderLabel(Request $request, Preregistration $preregistration, string $labelRouteName, string $labelBackUrl, string $labelBackText)
+    {
         if ($preregistration->status === 'PHOTO_PENDING') {
             if (filled($preregistration->warehouse_code)) {
                 return redirect()->route('preregistrations.control-label', array_filter([
@@ -1104,7 +1237,7 @@ class PreregistrationController extends Controller
         $labelFormat = $this->resolveLabelPaperFormat($request);
 
         // Usar el mismo diseño nuevo de etiqueta para cualquier agencia/servicio.
-        return view('preregistrations.label-skylink-one', compact('preregistration', 'dropoffNextStep', 'dropoffTotal', 'labelFormat'));
+        return view('preregistrations.label-skylink-one', compact('preregistration', 'dropoffNextStep', 'dropoffTotal', 'labelFormat', 'labelRouteName', 'labelBackUrl', 'labelBackText'));
     }
 
     /**

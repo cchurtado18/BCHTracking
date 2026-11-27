@@ -43,6 +43,10 @@
             </div>
         </form>
         <div id="nic-scan-feedback" class="nic-scan-feedback"></div>
+        <a id="nic-register-arrived" class="cx-btn cx-btn-secondary nic-register-arrived" href="{{ session('register_url', '#') }}" @unless(session('register_url')) hidden @endunless>
+            Registrar paquete llegado en este {{ $consolidation->unitNoun() }}
+        </a>
+        <p class="cx-scan-hint nic-register-hint">Si el paquete llegó en este {{ $consolidation->unitNoun() }} pero no estaba registrado en Miami, regístrelo aquí: queda dentro de este {{ $consolidation->unitNoun() }} como recibido en Nicaragua.</p>
     </div>
 
     <div class="cx-kpis">
@@ -189,6 +193,10 @@
 .nic-scan-feedback.text-success { color: var(--cx-green); }
 .nic-scan-feedback.text-danger { color: var(--cx-red); }
 .nic-scan-feedback.text-muted { color: #94a3b8; }
+.nic-register-arrived { margin-top: 0.55rem; border-color: #F3D19C; background: #FFF6E8; color: #7a5200; }
+.nic-register-arrived[hidden] { display: none; }
+.nic-register-hint { display: none; margin: 0.4rem 0 0; }
+.nic-register-arrived:not([hidden]) + .nic-register-hint { display: block; }
 .cx-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1.15rem; }
 .cx-kpi-card {
     background: #fff; border: 1px solid var(--cx-line); border-radius: 0.85rem;
@@ -243,7 +251,18 @@
     var form = document.getElementById('nic-scan-form');
     var input = document.getElementById('code');
     var feedback = document.getElementById('nic-scan-feedback');
+    var registerLink = document.getElementById('nic-register-arrived');
     var debounceTimer = null;
+
+    function setRegisterLink(url) {
+        if (!registerLink) return;
+        if (url) {
+            registerLink.href = url;
+            registerLink.hidden = false;
+        } else {
+            registerLink.hidden = true;
+        }
+    }
     var DEBOUNCE_MS = 180;
 
     function showFeedback(msg, isError) {
@@ -275,6 +294,7 @@
             input.value = '';
             input.disabled = false;
             input.focus();
+            setRegisterLink(result.ok ? null : result.data.register_url);
 
             if (result.ok && result.data.success) {
                 showFeedback(result.data.message, false);

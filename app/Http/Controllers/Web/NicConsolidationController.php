@@ -111,11 +111,19 @@ class NicConsolidationController extends Controller
 
         $matchingPreregIds = array_filter($matchingPreregIds);
         if (empty($matchingPreregIds)) {
+            $registerUrl = route('nic-consolidations.register-arrived', [
+                'id' => $consolidation->id,
+                'tracking' => $isSixDigits ? null : $code,
+            ]);
             if ($wantsJson) {
-                return response()->json(['success' => false, 'message' => 'Código no encontrado.'], 422);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Código no encontrado.',
+                    'register_url' => $registerUrl,
+                ], 422);
             }
 
-            return back()->with('error', 'Código no encontrado.');
+            return back()->with('error', 'Código no encontrado.')->with('register_url', $registerUrl);
         }
 
         // Siguiente ítem del saco con este código que aún no se ha escaneado, ordenado por bulto_index para no perder orden

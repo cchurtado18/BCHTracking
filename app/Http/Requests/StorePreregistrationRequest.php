@@ -32,6 +32,10 @@ class StorePreregistrationRequest extends FormRequest
             $merge['service_type'] = $resolved;
         }
 
+        if ($this->isArrivedInNic()) {
+            $merge['intake_type'] = 'COURIER';
+        }
+
         $bultos = $this->input('bultos');
         if (is_array($bultos)) {
             foreach ($bultos as $i => $bulto) {
@@ -80,6 +84,25 @@ class StorePreregistrationRequest extends FormRequest
             'bultos.*.dimension' => 'required_with:bultos|string|max:100',
             'bultos.*.description' => 'nullable|string|max:500',
         ];
+        if ($this->isArrivedInNic()) {
+            return array_merge($rules, [
+                'arrived_consolidation_id' => [
+                    'required',
+                    Rule::exists('consolidations', 'id')->where('status', 'SENT'),
+                ],
+                'agency_id' => 'required|exists:agencies,id',
+                'tracking_external' => ['required', 'string', 'max:255', Rule::unique('preregistrations', 'tracking_external')],
+                'service_type' => 'required|'.ServiceType::persistRule(),
+                'label_name' => 'required|string|max:255',
+                'intake_weight_lbs' => 'required|numeric|min:0.01|max:999999.99',
+                'dimension' => ServiceType::isCft($this->input('service_type'))
+                    ? 'required|string|max:100'
+                    : 'nullable|string|max:100',
+                'description' => 'nullable|string|max:500',
+                'photo' => 'required|file|image|mimes:jpg,jpeg,png,webp|max:10240',
+                'bultos' => 'prohibited',
+            ]);
+        }
         // Drop off paso a paso: un solo bulto por envío
         if ($this->isDropoffStepSubmission()) {
             $rules['label_name'] = 'required|string|max:255';
@@ -107,6 +130,12 @@ class StorePreregistrationRequest extends FormRequest
             }
         }
         return $rules;
+    }
+
+    /** Paquete que llegó a Nicaragua en un saco ya enviado sin haberse registrado en Miami. */
+    public function isArrivedInNic(): bool
+    {
+        return $this->filled('arrived_consolidation_id');
     }
 
     /** True when submitting one drop-off bulto at a time (step-by-step flow). */
@@ -140,6 +169,17 @@ class StorePreregistrationRequest extends FormRequest
             'service_type.in' => 'Debe elegir el tipo de servicio.',
             'sea_billing.required' => 'En marítimo elija si se cobra por libra o por pie cúbico.',
         ];
+        if ($this->isArrivedInNic()) {
+            $messages += [
+                'arrived_consolidation_id.exists' => 'El saco indicado no existe o todavía no se ha enviado.',
+                'tracking_external.required' => 'El tracking es obligatorio.',
+                'label_name.required' => 'El nombre en etiqueta es obligatorio.',
+                'intake_weight_lbs.required' => 'El peso es obligatorio.',
+                'dimension.required' => 'En pie cúbico la dimensión es obligatoria.',
+                'photo.required' => 'La foto del paquete es obligatoria.',
+                'bultos.prohibited' => 'Este registro es de un solo paquete; no admite varios bultos.',
+            ];
+        }
         if ($this->isMultiBultoDropoff()) {
             $n = min((int) $this->input('bultos_count', 1), count($this->input('bultos', [])));
             for ($i = 0; $i < $n; $i++) {
@@ -162,6 +202,17 @@ class StorePreregistrationRequest extends FormRequest
                     $validator->errors()->add(
                         'agency_id',
                         'Si el paquete es de SkyLink One, seleccione un cliente propio de SLO. No se puede asignar a SLO como cuenta genérica.'
+                    );
+                }
+            }
+
+            if ($this->isArrivedInNic()) {
+                $sack = \App\Models\Consolidation::find((int) $this->input('arrived_consolidation_id'));
+                $service = (string) $this->input('service_type');
+                if ($sack && $service !== '' && (ServiceType::isTbc($service) || ! ServiceType::matchesRoute($service, $sack->service_type))) {
+                    $validator->errors()->add(
+                        'service_type',
+                        'El servicio debe ser '.ServiceType::routeLabelLower($sack->service_type).', igual que el '.$sack->unitNoun().' '.$sack->code.'.'
                     );
                 }
             }

@@ -119,6 +119,9 @@
             @endif
             <span class="mb-pill">{{ \App\Support\ServiceType::label($preregistration->service_type) }}</span>
             <span class="mb-pill">{{ $statusLabel }}</span>
+            @if($preregistration->registered_in_nic)
+            <span class="mb-pill">Registrado en Nicaragua</span>
+            @endif
         </x-slot:strip>
     </x-module-banner>
 

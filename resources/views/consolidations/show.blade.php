@@ -601,7 +601,7 @@
                             @if($item->preregistration)
                             <div class="cons-show-item cons-show-item--row {{ $item->scanned_at ? 'cons-show-item--ok' : '' }}">
                                 <div class="cons-show-item-main">
-                                    <div class="cons-show-item-name">{{ $item->preregistration->label_name }}</div>
+                                    <div class="cons-show-item-name">{{ $item->preregistration->label_name }}@if($item->preregistration->registered_in_nic) <span class="cons-auto-badge">Registrado en Nicaragua</span>@endif</div>
                                     <div class="cons-show-item-code">{{ $item->preregistration->warehouse_code ?? $item->preregistration->tracking_external ?? 'N/A' }}{{ $item->preregistration->bultoCaption() ? ' · '.$item->preregistration->bultoCaption() : '' }}</div>
                                     <div class="cons-show-item-meta">{{ $item->preregistration->verified_weight_lbs ?? $item->preregistration->intake_weight_lbs }} lbs</div>
                                     @if($item->preregistration->status === 'PHOTO_PENDING')

@@ -28,7 +28,8 @@
     $named = $named ?? false;
     $currentService = $currentService ?? '';
     $oldService = old('service_type', $currentService);
-    $routeValue = old('service_route', in_array($oldService, ['SEA', 'CFT'], true) ? 'SEA' : ($oldService === 'TBC' ? 'TBC' : ($oldService === 'AIR' ? 'AIR' : '')));
+    $onlyRoute = $onlyRoute ?? null;
+    $routeValue = $onlyRoute ?: old('service_route', in_array($oldService, ['SEA', 'CFT'], true) ? 'SEA' : ($oldService === 'TBC' ? 'TBC' : ($oldService === 'AIR' ? 'AIR' : '')));
     $billingValue = old('sea_billing', \App\Support\ServiceType::seaBillingValue($oldService));
     $wrapId = ($selectId === 'service_type_multi') ? 'wrap_sea_billing_multi' : 'wrap_sea_billing';
     $radioName = $named ? 'sea_billing' : ($selectId === 'service_type_multi' ? 'sea_billing_multi' : 'sea_billing_ui');
@@ -36,10 +37,14 @@
 <div class="preregs-field">
     <label for="{{ $selectId }}" class="preregs-field-label">Tipo de servicio <span class="preregs-req">*</span></label>
     <select id="{{ $selectId }}" class="preregs-input preregs-select js-service-route" @if($named) name="service_route" required @endif>
+        @if($onlyRoute)
+        <option value="{{ $onlyRoute }}" selected>{{ $onlyRoute === 'SEA' ? 'Marítimo' : 'Aéreo' }}</option>
+        @else
         <option value="" disabled {{ $routeValue ? '' : 'selected' }}>Seleccione un servicio</option>
         <option value="AIR" {{ $routeValue === 'AIR' ? 'selected' : '' }}>Aéreo</option>
         <option value="SEA" {{ $routeValue === 'SEA' ? 'selected' : '' }}>Marítimo</option>
         <option value="TBC" {{ $routeValue === 'TBC' ? 'selected' : '' }}>TBC — Por confirmar</option>
+        @endif
     </select>
     @error('service_type')
     <p class="preregs-field-error">{{ $message }}</p>
